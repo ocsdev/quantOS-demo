@@ -5,7 +5,7 @@ from datetime import datetime
 
 from framework import common
 from jzdataapi.data_api import DataApi
-from pubsub import Publisher
+from framework.pubsub import Publisher
 
 
 class Quote(object):
@@ -128,7 +128,7 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def daily(self, security, begin_date, end_date, field="", adjust_mode=None):
+    def daily(self, security, begin_date, end_date, fields="", adjust_mode=None):
         """
         Query dar bar,
         support auto-fill suspended securities data,
@@ -140,7 +140,7 @@ class BaseDataServer(Publisher):
             support multiple securities, separated by comma.
         begin_date : int (YYYMMDD) or str ('YYYY-MM-DD')
         end_date : int (YYYMMDD) or str ('YYYY-MM-DD')
-        field : separated by comma ','
+        fields : separated by comma ','
             Default is all fields included.
         adjust_mode : str or None
             None for no adjust;
@@ -156,13 +156,13 @@ class BaseDataServer(Publisher):
         Examples
         --------
         df, msg = api.daily("00001.SH,cu1709.SHF",begin_date=20170503, end_date=20170708,
-                            field="open,high,low,last,volume", fq=None, skip_suspended=True)
+                            fields="open,high,low,last,volume", fq=None, skip_suspended=True)
 
         """
         pass
     
     @abstractmethod
-    def bar(self, security, begin_time=200000, end_time=160000, trade_date=None, field="", cycle='1m'):
+    def bar(self, security, begin_time=200000, end_time=160000, trade_date=None, fields="", cycle='1m'):
         """
         Query minute bars of various type, return DataFrame.
 
@@ -176,7 +176,7 @@ class BaseDataServer(Publisher):
             Default is market close time.
         trade_date : int (YYYMMDD) or str ('YYYY-MM-DD')
             Default is current trade_date.
-        field : separated by comma ','
+        fields : separated by comma ','
             Default is all fields included.
         cycle : framework.common.MINBAR_TYPE {'1m', '5m', '15m'}
             Minute bar type, default is '1m'
@@ -190,18 +190,18 @@ class BaseDataServer(Publisher):
         Examples
         --------
         df, msg = api.bar("000001.SH,cu1709.SHF", begin_time="09:56:00", end_time="13:56:00",
-                          trade_date="20170823", field="open,high,low,last,volume", cycle="5m")
+                          trade_date="20170823", fields="open,high,low,last,volume", cycle="5m")
 
         """
         # TODO data_server DOES NOT know "current date".
         pass
     
     @abstractmethod
-    def tick(self, security, begin_time=None, end_time=None, trade_date=None, field=""):
+    def tick(self, security, begin_time=None, end_time=None, trade_date=None, fields=""):
         pass
     
     @abstractmethod
-    def query(self, view, field, filter):
+    def query(self, view, fields, filter):
         """
         Query reference data.
         Input query type and parameters, return DataFrame.
@@ -210,7 +210,7 @@ class BaseDataServer(Publisher):
         ----------
         view : str
             Type of reference data. See doc for details.
-        field : str
+        fields : str
             Fields to return, separated by ','.
         filter : str
             Query conditions, separated by '&'.
@@ -245,60 +245,58 @@ class JzDataServer(BaseDataServer):
         self.api = DataApi(address, use_jrpc=False)
         self.api.login("usr", "123")
     
-    def daily(self, security, field="",
+    def daily(self, security, fields="",
               begin_date=0, end_date=0,
               adjust_mode=None, data_format=""):
         df, err_msg = self.api.daily(security=security, begin_date=begin_date, end_date=end_date,
-                                     fields=field, adjust_mode=adjust_mode, data_format=data_format)
+                                     fields=fields, adjust_mode=adjust_mode, data_format=data_format)
         return df, err_msg
 
-    def bar(self, security, field="",
+    def bar(self, security, fields="",
             begin_time=200000, end_time=160000, trade_date=0,
             cycle="1m", data_format=""):
-        df, msg = self.api.bar(security=security, fields=field,
+        df, msg = self.api.bar(security=security, fields=fields,
                                begin_time=begin_time, end_time=end_time, trade_date=trade_date,
                                cycle='1m', data_format=data_format)
         return df, msg
     
-    def query(self, view, field, filter_="", **kwargs):
-        df, msg = self.api.query(view, field, filter=filter_, **kwargs)
+    def query(self, view, fields="", filter="", data_format="pandas", **kwargs):
+        """
+        Get various reference data.
+        
+        Parameters
+        ----------
+        view : str
+            data source.
+        fields : str
+            Separated by ','
+        filter : str
+            filter expressions.
+        data_format : str
+            default is "pandas"
+        kwargs
+
+        Returns
+        -------
+        df : pd.DataFrame
+        msg : str
+            error code and error message, joined by ','
+        
+        Examples
+        --------
+        res3, msg3 = ds.query("wd.secDailyIndicator", fields="price_level,high_52w_adj,low_52w_adj",
+                              filter="start_date=20170907&end_date=20170907",
+                              orderby="trade_date",
+                              data_format='pandas')
+            view does not change. fileds can be any field predefined in reference data api.
+
+        """
+        df, msg = self.api.query(view, fields=fields, filter=filter, data_format=data_format, **kwargs)
         return df, msg
     
     def get_suspensions(self):
         return None
 
-
-class BaseDataView(object):
-    def __init__(self):
-        pass
-    
-    def create_dataview(self, view_name="", security, time, fields):
-        pass
-    
-    def append_data(self, field="field_name", func="calc_func")
-        pass
-    
-    def append_data(self, field="field_name", data=df_data):
-        pass
-    
-    def save_dataview(self, file_name="", view_name=""):
-        pass
-    
-    def load_dataview(self, file_name="", view_name=""):
-        pass
-    
-    def get_snapshot_secu(self, security, fields):
-        # return single security snapshot
-        pass
-
-
-    def get_snapshot_time(self, time, fields):
-        # return single time snapshot
-        pass
-        
-    def get_data(self, security, time, fields):
-        # return dict at the moment
-        pass
 
 class DataServer(Publisher):
     def __init__(self):
@@ -439,7 +437,7 @@ class JshHistoryBarDataServer(DataServer):
         return None
 
 
-def test_old():
+def _test_old():
     props = dict()
     props['jsh.addr'] = 'tcp://10.2.0.14:61616'
     props['bar_type'] = common.QUOTE_TYPE.MIN
@@ -459,31 +457,38 @@ def test_old():
 
 def test_jz_data_server():
     ds = JzDataServer()
-    res, msg = ds.daily('rb1710.SHF,600662.SH', field="",
+    
+    # test daily
+    res, msg = ds.daily('rb1710.SHF,600662.SH', fields="",
                         begin_date=20170828, end_date=20170831,
                         adjust_mode=None, data_format="")
-    print msg
     rb = res.loc[res.loc[:, 'security'] == 'rb1710.SHF', :]
     stk = res.loc[res.loc[:, 'security'] == '600662.SH', :]
-    assert rb.shape == (4, 13)
     assert msg == '0,'
-    # TODO format of volume
-    # assert stk.loc[:, 'volume'].values[0] == 7174813.00
+    assert rb.shape == (4, 13)
+    assert rb.loc[:, 'volume'].values[0] == 189616
+    assert stk.loc[:, 'volume'].values[0] == 7174813
     
+    # test bar
     res2, msg2 = ds.bar('rb1710.SHF,600662.SH', "", 200000, 160000, 20170831)
-    rb = res2.loc[res2.loc[:, 'security'] == 'rb1710.SHF', :]
-    stk = res2.loc[res2.loc[:, 'security'] == '600662.SH', :]
-    assert rb.shape == (345, 14)
-    assert stk.shape == (240, 14)
+    rb2 = res2.loc[res2.loc[:, 'security'] == 'rb1710.SHF', :]
+    stk2 = res2.loc[res2.loc[:, 'security'] == '600662.SH', :]
     assert msg2 == '0,'
+    assert rb2.shape == (345, 14)
+    assert stk2.shape == (240, 14)
+    assert rb2.loc[:, 'volume'].values[344] == 3366
 
-    # unit: 1e4 RMB
-    res3, msg3 = ds.query("wd.secDailyIndicator", "",
-                          filter_="security=600848.SH&start_date=20170101&end_date=20170801",
-                          orderby="date",
+    # test wd.secDailyIndicator
+    res3, msg3 = ds.query("wd.secDailyIndicator", fields="pb,pe,share_float_free,net_assets,limit_status",
+                          filter="security=600030.SH&start_date=20170907&end_date=20170907",
+                          orderby="trade_date",
                           data_format='pandas')
-    print msg3
-    print res3
+    assert msg3 == '0,'
+    assert abs(res3.loc[0, 'pb'] - 1.5135) < 1e-4
+    assert abs(res3.loc[0, 'share_float_free'] - 781496.5954) < 1e-4
+    assert abs(res3.loc[0, 'net_assets'] - 1.437e11) < 1e8
+    assert res3.loc[0, 'limit_status'] == 0
+    
     print "Test passed."
 
 
@@ -494,5 +499,5 @@ def test_data_view():
 # 直接运行脚本可以进行测试
 if __name__ == '__main__':
     # test_old()
-    # test_jz_data_server()
+    test_jz_data_server()
     pass
