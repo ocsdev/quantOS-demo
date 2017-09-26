@@ -1,11 +1,12 @@
 # encoding: utf-8
 
 import datetime
+
 # import MySQLdb
 import pandas as pd
 from pandas.tseries import offsets
 
-from dbmanager import *
+from data.dbmanager import *
 
 
 class JzCalendar(object):
@@ -70,7 +71,11 @@ class JzCalendar(object):
     @staticmethod
     def convert_int_to_datetime(dt):
         """Convert int date (%Y%m%d) to datetime.datetime object."""
-        return datetime.datetime.strptime(str(dt), "%Y%m%d")
+        if isinstance(dt, pd.Series):
+            dt = dt.values.astype(str)
+        elif isinstance(dt, int):
+            dt = str(dt)
+        return pd.to_datetime(dt, format="%Y%m%d")
     
     @staticmethod
     def convert_datetime_to_int(dt):
