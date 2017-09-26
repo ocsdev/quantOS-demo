@@ -1,7 +1,10 @@
 # encoding: UTF-8
+"""
+Basic data types, classes and models for framework.
 
+"""
 from backtest import *
-from common import *
+import common
 from dataserver import *
 from framework.jzcalendar import *
 from gateway import *

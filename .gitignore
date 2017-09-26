@@ -1,3 +1,6 @@
+# Python Virtual Environment
+venv/
+
 # Archived
 old_archive/
 
@@ -9,6 +12,8 @@ etc/*.json
 
 # Backtest Results
 output/
+analyze/static
+analyze/output
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
