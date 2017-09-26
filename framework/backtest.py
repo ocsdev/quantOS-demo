@@ -93,25 +93,24 @@ class BacktestInstance(Subscriber):
         self.current_date = self.start_date
         while self.current_date <= self.end_date:  # each loop is a new trading day
             quotes = dataserver.get_daily_quotes(self.current_date)
-            if quotes is None:
+            if quotes is not None:
+                # gateway.oneNewDay()
+                self.strategy.onNewday(self.current_date)
+                self.strategy.pm.onNewDay(self.current_date, self.last_date)
+                self.strategy.trade_date = self.current_date
+
+                for quote in quotes:
+                    self.processQuote(quote)
+
+                # self.strategy.onMarketClose()
+                self.closeDay(self.current_date)
+                # self.strategy.onSettle()
+
+                self.last_date = self.current_date
+            else:
                 # no quotes because of holiday or other issues. We don't update last_date
                 print "in backtest.py: function run(): {} quotes is None, continue.".format(self.last_date)
-                self.current_date = self.get_next_trade_date(self.current_date)
-                continue
 
-            # gateway.oneNewDay()
-            self.strategy.onNewday(self.current_date)
-            self.strategy.pm.onNewDay(self.current_date, self.last_date)
-            self.strategy.trade_date = self.current_date
-
-            for quote in quotes:
-                self.processQuote(quote)
-
-            # self.strategy.onMarketClose()
-            self.closeDay(self.current_date)
-            # self.strategy.onSettle()
-
-            self.last_date = self.current_date
             self.current_date = self.get_next_trade_date(self.current_date)
 
         # self.strategy.onTradingEnd()
