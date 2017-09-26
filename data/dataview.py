@@ -200,7 +200,7 @@ class BaseDataView(object):
     @staticmethod
     def _process_index(df, index_name='trade_date'):
         """Use datetime as index."""
-        df.drop_duplicates(inplace= True)
+        df.drop_duplicates(subset=index_name, inplace=True)
         df.set_index(index_name, inplace=True)
         df.sort_index(axis=0, inplace=True)
         df.drop(['security'], axis=1, inplace=True)
@@ -262,7 +262,7 @@ class BaseDataView(object):
         for sec, df in dic.viewitems():
             dic[sec] = self._process_index(df)
             
-        res = self._dic_of_df_to_multi_index_df(dic)
+        res = self._dic_of_df_to_multi_index_df(dic, levels=['security', 'field'])
         return res
         
     def _preprocess_ref_daily(self, dic, fields):
@@ -291,7 +291,7 @@ class BaseDataView(object):
             """
             dic[sec] = df_mod
         
-        res = self._dic_of_df_to_multi_index_df(dic)
+        res = self._dic_of_df_to_multi_index_df(dic, levels=['security', 'field'])
         return res
 
     def _preprocess_ref_quarterly(self, dic, fields):
@@ -319,7 +319,7 @@ class BaseDataView(object):
             
             dic[sec] = df_mod
     
-        res = self._dic_of_df_to_multi_index_df(dic)
+        res = self._dic_of_df_to_multi_index_df(dic, levels=['security', 'field'])
         return res
     
     @staticmethod
