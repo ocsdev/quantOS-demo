@@ -243,7 +243,7 @@ class JzDataServer(BaseDataServer):
         
         address = 'tcp://10.1.0.210:8910'
         self.api = DataApi(address, use_jrpc=False)
-        self.api.connect()
+        self.api.login("usr", "123")
     
     def daily(self, security, field="",
               begin_date=0, end_date=0,
@@ -266,6 +266,39 @@ class JzDataServer(BaseDataServer):
     
     def get_suspensions(self):
         return None
+
+
+class BaseDataView(object):
+    def __init__(self):
+        pass
+    
+    def create_dataview(self, view_name="", security, time, fields):
+        pass
+    
+    def append_data(self, field="field_name", func="calc_func")
+        pass
+    
+    def append_data(self, field="field_name", data=df_data):
+        pass
+    
+    def save_dataview(self, file_name="", view_name=""):
+        pass
+    
+    def load_dataview(self, file_name="", view_name=""):
+        pass
+    
+    def get_snapshot_secu(self, security, fields):
+        # return single security snapshot
+        pass
+
+
+    def get_snapshot_time(self, time, fields):
+        # return single time snapshot
+        pass
+        
+    def get_data(self, security, time, fields):
+        # return dict at the moment
+        pass
 
 class DataServer(Publisher):
     def __init__(self):
@@ -406,7 +439,7 @@ class JshHistoryBarDataServer(DataServer):
         return None
 
 
-def _test_old():
+def test_old():
     props = dict()
     props['jsh.addr'] = 'tcp://10.2.0.14:61616'
     props['bar_type'] = common.QUOTE_TYPE.MIN
@@ -426,7 +459,10 @@ def _test_old():
 
 def test_jz_data_server():
     ds = JzDataServer()
-    res, msg = ds.daily('rb1710.SHF,600662.SH', "", 20170828, 20170831)
+    res, msg = ds.daily('rb1710.SHF,600662.SH', field="",
+                        begin_date=20170828, end_date=20170831,
+                        adjust_mode=None, data_format="")
+    print msg
     rb = res.loc[res.loc[:, 'security'] == 'rb1710.SHF', :]
     stk = res.loc[res.loc[:, 'security'] == '600662.SH', :]
     assert rb.shape == (4, 13)
@@ -451,7 +487,12 @@ def test_jz_data_server():
     print "Test passed."
 
 
+def test_data_view():
+    pass
+
+
 # 直接运行脚本可以进行测试
 if __name__ == '__main__':
     # test_old()
-    test_jz_data_server()
+    # test_jz_data_server()
+    pass
