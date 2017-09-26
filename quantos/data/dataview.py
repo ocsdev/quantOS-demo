@@ -344,6 +344,7 @@ class BaseDataView(object):
         # df.drop_duplicates(subset=index_name, inplace=True)  # TODO not a good solution
         dup = df.duplicated(subset=index_name)
         if np.sum(dup.values) > 0:
+            # TODO
             print "WARNING: Duplicate {:s} encountered, droped.".format(index_name)
             idx = np.logical_not(dup)
             df = df.loc[idx, :]

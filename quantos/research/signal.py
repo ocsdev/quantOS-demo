@@ -14,13 +14,6 @@ def save_dataview_new():
     ds = JzDataServer()
     dv = BaseDataView()
     
-    """
-    props = {'start_date': 20140609, 'end_date': 20160609, 'universe': '000300.SH',
-             'fields': ('open,high,low,close,vwap,volume,turnover,'
-                        + 'pb,net_assets,'
-                        + 'total_oper_rev,total_oper_exp,total_profit,int_income'),
-             'freq': 1}
-    """
     props = {'start_date': 20140108, 'end_date': 20170108, 'universe': '000300.SH',
              'fields': ('open,high,low,close,vwap,volume,turnover,'
                         # + 'pb,net_assets,'
@@ -28,14 +21,14 @@ def save_dataview_new():
              'freq': 1}
     
     dv.prepare_data(props=props, data_api=ds)
-    dv.save_dataview(folder_path='../output/prepared')
+    dv.save_dataview(folder_path='../../output/prepared')
 
 
 def main():
     dv = BaseDataView()
     # dv.load_dataview(folder='../output/prepared/20140609_20160609_freq=1D')
     import os
-    fullpath = os.path.abspath('../../output/prepared/20160609_20170601_freq=1D')
+    fullpath = os.path.abspath('../../output/prepared/20140108_20170108_freq=1D')
     print fullpath
     dv.load_dataview(folder=fullpath)
     print dv.fields
@@ -68,27 +61,6 @@ def main():
     alphalens.tears.create_full_tear_sheet(factor_data, output_format='pdf')
 
 
-def _test_align():
-    # u'停牌'   method 2: use turnover == 0
-    # trade_status.apply(lambda s: s.decode('utf-8'), inplace=True)
-    # n_days, n_securities = trade_status.shape
-    from quantos.data.dataserver import JzDataServer
-    
-    ds = JzDataServer()
-    dv = BaseDataView()
-    
-    # TODO: start_date should be extended for some length
-    secs = '600030.SH,000063.SZ,000001.SZ'
-    props = {'start_date': 20150701, 'end_date': 20160701, 'security': secs,
-             'fields': 'open,share_float,oper_exp,oper_rev', 'freq': 1}
-    
-    dv.prepare_data(props=props, data_api=ds)
-    
-    folder_path = '../output/prepared'
-    
-    dv.save_dataview(folder_path=folder_path)
-    
-    
 def _test_append_custom_data():
     # --------------------------------------------------------------------------------
     # get custom data
