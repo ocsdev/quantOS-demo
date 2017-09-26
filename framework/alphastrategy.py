@@ -132,16 +132,9 @@ class BaseStrategy(object):
         if algo:
             raise NotImplementedError("algo {}".format(algo))
 
-        order = Order()
+        order = Order.new_order(security, action, price, size, self.trade_date, 0)
         order.task_id = self._get_next_num('task_id')
         order.entrust_no = self._get_next_num('entrust_no')
-        order.security = security
-        order.entrust_action = action
-        order.entrust_price = price
-        order.entrust_size = size
-        order.entrust_date = self.trade_date
-        order.entrust_time = 0  # TODO
-        order.order_status = common.ORDER_STATUS.NEW
 
         self.task_map[order.task_id].append(order.entrust_no)
 
@@ -205,6 +198,7 @@ class BaseStrategy(object):
         task_id = self._get_next_num('task_id')
         err_msgs = []
         for order in orders:
+            # only add task_id and entrust_no, leave other attributes unchanged.
             order.task_id = task_id
             order.entrust_no = self._get_next_num('entrust_no')
 
@@ -233,7 +227,7 @@ class BaseStrategy(object):
     def goal_portfolio(self, goals):
         """
         Let the system automatically generate orders according to portfolio positions goal.
-        If there are uncome orders of any security in the strategy universe, this order will be rejected.
+        If there are uncome orders of any security in the strategy universe, this order will be rejected. #TODO not impl
 
         Parameters
         -----------
@@ -248,7 +242,26 @@ class BaseStrategy(object):
         err_msg : str
 
         """
-        pass
+        assert len(goals) == len(self.context.universe)
+
+        orders = []
+        for goal in goals:
+            sec, goal_size = goal.security, goal.size
+            if sec in self.pm.holding_securities:
+                curr_size = self.pm.get_position(sec, self.trade_date).curr_size
+            else:
+                curr_size = 0
+            diff_size = goal_size - curr_size
+            if diff_size != 0:
+                action = common.ORDER_ACTION.BUY if diff_size > 0 else common.ORDER_ACTION.SELL
+
+                order = FixedPriceTypeOrder.new_order(sec, action, 0.0, abs(diff_size), self.trade_date, 0)
+                order.price_target = 'VWAP'  # TODO
+
+                orders.append(order)
+        self.place_batch_order(orders)
+
+
 
     def query_order(self, task_id):
         """
@@ -418,26 +431,30 @@ class AlphaStrategy(BaseStrategy):
         market_value = self.pm.market_value(self.trade_date, prices, suspensions)  # TODO need close price
         cash_available = self.cash + market_value
         print "\n\n{}, cash all = {:9.4e}".format(self.trade_date, cash_available) #DEBUG
-        orders, cash_remain = self.generate_weights_order(dict(zip(self.context.universe, self.weights)),
-                                                          cash_available * self.position_ratio,
+
+        cash_use = cash_available * self.position_ratio
+        cash_unuse = cash_available - cash_use
+
+        cash_remain = self.generate_weights_order(dict(zip(self.context.universe, self.weights)),
+                                                          cash_use,
                                                           prices,
                                                           algo='CLOSE')
-        self.cash = cash_remain
-        self.liquidate_all()
-        self.place_batch_order(orders)
+        self.cash = cash_remain + cash_unuse
+        # self.liquidate_all()
+        # self.place_batch_order(orders)
 
     def liquidate_all(self):
         for sec in self.pm.holding_securities:
             curr_size = self.pm.get_position(sec, self.trade_date).curr_size
             self.place_order(sec, common.ORDER_ACTION.SELL, 1e-3, curr_size)
 
-    def generate_weights_order(self, goals, turnover, prices, algo="close"):
+    def generate_weights_order(self, weights_dic, turnover, prices, algo="close"):
         """
         Send order according subject to total turnover and weights of different securities.
 
         Parameters
         ----------
-        goals : dict of {security: weight}
+        weights_dic : dict of {security: weight}
             Weight of each security.
         turnover : float
             Total turnover goal of all securities.
@@ -448,7 +465,6 @@ class AlphaStrategy(BaseStrategy):
 
         Returns
         -------
-        orders : list of Order
         cash_left : float
 
         """
@@ -456,30 +472,38 @@ class AlphaStrategy(BaseStrategy):
             raise NotImplementedError("Currently we only suport order at close price.")
 
         cash_left = 0.0
-        orders = []
+        goals = []
         if algo == 'CLOSE' or 'vwap':  # order a certain amount of shares according to current close price
-            for sec, w in goals.items():
-                if algo == 'CLOSE':
-                    order = FixedPriceTypeOrder()
-                    order.price_target = 'CLOSE'
-                else:
-                    order = VwapOrder()
-                order.security = sec
+            for sec, w in weights_dic.items():
+                goal_pos = GoalPosition()
+                goal_pos.security = sec
+
+                # if algo == 'CLOSE':
+                    # order.price_target = 'CLOSE'
+                # else:
+                    # order = VwapOrder()
+                # order.security = sec
 
                 if w == 0.0:
-                    order.entrust_size = 0
-                    continue
+                    # order.entrust_size = 0
+                    goal_pos.size = 0
+                else:
+                    price = prices[sec]
+                    shares_raw = w * turnover / price
+                    shares = int(round(shares_raw / 100., 0))  # TODO cash may be not enough
+                    shares_left = shares_raw - shares * 100  # may be negative
+                    cash_left += shares_left * price
 
-                price = prices[sec]
-                shares_raw = w * turnover / price
-                shares = int(round(shares_raw / 100., 0))  # TODO cash may be not enough
-                shares_left = shares_raw - shares * 100  # may be negative
-                cash_left += shares_left * price
+                    # order.entrust_size = shares
+                    # order.entrust_action = common.ORDER_ACTION.BUY
+                    # order.entrust_date = self.trade_date
+                    # order.entrust_time = 0
+                    # order.order_status = common.ORDER_STATUS.NEW
+                    goal_pos.size = shares
 
-                order.entrust_size = shares
-                order.entrust_action = common.ORDER_ACTION.BUY
+                # orders.append(order)
+                goals.append(goal_pos)
 
-                orders.append(order)
+        self.goal_portfolio(goals)
 
-
-        return orders, cash_left
+        return cash_left
