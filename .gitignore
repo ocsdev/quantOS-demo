@@ -1,6 +1,9 @@
 # Python Virtual Environment
 venv/
 
+# cProfile results
+*.prof
+
 # Archived
 old_archive/
 

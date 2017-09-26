@@ -13,14 +13,20 @@
 
 # single factor test:
 -[] add industry neutral option
--[] automatically expand data of low frequency when OP2 encountered
+-[x] automatically expand data of low frequency when OP2 encountere
     1. Binary Operators (+ - * /): isinstance(x, df) and isinstance(y, df) is df and x.freq != y.freq
     2. Cross Section Functions (Max, Rank): must expand to daily
--[] how to store quarterly data in dataview object
--[] provide a simple API to analyze formula
+-[x] how to store quarterly data in dataview object
+-[x] provide a simple API to analyze formula
+-[] relative return to benchmark
+-[] return array of data
+-[]
 
 - modification of financial statement data
     for 1 security, 1 report_date, multiple ann_date exist because of modification.
     This can be separated by their statement type.
     For each modification, we modify the raw field value, then calculate formula again, finally modify results after new ann_date.
+
+# Code Improvement of DataView
+-[] improve get, get_quarter_ts methods.
 
