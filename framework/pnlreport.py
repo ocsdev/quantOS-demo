@@ -164,7 +164,7 @@ class PnlManager(object):
         return report
         
     def initFromConfig(self, props):
-        self.api = jzquant_api.connect(addr=props.get("jsh.addr"),user="TODO", password="TODO")
+        self.api = jzquant_api.get_jzquant_api(address=props.get("jsh.addr"), user="TODO", password="TODO")
         self.start_date = props.get('start_date')
         self.end_date   = props.get('end_date') 
         self.fut_commission = props.get('future_commission_rate', 0.0)  
@@ -177,18 +177,18 @@ class PnlManager(object):
         self.prepareData() 
            
     def prepareData(self):         
-        begindate = self.calendar.getPreTradeDate(self.start_date)
-        enddate = self.calendar.getNextTradeDate(self.end_date)
+        begindate = self.calendar.get_last_trade_date(self.start_date)
+        enddate = self.calendar.get_next_trade_date(self.end_date)
         begin_str = dt.datetime.strptime(str(begindate) , '%Y%m%d').strftime('%Y-%m-%d')
         end_str = dt.datetime.strptime(str(enddate) , '%Y%m%d').strftime('%Y-%m-%d')
-        for code in self.universe:          
-            df,msg =  self.api.jsd(code, fields="", start_date=begin_str, end_date=end_str)
+        for security in self.universe:
+            df, msg = self.api.jz_unified('jsd', security, fields="", start_date=begin_str, end_date=end_str)
             for i in range(0, len(df.index)):
                 date = (df['DATE'][i])
                 close = df['CLOSE'][i]
                 if self.close_prices.has_key(date) == False:
                     self.close_prices[date] = {}
-                self.close_prices[date][code] = close
+                self.close_prices[date][security] = close
                 
     def isBuyAction(self, action):
         if (action == common.ORDER_ACTION.BUY 
@@ -229,7 +229,7 @@ class PnlManager(object):
         return total_pnls    
                 
     def calculateHoldPnl(self):
-        dates = self.calendar.getTradeDates(self.start_date, self.end_date)
+        dates = self.calendar.get_trade_date_range(self.start_date, self.end_date)
         hold_pnl = []
         for date in dates : 
             hold_pnl.append(self.calcOneDayHoldPnl(date))
@@ -237,7 +237,7 @@ class PnlManager(object):
        
     def calcOneDayHoldPnl(self, date, position):
         pnl = 0.0        
-        pre_date = self.calendar.getPreTradeDate(date)
+        pre_date = self.calendar.get_last_trade_date(date)
         pre_close_prices = self.close_prices[pre_date]
         cur_close_prices = self.close_prices[date]        
         for code,hold_size in position.items():
@@ -267,7 +267,7 @@ class PnlManager(object):
         for key, value in trades.items():
             pnl = self.calcOneDayTradePnl(key, value)   
             trade_pnls[pnl.date] = pnl 
-        dates = self.calendar.getTradeDates(self.start_date, self.end_date)
+        dates = self.calendar.get_trade_date_range(self.start_date, self.end_date)
         i = 0     
         pre_position = {} 
         cur_position = {}   

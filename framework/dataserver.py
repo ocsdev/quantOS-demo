@@ -1,17 +1,13 @@
 # encoding: UTF-8
 
-from datetime import datetime
-from datetime import timedelta
-
 from abc import abstractmethod
-
-from pubsub import Publisher
-
-import jzquant
-from jzquant import jzquant_api
+from datetime import datetime
 from framework import common
 
-########################################################################
+from pubsub import Publisher
+from jzquant import jzquant_api
+
+
 class Quote(object):
     #----------------------------------------------------------------------
     def __init__(self, type):
@@ -46,22 +42,95 @@ class Quote(object):
         return int(dt.strftime('%H%M%S'))
     
     def show(self):
-        print self.type, self.time, self.symbol, self.open, self.high, self.low, self.close, self.volume, self.turnover 
-        
-########################################################################
+        print self.type, self.time, self.symbol, self.open, self.high, self.low, self.close, self.volume, self.turnover
+
+
+class BaseDataServer(Publisher):
+    """
+    DataServer is a base class providing both historic and live data
+    from various data sources.
+
+    Derived classes of DataServer hide different data source, but use the same API.
+
+    Attributes
+    ----------
+    source_name : str
+        Name of data source.
+
+    Methods
+    -------
+    subscribe(securities, call_back)
+    quote(security, field)
+    daily(security, begin_date, end_date, field="", fq=None, skip_paused=False)
+    bar(security, begin_time=[MARKET_OPEN], end_time=[NOW, MARKET_CLOSE], trade_date=[TODAY], field="", cycle='1m')
+    tick(security, begin_time=[MARKET_OPEN], end_time=[NOW, MARKET_CLOSE], trade_date=[TODAY], field="")
+    query(query_type, param, field)
+
+    """
+    def __init__(self):
+        Publisher.__init__(self)
+
+        self.source_name = ""
+
+    def init_from_config(self, props):
+        pass
+
+    def initialize(self):
+        pass
+
+    def add_batch_subsribe(self, subscriber, securities):
+        """
+        Add subscriber to multiple securities at once.
+
+        Parameters
+        ----------
+        subscriber : object
+        securities : list or str separated by ','
+
+        """
+        if isinstance(securities, (str, unicode)):
+            l = securities.split(',')
+        else:
+            l = securities
+        for sec in l:
+            self.add_subscriber(subscriber, sec)
+
+    def subscribe(self, targets, callback):
+        """
+        Subscribe real time market data, including bar and tick,
+        processed by respective callback function.
+
+        Parameters
+        ----------
+        targets : str
+            Security and type, eg. "000001.SH/tick,cu1709.SHF/1m"
+        callback : dict of {'on_tick': func1, 'on_bar': func2}
+            Call back functions.
+
+        """
+        for target in targets.split(','):
+            sec, data_type = target.split('/')
+            if data_type == 'tick':
+                func = callback['on_tick']
+            else:
+                func = callback['on_bar']
+            self.add_subscriber(func, target)
+
+    def quote(self, security, field):
+        pass
+
+
 class DataServer(Publisher):
-    
-    #----------------------------------------------------------------------
     def __init__(self):
         Publisher.__init__(self)
     
     @abstractmethod    
-    def initConfig(self, props):
+    def init_from_config(self, props):
         pass
     
     
     @abstractmethod    
-    def initialization(self):
+    def initialize(self):
         pass
     
     @abstractmethod    
@@ -83,30 +152,29 @@ class DataServer(Publisher):
     def subscribe(self, subscriber, univlist):
         
         for i in xrange(len(univlist)):
-            self.onSubscribe(subscriber, univlist[i])
+            self.add_subscriber(subscriber, univlist[i])
     
-    
-########################################################################
+
 class JshHistoryBarDataServer(DataServer):
     
     #----------------------------------------------------------------------
     def __init__(self):
         self.api    = None
         self.addr   = ''
-        self.bar_type   = common.QUOTE_TYPE.MINBAR
+        self.bar_type   = common.QUOTE_TYPE.MIN
         self.symbol     = ''
         
         self.daily_quotes_cache      = None
 
         DataServer.__init__(self)
     
-    def initConfig(self, props):
+    def init_from_config(self, props):
         self.addr       = props.get('jsh.addr')
         self.bar_type   = props.get('bar_type')
         self.symbol     = props.get('symbol')
     
-    def initialization(self):
-        self.api = jzquant_api.connect(addr=self.addr,user="TODO", password="TODO")
+    def initialize(self):
+        self.api = jzquant_api.get_jzquant_api(address=self.addr, user="TODO", password="TODO")
 
     def start(self):
         pass
@@ -159,12 +227,11 @@ class JshHistoryBarDataServer(DataServer):
         """Return a list of quotes of a single day. If any error, print error msg and return None.
 
         """
-        topicList = self.getTopic()
+        topic_list = self.get_topics()
         
-        for i in xrange(len(topicList)):
-            instcode = topicList[i]
-            pd_bar, msg = self.api.jsh(instcode, fields='', date=target_date,
-                                       start_time='', end_time = '', bar_size=self.bar_type.value)
+        for sec in topic_list:
+            pd_bar, msg = self.api.jz_unified('jsh', sec, fields='', date=target_date,
+                                              start_time='', end_time='', bar_size=self.bar_type.value)
             
             if pd_bar is not None:
                 cache = []
@@ -193,18 +260,19 @@ class JshHistoryBarDataServer(DataServer):
 
         return None
 
+
 # 直接运行脚本可以进行测试
 if __name__ == '__main__':
     
-    props = {}
+    props = dict()
     props['jsh.addr'] = 'tcp://10.2.0.14:61616'
-    props['bar_type'] = common.QUOTE_TYPE.MINBAR
+    props['bar_type'] = common.QUOTE_TYPE.MIN
     props['symbol'] = '600030.SH'
     
     server = JshHistoryBarDataServer()
-    server.initConfig(props)
+    server.init_from_config(props)
     
-    server.initialization()
+    server.initialize()
     
     server.subscribe(None, ['600030.SH'])
 
