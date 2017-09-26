@@ -36,21 +36,22 @@ class Position(object):
     -------
 
     """
+    
     def __init__(self):
         self.security = ""
-
+        
         self.side = ""
         self.cost_price = 0.0
-
+        
         self.close_pnl = 0.0
         self.float_pnl = 0.0
         self.trading_pnl = 0.0
         self.holding_pnl = 0.0
-
+        
         self.enable_size = 0
         self.frozen_size = 0
         self.want_size = 0
-
+        
         self.today_size = 0
         self.pre_size = 0
         self.curr_size = 0
@@ -72,9 +73,9 @@ class GoalPosition(object):
         The urgency to adjust position, used to determine trading algorithm.
 
     """
+    
     def __init__(self):
         self.security = ""
         self.ref_price = 0.0
         self.size = 0
         self.urgency = 0
-

@@ -1,11 +1,11 @@
 # encoding: UTF-8
 
-from framework import common
 from abc import abstractmethod
 
 from event import EventEngine, eventType
-from pubsub import Subscriber
+from framework import common
 from framework.gateway import PortfolioManager
+from pubsub import Subscriber
 
 
 class StrategyContext(object):
@@ -29,20 +29,20 @@ class StrategyContext(object):
         Add new securities.
 
     """
+    
     def __init__(self):
         self.dataserver = None
         self.gateway = None
         self.universe = []
         self.calendar = None
-
+    
     def add_universe(self, univ):
         """univ could be single security or securities separated by ,"""
         self.universe += univ.split(',')
 
 
 class Strategy(object):
-
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def __init__(self):
         self.context = StrategyContext()
         self.pm = PortfolioManager()
@@ -53,7 +53,7 @@ class Strategy(object):
         
         self.initbalance = 0.0
     
-    @abstractmethod    
+    @abstractmethod
     def init_from_config(self, props):
         pass
     
@@ -63,24 +63,24 @@ class Strategy(object):
     
     def initUniverse(self, universe):
         self.context.add_universe(universe)
-
+    
     def getUniverse(self):
         return self.context.universe
-        
-    #-------------------------------------------
+    
+    # -------------------------------------------
     def sendOrder(self, order, algo, param):
-        self.context.gateway.sendOrder(order, algo, param)    
-
+        self.context.gateway.sendOrder(order, algo, param)
+    
     def cancelOrder(self, order):
         self.context.gateway.cancelOrder(order)
-        
+
+
 ########################################################################
 class EventDrivenStrategy(Strategy, Subscriber):
-    
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def __init__(self):
         
-        Strategy.__init__(self)        
+        Strategy.__init__(self)
         
         self.eventEngine = EventEngine()
         self.eventEngine.register(eventType.EVENT_TIMER, self.onCycle)
@@ -88,22 +88,22 @@ class EventDrivenStrategy(Strategy, Subscriber):
         self.eventEngine.register(eventType.EVENT_TRADE_IND, self.pm.on_trade_ind)
         self.eventEngine.register(eventType.EVENT_ORDERSTATUS_IND, self.pm.on_order_status)
     
-    @abstractmethod    
+    @abstractmethod
     def onNewDay(self, trade_date):
-        pass    
-
-    @abstractmethod 
+        pass
+    
+    @abstractmethod
     def onQuote(self, quote):
         pass
     
-    @abstractmethod 
+    @abstractmethod
     def onCycle(self):
         pass
     
     def initialize(self, runmode):
-        if runmode == common.RUN_MODE.REALTIME :
+        if runmode == common.RUN_MODE.REALTIME:
             self.subscribeEvents()
-            
+    
     def subscribeEvents(self):
         universe = self.context.universe
         data_server = self.context.dataserver
@@ -113,12 +113,11 @@ class EventDrivenStrategy(Strategy, Subscriber):
     def subscribe(self, publisher, topic):
         publisher.add_subscriber(self, topic)
     
-    
     def start(self):
-        self.eventEngine.start(False)    
+        self.eventEngine.start(False)
     
     def stop(self):
         self.eventEngine.stop()
-        
+    
     def registerEvent(self, event):
         self.eventEngine.put(event)

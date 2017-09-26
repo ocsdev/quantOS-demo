@@ -11,13 +11,12 @@ class Event(object):
 
 
 class Publisher(object):
-
     def __init__(self):
         self.subscribers = defaultdict(list)  # use empty list as default-factory
-
+    
     def add_subscriber(self, subscriber, topic):
         self.subscribers[topic].append(subscriber)
-
+    
     def publish(self, event):
         """
         Publish an event to all its subscribers.
@@ -33,14 +32,14 @@ class Publisher(object):
         sub_list = self.subscribers.get(event.topic, None)
         if sub_list is None:
             return
-
+        
         for subscriber in sub_list:
             subscriber.on_event(event)
-
+    
     def get_topics(self):
         return self.subscribers.keys()
-    
-                
+
+
 class Subscriber(object):
     def __init__(self):
         pass

@@ -13,25 +13,23 @@ from framework import common
 建议将所有的常量定义放在该文件中，便于检查是否存在重复的现象。
 '''
 
-
-EVENT_TIMER           = 'eTimer'          # 计时器事件，每隔1秒发送一次
-EVENT_MD_QUOTE        = 'eMdQuote'        # 行情事件
-EVENT_TRADE_IND       = 'eTradeInd'       # 成交回报
-EVENT_ORDERSTATUS_IND = 'eOrderStatusInd' # 状态回报
+EVENT_TIMER = 'eTimer'  # 计时器事件，每隔1秒发送一次
+EVENT_MD_QUOTE = 'eMdQuote'  # 行情事件
+EVENT_TRADE_IND = 'eTradeInd'  # 成交回报
+EVENT_ORDERSTATUS_IND = 'eOrderStatusInd'  # 状态回报
 
 
 class EVENT(common.ReprStrEnum):
-    TIMER = 'eTimer'          # 计时器事件，每隔1秒发送一次
-    MD_QUOTE = 'md quote'        # 行情事件
-    TRADE_IND = 'eTradeInd'       # 成交回报
-    ORDERSTATUS_IND = 'eOrderStatusInd' # 状态回报
+    TIMER = 'eTimer'  # 计时器事件，每隔1秒发送一次
+    MD_QUOTE = 'md quote'  # 行情事件
+    TRADE_IND = 'eTradeInd'  # 成交回报
+    ORDERSTATUS_IND = 'eOrderStatusInd'  # 状态回报
     ORDER_REP = 'order rep'
-
+    
     STRATEGY_INIT = 'strategy init'
     STRATEGY_SHUTDOWN = 'strategy shutdown'
-
+    
     CALENDAR_NEW_TRADE_DATE = 'new trade date'
     MARKET_CLOSE = ''
-
-
+    
     SETTLE = 'settlement'

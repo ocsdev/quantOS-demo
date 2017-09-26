@@ -43,77 +43,78 @@ class Order(object):
     -------
 
     """
+    
     def __init__(self):
         self.task_id = ""
         self.entrust_no = ""
-
+        
         self.security = ""
-
+        
         self.entrust_action = ""
         self.entrust_price = 0.0
         self.entrust_size = 0
         self.entrust_date = 0
         self.entrust_time = 0
-
+        
         self.sub_seq = 0
         self.sub_total = 0
         self.batch_no = 0
-
+        
         self.order_status = ""
         self.fill_price = 0.0
         self.fill_size = 0
-
+        
         self.algo = ""
-
+        
         self.order_type = ""
         self.time_in_force = ""
-
+        
         # TODO attributes below only for backward compatibility
         self.errmsg = ""
         self.cancel_size = 0
         self.entrust_no = ''
-
+    
     def __eq__(self, other):
         return self.entrust_no == other.entrust_no
-
+    
     def __cmp__(self, other):
         return cmp(self.entrust_no, other.entrust_no)
-
+    
     def copy(self, order):
         self.task_id = order.task_id
         self.entrust_no = order.entrust_no
-
+        
         self.security = order.security
-
+        
         self.entrust_action = order.entrust_action
         self.entrust_price = order.entrust_price
         self.entrust_size = order.entrust_size
         self.entrust_date = order.entrust_date
         self.entrust_time = order.entrust_time
-
+        
         self.sub_seq = order.sub_seq
         self.sub_total = order.sub_total
         self.batch_no = order.batch_no
-
+        
         self.order_status = order.order_status
         self.fill_size = order.fill_size
         self.fill_price = order.fill_price
-
+        
         self.algo = order.algo
-
+        
         self.order_type = order.order_type
         self.time_in_force = order.time_in_force
-
+        
         self.cancel_size = order.cancel_size
         self.entrust_no = order.entrust_no
         self.errmsg = order.errmsg
-
+    
     @property
     def is_finished(self):
         return (self.order_status == common.ORDER_STATUS.FILLED
                 or self.order_status == common.ORDER_STATUS.CANCELLED
                 or self.order_status == common.ORDER_STATUS.REJECTED)
-
+    
     @classmethod
     def new_order(cls, security, action, price, size, date, time):
         o = cls()
@@ -141,9 +142,10 @@ class FixedPriceTypeOrder(Order):
     -------
 
     """
+    
     def __init__(self, target=""):
         Order.__init__(self)
-
+        
         self.price_target = target
 
 
@@ -161,12 +163,13 @@ class VwapOrder(Order):
         The end of matching time range.
 
     """
+    
     def __init__(self, start=-1, end=-1):
         Order.__init__(self)
-
+        
         self.start = start
         self.end = end
-
+    
     @property
     def time_range(self):
         return self.start, self.end

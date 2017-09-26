@@ -1,10 +1,8 @@
 # encoding: UTF-8
 
-from app import *
 
 ########################################################################
 class ObjectCreator():
-    
     @staticmethod
     def create(name):
         dict = globals()

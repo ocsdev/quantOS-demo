@@ -5,7 +5,6 @@ from collections import defaultdict
 
 import numpy as np
 
-from framework import common
 from framework.basic.order import *
 from framework.basic.position import GoalPosition
 from framework.gateway import PortfolioManager
@@ -33,12 +32,13 @@ class StrategyContext(object):
         Add new securities.
 
     """
+    
     def __init__(self):
         self.data_server = None
         self.gateway = None
         self.universe = []
         self.calendar = None
-
+    
     def add_universe(self, univ):
         """univ could be single security or securities separated by ,"""
         self.universe += univ.split(',')
@@ -63,46 +63,47 @@ class BaseStrategy(object):
     -------
 
     """
+    
     # TODO we need a better way to deal with err_msg
     def __init__(self):
         self.context = StrategyContext()
         self.run_mode = common.RUN_MODE.BACKTEST
-
+        
         self.trade_date = 0
-
+        
         self.pm = PortfolioManager(self)
-
+        
         self.seq_gen = SequenceGenerator()
-
+        
         self.task_map = defaultdict(list)
-
+    
     def init_from_config(self, props):
         univ = props.get('universe', "")
         self.add_universe(univ)
         pass
-
+    
     def initialize(self, run_mode):
         self.run_mode = run_mode
         self.register_callback()
         pass
-
+    
     def register_callback(self):
         gw = self.context.gateway
         gw.register_callback('portfolio manager', self.pm)
         gw.register_callback('on_trade_ind', self.on_trade_ind)
         gw.register_callback('on_order_status', self.on_trade_ind)
-
+    
     def add_universe(self, univ):
         self.context.add_universe(univ)
-
+    
     def on_new_day(self, trade_date):
         last_date = self.trade_date
         self.trade_date = trade_date
         self.pm.on_new_day(self.trade_date, last_date)
-
+    
     def _get_next_num(self, key):
         return str(self.trade_date * 10000 + self.seq_gen.get_next(key))
-
+    
     def place_order(self, security, action, price, size, algo="", algo_param=None):
         """
         Send a request with an order to the system. Execution algorithm will be automatically chosen.
@@ -131,22 +132,22 @@ class BaseStrategy(object):
         """
         if algo:
             raise NotImplementedError("algo {}".format(algo))
-
+        
         order = Order.new_order(security, action, price, size, self.trade_date, 0)
         order.task_id = self._get_next_num('task_id')
         order.entrust_no = self._get_next_num('entrust_no')
-
+        
         self.task_map[order.task_id].append(order.entrust_no)
-
+        
         self.pm.add_order(order)
-
+        
         err_msg = self.context.gateway.place_order(order)
-
+        
         if err_msg:
             return '0', err_msg
         else:
             return order.task_id, err_msg
-
+    
     def cancel_order(self, task_id):
         """Cancel all uncome orders of a task according to its task ID.
 
@@ -166,7 +167,7 @@ class BaseStrategy(object):
         entrust_no_list = self.task_map.get(task_id, None)
         if entrust_no_list is None:
             return False, "No task id {}".format(task_id)
-
+        
         err_msgs = []
         for entrust_no in entrust_no_list:
             err_msg = self.context.gateway.cancel_order(entrust_no)
@@ -175,7 +176,7 @@ class BaseStrategy(object):
             return False, ','.join(err_msgs)
         else:
             return True, ""
-
+    
     def place_batch_order(self, orders, algo="", algo_param=None):
         """Send a batch of orders to the system together.
 
@@ -201,16 +202,16 @@ class BaseStrategy(object):
             # only add task_id and entrust_no, leave other attributes unchanged.
             order.task_id = task_id
             order.entrust_no = self._get_next_num('entrust_no')
-
+            
             self.pm.add_order(order)
-
+            
             err_msg = self.context.gateway.place_order(order)
             err_msgs.append(err_msg)
-
+            
             self.task_map[order.task_id].append(order.entrust_no)
-
+        
         return task_id, ','.join(err_msgs)
-
+    
     def query_portfolio(self):
         """
         Return net positions of all securities in the strategy universe (including zero positions).
@@ -223,7 +224,7 @@ class BaseStrategy(object):
 
         """
         pass
-
+    
     def goal_portfolio(self, goals):
         """
         Let the system automatically generate orders according to portfolio positions goal.
@@ -243,7 +244,7 @@ class BaseStrategy(object):
 
         """
         assert len(goals) == len(self.context.universe)
-
+        
         orders = []
         for goal in goals:
             sec, goal_size = goal.security, goal.size
@@ -254,15 +255,13 @@ class BaseStrategy(object):
             diff_size = goal_size - curr_size
             if diff_size != 0:
                 action = common.ORDER_ACTION.BUY if diff_size > 0 else common.ORDER_ACTION.SELL
-
+                
                 order = FixedPriceTypeOrder.new_order(sec, action, 0.0, abs(diff_size), self.trade_date, 0)
                 order.price_target = 'VWAP'  # TODO
-
+                
                 orders.append(order)
         self.place_batch_order(orders)
-
-
-
+    
     def query_order(self, task_id):
         """
         Query order information of current day.
@@ -279,7 +278,7 @@ class BaseStrategy(object):
 
         """
         pass
-
+    
     def query_trade(self, task_id):
         """
         Query trade information of current day.
@@ -296,7 +295,7 @@ class BaseStrategy(object):
 
         """
         pass
-
+    
     def on_trade_ind(self, ind):
         """
 
@@ -310,7 +309,7 @@ class BaseStrategy(object):
         """
         self.pm.on_trade_ind(ind)
         print str(ind)
-
+    
     def on_order_status(self, ind):
         """
 
@@ -343,25 +342,26 @@ class AlphaStrategy(BaseStrategy):
     -------
 
     """
+    
     def __init__(self):
         BaseStrategy.__init__(self)
-
+        
         self.period = ""
         self.days_delay = 0
         self.cash = 0
         self.position_ratio = 0.0
-
+        
         self.weights = None
-
+        
         self.benchmark = ""
-
+    
     def init_from_config(self, props):
         BaseStrategy.init_from_config(self, props)
         self.cash = props['init_balance']
         self.period = props['period']
         self.days_delay = props['days_delay']
         self.position_ratio = props['position_ratio']
-
+    
     @abstractmethod
     def calc_weights(self):
         """
@@ -376,7 +376,7 @@ class AlphaStrategy(BaseStrategy):
 
         """
         pass
-
+    
     def re_weight_suspension(self, suspensions=None):
         """
         How we deal with weights when there are suspension securities.
@@ -390,27 +390,27 @@ class AlphaStrategy(BaseStrategy):
         # TODO this can be refine: consider whether we increase or decrease shares on a suspended security.
         if suspensions is None:
             return
-
+        
         univ = self.context.universe
-
+        
         if len(suspensions) == len(univ):
             raise ValueError("All suspended")  # TODO custom error
-
+        
         mask = np.array(map(lambda s: s in suspensions, univ), dtype=bool)
         sus_weight = np.sum(self.weights[mask])
         self.weights[mask] = 0.0
-
+        
         adjust_ratio = 1.0 / (1.0 - sus_weight)
         self.weights *= adjust_ratio
-
+    
     def get_univ_prices(self):
         ds = self.context.data_server
-
+        
         univ_str = ','.join(self.context.universe)
-
+        
         df_dic = ds.daily(univ_str, self.trade_date, self.trade_date, "")
         return df_dic
-
+    
     def re_balance(self, suspensions=None):
         """
         Do portfolio re-balance.
@@ -421,33 +421,33 @@ class AlphaStrategy(BaseStrategy):
         suspensions : list of securities, default = None
 
         """
-
+        
         self.calc_weights()
         self.re_weight_suspension(suspensions)
-
+        
         df_dic = self.get_univ_prices()
         prices = {k: v.loc[:, 'CLOSE'].values[0] for k, v in df_dic.items()}
-
+        
         market_value = self.pm.market_value(self.trade_date, prices, suspensions)  # TODO need close price
         cash_available = self.cash + market_value
-        print "\n\n{}, cash all = {:9.4e}".format(self.trade_date, cash_available) #DEBUG
-
+        print "\n\n{}, cash all = {:9.4e}".format(self.trade_date, cash_available)  # DEBUG
+        
         cash_use = cash_available * self.position_ratio
         cash_unuse = cash_available - cash_use
-
+        
         cash_remain = self.generate_weights_order(dict(zip(self.context.universe, self.weights)),
-                                                          cash_use,
-                                                          prices,
-                                                          algo='CLOSE')
+                                                  cash_use,
+                                                  prices,
+                                                  algo='CLOSE')
         self.cash = cash_remain + cash_unuse
         # self.liquidate_all()
         # self.place_batch_order(orders)
-
+    
     def liquidate_all(self):
         for sec in self.pm.holding_securities:
             curr_size = self.pm.get_position(sec, self.trade_date).curr_size
             self.place_order(sec, common.ORDER_ACTION.SELL, 1e-3, curr_size)
-
+    
     def generate_weights_order(self, weights_dic, turnover, prices, algo="close"):
         """
         Send order according subject to total turnover and weights of different securities.
@@ -470,20 +470,20 @@ class AlphaStrategy(BaseStrategy):
         """
         if algo not in ['CLOSE', 'vwap']:
             raise NotImplementedError("Currently we only suport order at close price.")
-
+        
         cash_left = 0.0
         goals = []
         if algo == 'CLOSE' or 'vwap':  # order a certain amount of shares according to current close price
             for sec, w in weights_dic.items():
                 goal_pos = GoalPosition()
                 goal_pos.security = sec
-
+                
                 # if algo == 'CLOSE':
-                    # order.price_target = 'CLOSE'
+                # order.price_target = 'CLOSE'
                 # else:
-                    # order = VwapOrder()
+                # order = VwapOrder()
                 # order.security = sec
-
+                
                 if w == 0.0:
                     # order.entrust_size = 0
                     goal_pos.size = 0
@@ -493,17 +493,17 @@ class AlphaStrategy(BaseStrategy):
                     shares = int(round(shares_raw / 100., 0))  # TODO cash may be not enough
                     shares_left = shares_raw - shares * 100  # may be negative
                     cash_left += shares_left * price
-
+                    
                     # order.entrust_size = shares
                     # order.entrust_action = common.ORDER_ACTION.BUY
                     # order.entrust_date = self.trade_date
                     # order.entrust_time = 0
                     # order.order_status = common.ORDER_STATUS.NEW
                     goal_pos.size = shares
-
+                
                 # orders.append(order)
                 goals.append(goal_pos)
-
+        
         self.goal_portfolio(goals)
-
+        
         return cash_left

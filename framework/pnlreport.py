@@ -1,5 +1,4 @@
 import datetime as dt
-import pandas as pd
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -80,7 +79,8 @@ class PnlManager(object):
     
     def tradeToDataframe(self, trades):
         
-        key_list = ['fill_no', 'entrust_no', 'security', 'entrust_action', 'fill_price', 'fill_size', 'fill_date', 'fill_time']
+        key_list = ['fill_no', 'entrust_no', 'security', 'entrust_action', 'fill_price', 'fill_size', 'fill_date',
+                    'fill_time']
         
         result = {}
         

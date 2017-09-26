@@ -2,43 +2,43 @@
 
 from abc import abstractmethod
 from datetime import datetime
-from framework import common
 
-from pubsub import Publisher
+from framework import common
 from jzquant import jzquant_api
+from pubsub import Publisher
 
 
 class Quote(object):
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def __init__(self, type):
         self.type = type
-        self.frequency   = 0
-        self.security      = ''
-        self.refsecurity   = ''
-        self.time        = ''
-        self.open        = 0.0
-        self.high        = 0.0
-        self.low         = 0.0
-        self.close       = 0.0
-        self.volume      = 0.0
-        self.turnover    = 0.0
-        self.oi          = 0.0
-        self.settle      = 0.0
-        self.preclose    = 0.0
-        self.presettle   = 0.0
-        self.bidprice    = []
-        self.bidvol      = []
-        self.askprice    = []
-        self.askvol      = []
+        self.frequency = 0
+        self.security = ''
+        self.refsecurity = ''
+        self.time = ''
+        self.open = 0.0
+        self.high = 0.0
+        self.low = 0.0
+        self.close = 0.0
+        self.volume = 0.0
+        self.turnover = 0.0
+        self.oi = 0.0
+        self.settle = 0.0
+        self.preclose = 0.0
+        self.presettle = 0.0
+        self.bidprice = []
+        self.bidvol = []
+        self.askprice = []
+        self.askvol = []
         
-        self.format      = '%Y%m%d %H:%M:%S %f'
-        
+        self.format = '%Y%m%d %H:%M:%S %f'
+    
     def getDate(self):
-        dt = datetime.strptime(self.time , self.format)
+        dt = datetime.strptime(self.time, self.format)
         return int(dt.strftime('%Y%m%d'))
     
     def getTime(self):
-        dt = datetime.strptime(self.time , self.format)
+        dt = datetime.strptime(self.time, self.format)
         return int(dt.strftime('%H%M%S'))
     
     def show(self):
@@ -67,22 +67,23 @@ class BaseDataServer(Publisher):
     query(query_type, param, field)
 
     """
+    
     # TODO for now, all query functions return DataFrame, they will return custrom data type in later version.
     # TODO we need a uniform convert from str/int to standard date object, for all derived classes.
     def __init__(self, name=""):
         Publisher.__init__(self)
-
+        
         if name:
             self.source_name = name
         else:
             self.source_name = str(self.__class__.__name__)
-
+    
     def init_from_config(self, props):
         pass
-
+    
     def initialize(self):
         pass
-
+    
     # TODO deprecated
     def add_batch_subscribe(self, subscriber, securities):
         """
@@ -100,7 +101,7 @@ class BaseDataServer(Publisher):
             l = securities
         for sec in l:
             self.add_subscriber(subscriber, sec)
-
+    
     def subscribe(self, targets, callback):
         """
         Subscribe real time market data, including bar and tick,
@@ -122,11 +123,11 @@ class BaseDataServer(Publisher):
             else:
                 func = callback['on_bar']
             self.add_subscriber(func, target)
-
+    
     @abstractmethod
     def quote(self, security, field):
         pass
-
+    
     @abstractmethod
     def daily(self, security, begin_date, end_date, field="", fq=None, skip_paused=False):
         """
@@ -161,7 +162,7 @@ class BaseDataServer(Publisher):
 
         """
         pass
-
+    
     @abstractmethod
     def bar(self, security, begin_time=None, end_time=None, trade_date=None, field="", cycle='1m'):
         """
@@ -196,15 +197,15 @@ class BaseDataServer(Publisher):
         """
         # TODO data_server DOES NOT know "current date".
         pass
-
+    
     @abstractmethod
     def tick(self, security, begin_time=None, end_time=None, trade_date=None, field=""):
         pass
-
+    
     @abstractmethod
     def query(self, query_type, param, field):
         pass
-
+    
     @abstractmethod
     def get_split_dividend(self):
         pass
@@ -215,26 +216,27 @@ class JzDataServer(BaseDataServer):
     JzDataServer uses data from jz's local database.
 
     """
+    
     # TODO no validity check for input parameters
-
+    
     def __init__(self):
         BaseDataServer.__init__(self)
-
+        
         address = 'tcp://10.2.0.14:61616'
         usr, pwd = "TODO", "TODO"
         self.api = jzquant_api.get_jzquant_api(address, usr, pwd)
-
+    
     @staticmethod
     def _to_int(dt):
         """dt is int or str"""
         if isinstance(dt, (str, unicode)):
-            year, month, day = dt[:4], dt[5: 7], dt[8: ]
+            year, month, day = dt[:4], dt[5: 7], dt[8:]
             return int(year) * 10000 + int(month) * 100 + int(day)
         elif isinstance(dt, (int, long)):
             return dt
         else:
             raise NotImplementedError("Only support int or str of certain format")
-
+    
     @staticmethod
     def _to_str(dt):
         """int to str"""
@@ -242,7 +244,7 @@ class JzDataServer(BaseDataServer):
         month = str(dt // 100 % 100)
         day = str(dt % 100)
         return '-'.join([year, month, day])
-
+    
     def daily(self, security, begin_date, end_date, field="", fq=None, skip_paused=False):
         # convert to int format YYYYMMDD
         begin_date = self._to_int(begin_date)
@@ -250,7 +252,7 @@ class JzDataServer(BaseDataServer):
         # convert to str 'YYYY-MM-DD' (only for jsd api)
         begin_date = self._to_str(begin_date)
         end_date = self._to_str(end_date)
-
+        
         securities = security.split(',')
         d = dict()
         for sec in securities:
@@ -261,7 +263,7 @@ class JzDataServer(BaseDataServer):
             else:
                 d[sec] = df
         return d
-
+    
     def bar(self, security, begin_time=None, end_time=None, trade_date=None, field="", cycle='1m'):
         securities = security.split(',')
         d = dict()
@@ -280,58 +282,55 @@ class DataServer(Publisher):
     def __init__(self):
         Publisher.__init__(self)
     
-    @abstractmethod    
+    @abstractmethod
     def init_from_config(self, props):
         pass
     
-    
-    @abstractmethod    
+    @abstractmethod
     def initialize(self):
         pass
     
-    @abstractmethod    
+    @abstractmethod
     def start(self):
         pass
     
-    @abstractmethod    
+    @abstractmethod
     def join(self):
         pass
     
-    @abstractmethod    
+    @abstractmethod
     def stop(self):
         pass
     
-    @abstractmethod    
+    @abstractmethod
     def getNextQuote(self):
         pass
     
     def add_batch_subscribe(self, subscriber, univlist):
-        
         for i in xrange(len(univlist)):
             self.add_subscriber(subscriber, univlist[i])
-    
+
 
 class JshHistoryBarDataServer(DataServer):
-    
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def __init__(self):
-        self.api    = None
-        self.addr   = ''
-        self.bar_type   = common.QUOTE_TYPE.MIN
-        self.security     = ''
+        self.api = None
+        self.addr = ''
+        self.bar_type = common.QUOTE_TYPE.MIN
+        self.security = ''
         
-        self.daily_quotes_cache      = None
-
+        self.daily_quotes_cache = None
+        
         DataServer.__init__(self)
     
     def init_from_config(self, props):
-        self.addr       = props.get('jsh.addr')
-        self.bar_type   = props.get('bar_type')
-        self.security     = props.get('security')
+        self.addr = props.get('jsh.addr')
+        self.bar_type = props.get('bar_type')
+        self.security = props.get('security')
     
     def initialize(self):
         self.api = jzquant_api.get_jzquant_api(address=self.addr, user="TODO", password="TODO")
-
+    
     def start(self):
         pass
     
@@ -340,7 +339,7 @@ class JshHistoryBarDataServer(DataServer):
     
     def stop(self):
         pass
-
+    
     """
     def getNextQuote(self):
         if (self.daily_quotes_cache is not None and self.cache_pos < len(self.daily_quotes_cache)):
@@ -361,11 +360,11 @@ class JshHistoryBarDataServer(DataServer):
             
             return self.getNextQuote()
     """
-
+    
     def get_daily_quotes(self, target_date):
         self.daily_quotes_cache = self.makeCache(target_date)
         return self.daily_quotes_cache
-
+    
     """
     def getNextDate(self, read_pos):
         dt = datetime.strptime(str(read_pos) , '%Y%m%d')
@@ -375,10 +374,10 @@ class JshHistoryBarDataServer(DataServer):
         next_pos = self.calendar.getNextTradeDate(read_pos)
         return next_pos
     """
-
+    
     def makeTime(self, timestamp):
         return timestamp.strftime('%Y%m%d %H:%M:%S %f')
-        
+    
     def makeCache(self, target_date):
         """Return a list of quotes of a single day. If any error, print error msg and return None.
 
@@ -391,7 +390,7 @@ class JshHistoryBarDataServer(DataServer):
             
             if pd_bar is not None:
                 cache = []
-            
+                
                 dict_bar = pd_bar.transpose().to_dict()
                 keys = sorted(dict_bar.keys())
                 
@@ -399,21 +398,21 @@ class JshHistoryBarDataServer(DataServer):
                     key = keys[j]
                     bar = dict_bar.get(key)
                     quote = Quote(self.bar_type)
-                    quote.security   = bar['SYMBOL']
-                    quote.open     = bar['OPEN']
-                    quote.close    = bar['CLOSE']
-                    quote.high     = bar['HIGH']
-                    quote.low      = bar['LOW']
-                    quote.volume   = bar['VOLUME']
+                    quote.security = bar['SYMBOL']
+                    quote.open = bar['OPEN']
+                    quote.close = bar['CLOSE']
+                    quote.high = bar['HIGH']
+                    quote.low = bar['LOW']
+                    quote.volume = bar['VOLUME']
                     quote.turnover = bar['TURNOVER']
-                    quote.oi       = bar['OPENINTEREST']
-                    quote.time     = self.makeTime(key)
+                    quote.oi = bar['OPENINTEREST']
+                    quote.time = self.makeTime(key)
                     
                     cache.append(quote)
                 return cache
             else:
                 print msg
-
+        
         return None
 
 
@@ -422,14 +421,14 @@ def test_old():
     props['jsh.addr'] = 'tcp://10.2.0.14:61616'
     props['bar_type'] = common.QUOTE_TYPE.MIN
     props['security'] = '600030.SH'
-
+    
     server = JshHistoryBarDataServer()
     server.init_from_config(props)
-
+    
     server.initialize()
-
+    
     server.add_batch_subscribe(None, ['600030.SH'])
-
+    
     quotes = server.get_daily_quotes(20170712)
     for quote in quotes:
         print quote.security, quote.time, quote.open, quote.high
@@ -440,12 +439,13 @@ def test_new():
     res = ds.daily('rb1710.SHF,600662.SH', '2017-08-28', 20170831, "")
     assert res['rb1710.SHF'].shape == (4, 12)
     assert res['600662.SH'].ix[0, 'VOLUME'] == 7174813.00
-
+    
     res2 = ds.bar('rb1710.SHF,600662.SH', '', '', 20170831, '', '1m')
     assert res2['rb1710.SHF'].shape == (345, 10)
     assert res2['600662.SH'].shape == (240, 10)
-
+    
     print "Test passed."
+
 
 # 直接运行脚本可以进行测试
 if __name__ == '__main__':
