@@ -3,10 +3,12 @@
 from abc import abstractmethod
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 from framework import common
 from jzdataapi.data_api import DataApi
 from framework.pubsub import Publisher
+from framework.jzcalendar import JzCalendar
 
 
 class Quote(object):
@@ -297,7 +299,13 @@ class JzDataServer(BaseDataServer):
         address = 'tcp://10.1.0.210:8910'
         self.api = DataApi(address, use_jrpc=False)
         self.api.set_timeout(60)
-        self.api.login("test", "123")
+        r, msg = self.api.login("test", "123")
+        if not r:
+            print msg
+        else:
+            print "DataAPI login success."
+        
+        self.REPORT_DATE_FIELD_NAME = 'report_date'
 
     def daily(self, security, start_date, end_date,
               fields="", adjust_mode=None):
@@ -348,11 +356,163 @@ class JzDataServer(BaseDataServer):
     def get_suspensions(self):
         return None
     
-    def get_trade_date(self, start_date, end_date, security=None):
+    def get_trade_date(self, start_date, end_date, security=None, is_datetime=False):
         if security is None:
             security = '000300.SH'
         df, msg = self.daily(security, start_date, end_date, fields="close")
-        return df.loc[:, 'trade_date'].values
+        res = df.loc[:, 'trade_date'].values
+        if is_datetime:
+            res = JzCalendar.convert_int_to_datetime(res)
+        return res
+    
+    @staticmethod
+    def _dic2url(d):
+        """
+        Convert a dict to str like 'k1=v1&k2=v2'
+        
+        Parameters
+        ----------
+        d : dict
+
+        Returns
+        -------
+        str
+
+        """
+        l = ['='.join([key, str(value)]) for key, value in d.items()]
+        return '&'.join(l)
+
+    def query_wd_income(self, security, start_date, end_date, fields="", extend=0):
+        """
+        Helper function to call data_api.query with 'wd.income' more conveniently.
+        
+        Parameters
+        ----------
+        security : str
+            separated by ','
+        start_date : int
+            Annoucement date in results will be no earlier than start_date
+        end_date : int
+            Annoucement date in results will be no later than start_date
+        fields : str, optional
+            separated by ',', default ""
+        extend : int, optional
+            If not zero, extend for weeks.
+
+        Returns
+        -------
+        df : pd.DataFrame
+            index date, columns fields
+        msg : str
+
+        """
+        # extend 1 year
+        if extend:
+            start_dt = JzCalendar.convert_int_to_datetime(start_date)
+            start_dt = start_dt - pd.Timedelta(weeks=extend)
+            start_date = JzCalendar.convert_datetime_to_int(start_dt)
+    
+        filter_argument = self._dic2url({'security': security,
+                                         'start_date': start_date,
+                                         'end_date': end_date,
+                                         'report_type': '408002000'})
+        
+        return self.query("wd.income", fields=fields, filter=filter_argument,
+                          order_by=self.REPORT_DATE_FIELD_NAME)
+
+    def query_wd_dailyindicator(self, security, start_date, end_date, fields=""):
+        """
+        Helper function to call data_api.query with 'wd.secDailyIndicator' more conveniently.
+        
+        Parameters
+        ----------
+        security : str
+            separated by ','
+        start_date : int
+        end_date : int
+        fields : str, optional
+            separated by ',', default ""
+
+        Returns
+        -------
+        df : pd.DataFrame
+            index date, columns fields
+        msg : str
+        
+        """
+        filter_argument = self._dic2url({'security': security,
+                                         'start_date': start_date,
+                                         'end_date': end_date})
+    
+        return self.query("wd.secDailyIndicator",
+                          fields=fields,
+                          filter=filter_argument,
+                          orderby="trade_date")
+
+    def get_index_comp(self, index, start_date, end_date):
+        filter_argument = self._dic2url({'index_code': index,
+                                         'start_date': start_date,
+                                         'end_date': end_date})
+    
+        df_io, msg = self.query("wd.indexCons", fields="",
+                                filter=filter_argument, orderby="security")
+        if msg != '0,':
+            print msg
+        return list(np.unique(df_io.loc[:, 'security']))
+    
+    def get_index_comp_df(self, index, start_date, end_date):
+        """
+        Get index components on each day during start_date and end_date.
+        
+        Parameters
+        ----------
+        index : str
+            separated by ','
+        start_date : int
+        end_date : int
+
+        Returns
+        -------
+        res : pd.DataFrame
+            index dates, columns all securities that have ever been components,
+            values are 0 (not in) or 1 (in)
+        msg : str
+
+        """
+        filter_argument = self._dic2url({'index_code': index,
+                                         'start_date': start_date,
+                                         'end_date': end_date})
+    
+        df_io, msg = self.query("wd.indexCons", fields="",
+                             filter=filter_argument, orderby="security")
+        if msg != '0,':
+            print msg
+        
+        def str2int(s):
+            if isinstance(s, (str, unicode)):
+                return int(s) if s else 99999999
+            elif isinstance(s, (int, np.integer, float, np.float)):
+                return s
+            else:
+                raise NotImplementedError("type s = {}".format(type(s)))
+        df_io.loc[:, 'in_date'] = df_io.loc[:, 'in_date'].apply(str2int)
+        df_io.loc[:, 'out_date'] = df_io.loc[:, 'out_date'].apply(str2int)
+        
+        # df_io.set_index('security', inplace=True)
+        dates = self.get_trade_date(start_date=start_date, end_date=end_date, security=index)
+
+        dic = dict()
+        gp = df_io.groupby(by='security')
+        for sec, df in gp:
+            mask = np.zeros_like(dates, dtype=int)
+            for idx, row in df.iterrows():
+                bool_index = np.logical_and(dates > row['in_date'], dates < row['out_date'])
+                mask[bool_index] = 1
+            dic[sec] = mask
+            
+        res = pd.DataFrame(index=dates, data=dic)
+        
+        return res
 
 
 class JzEventServer(JzDataServer):

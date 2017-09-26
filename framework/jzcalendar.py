@@ -79,8 +79,16 @@ class JzCalendar(object):
     
     @staticmethod
     def convert_datetime_to_int(dt):
+        f = lambda x: x.year * 10000 + x.month * 100 + x.day
         if isinstance(dt, datetime.datetime):
             dt = pd.Timestamp(dt)
+            res = f(dt)
         elif isinstance(dt, np.datetime64):
             dt = pd.Timestamp(dt)
-        return dt.year * 10000 + dt.month * 100 + dt.day
+            res = f(dt)
+        else:
+            dt = pd.Series(dt)
+            res = dt.apply(f)
+        return res
+        
+        return dt.apply()

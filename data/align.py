@@ -1,8 +1,9 @@
 # encoding: utf-8
 import numpy as np
 import pandas as pd
-from data.py_expression_eval import Parser
+# from data.py_expression_eval import Parser
 # from data.dataserver import JzDataServer
+from framework import JzCalendar
 
 
 def get_neareast(df_ann, df_value, date):
@@ -33,7 +34,7 @@ def get_neareast(df_ann, df_value, date):
     return res
     
 
-def align(df_ann, df_value, date_arr):
+def align(df_value, df_ann, date_arr):
     """
     Expand low frequency DataFrame df_value to frequency of data_arr using announcement date from df_ann.
     
@@ -58,7 +59,8 @@ def align(df_ann, df_value, date_arr):
     
     res = np.apply_along_axis(lambda date: get_neareast(df_ann, df_formula, date), 1, date_arr.reshape(-1, 1))
 
-    df_res = pd.DataFrame(index=date_arr, columns=df_value.columns, data=res)
+    idx = JzCalendar.convert_int_to_datetime(date_arr)
+    df_res = pd.DataFrame(index=idx, columns=df_value.columns, data=res)
     return df_res
 
 
@@ -81,13 +83,6 @@ def demo_usage():
 
     df_value = raw_idx.loc[pd.IndexSlice[:, :], 'oper_rev']
     df_value = df_value.unstack(level=1)
-
-    # -------------------------------------------------------------------------------------
-    # demo usage of parser
-    parser = Parser()
-    expr_formula = 'Delta(revenue, 1) / Delay(revenue,1)'
-    expression = parser.parse(expr_formula)
-    df_evaluate = expression.evaluate({'revenue': df_value})
 
     # -------------------------------------------------------------------------------------
     # get data array and align
@@ -131,8 +126,16 @@ def demo_usage():
                          20170519, 20170522, 20170523, 20170524, 20170525, 20170526, 20170531, 20170601,
                          20170602, 20170605, 20170606, 20170607, 20170608, 20170609, 20170612, 20170613,
                          20170614, 20170615, 20170616, 20170619, 20170620, 20170621, 20170622, 20170623])
-    df_res = align(df_ann, df_evaluate, date_arr)
+    # df_res = align(df_ann, df_evaluate, date_arr)
 
+    # -------------------------------------------------------------------------------------
+    # demo usage of parser
+    parser = Parser()
+    # expr_formula = 'Delta(revenue, 1) / Delay(revenue,1)'
+    expr_formula = 'Delay(revenue,0)'
+    expression = parser.parse(expr_formula)
+    df_res = parser.evaluate({'revenue': df_value}, df_ann, date_arr)
+    
     # -------------------------------------------------------------------------------------
     # print to validate results
     sec = '600000.SH'

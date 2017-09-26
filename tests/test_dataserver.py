@@ -19,6 +19,17 @@ def test_jz_data_server_daily():
     assert stk.loc[:, 'volume'].values[0] == 7174813
 
 
+def test_jz_data_server_daily_quited():
+    ds = JzDataServer()
+    
+    # test daily
+    res, msg = ds.daily('600832.SH', fields="",
+                        start_date=20140828, end_date=20170831,
+                        adjust_mode=None)
+    assert msg == '0,'
+    assert res.shape == (175, 13)
+
+
 def test_jz_data_server_bar():
     ds = JzDataServer()
     
@@ -37,19 +48,32 @@ def test_jz_data_server_wd():
     ds = JzDataServer()
     
     # test wd.secDailyIndicator
-    res3, msg3 = ds.query("wd.secDailyIndicator", fields="pb,pe,share_float_free,net_assets,limit_status",
-                          filter="security=600030.SH&start_date=20170907&end_date=20170907",
-                          orderby="trade_date")
-    assert msg3 == '0,'
-    assert abs(res3.loc[0, 'pb'] - 1.5135) < 1e-4
-    assert abs(res3.loc[0, 'share_float_free'] - 781496.5954) < 1e-4
-    assert abs(res3.loc[0, 'net_assets'] - 1.437e11) < 1e8
-    assert res3.loc[0, 'limit_status'] == 0
+    fields = "pb,pe,share_float_free,net_assets,limit_status"
+    for res3, msg3 in [ds.query("wd.secDailyIndicator", fields=fields,
+                                filter="security=600030.SH&start_date=20170907&end_date=20170907",
+                                orderby="trade_date"),
+                       ds.query_wd_dailyindicator('600030.SH', 20170907, 20170907, fields)]:
+        assert msg3 == '0,'
+        assert abs(res3.loc[0, 'pb'] - 1.5135) < 1e-4
+        assert abs(res3.loc[0, 'share_float_free'] - 781496.5954) < 1e-4
+        assert abs(res3.loc[0, 'net_assets'] - 1.437e11) < 1e8
+        assert res3.loc[0, 'limit_status'] == 0
     
     # test wd.income
-    res4, msg4 = ds.query("wd.income", fields="",
-                          filter="security=600000.SH&start_date=20150101&end_date=20170101&statement_type=408002000",
-                          order_by="ann_date")
-    assert msg4 == '0,'
-    assert res4.shape == (7, 10)
-    assert res4.loc[4, 'oper_rev'] == 42191000000
+    for res4, msg4 in [ds.query("wd.income", fields="",
+                                filter="security=600000.SH&start_date=20150101&end_date=20170101&report_type=408002000",
+                                order_by="report_date"),
+                       ds.query_wd_income('600000.SH', 20150101, 20170101, fields="")]:
+        assert msg4 == '0,'
+        assert res4.shape == (8, 12)
+        print res4.loc[4, 'oper_rev'] == 37918000000
+        assert res4.loc[4, 'oper_rev'] == 37918000000
+
+
+def test_jz_data_server_components():
+    ds = JzDataServer()
+    res = ds.get_index_comp_df(index='000300.SH', start_date=20140101, end_date=20170505)
+    assert res.shape == (814, 430)
+    
+    arr = ds.get_index_comp(index='000300.SH', start_date=20140101, end_date=20170505)
+    assert len(arr) == 430
