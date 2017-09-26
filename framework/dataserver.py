@@ -260,6 +260,10 @@ class JzDataServer(BaseDataServer):
                                cycle='1m', data_format=data_format)
         return df, msg
     
+    def query(self, view, field, filter_="", **kwargs):
+        df, msg = self.api.query(view, field, filter=filter_, **kwargs)
+        return df, msg
+    
     def get_suspensions(self):
         return None
 
@@ -436,7 +440,14 @@ def test_jz_data_server():
     assert rb.shape == (345, 14)
     assert stk.shape == (240, 14)
     assert msg2 == '0,'
-    
+
+    # unit: 1e4 RMB
+    res3, msg3 = ds.query("wd.secDailyIndicator", "",
+                          filter_="security=600848.SH&start_date=20170101&end_date=20170801",
+                          orderby="date",
+                          data_format='pandas')
+    print msg3
+    print res3
     print "Test passed."
 
 

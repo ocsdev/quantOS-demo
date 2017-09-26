@@ -7,7 +7,6 @@ from framework import common
 from framework.basic.trade import Trade
 from framework.jzcalendar import *
 from instrument import *
-from jzquant import *
 
 
 # %matplotlib inline
@@ -189,7 +188,7 @@ class PnlManager(object):
             df, msg = self.api.jz_unified('jsd', security, fields="", start_date=begin_str, end_date=end_str)
             for i in range(0, len(df.index)):
                 date = (df['DATE'][i])
-                close = df['CLOSE'][i]
+                close = df['close'][i]
                 if self.close_prices.has_key(date) == False:
                     self.close_prices[date] = {}
                 self.close_prices[date][security] = close

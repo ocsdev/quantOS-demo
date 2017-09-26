@@ -3,6 +3,7 @@
 import json
 
 from framework import *
+from app.doubleMaStrategy import DoubleMaStrategy
 
 if __name__ == "__main__":
     prop_file_path = r"../etc/backtest.json"

@@ -608,7 +608,7 @@ class StockSimulatorDaily(object):
             # get fill price
             if isinstance(order, FixedPriceTypeOrder):
                 price_target = order.price_target
-                fill_price = df.loc[:, price_target].values[0]
+                 = df.loc[:, price_target].values[0]
             elif isinstance(order, VwapOrder):
                 if order.start != -1:
                     raise NotImplementedError("Vwap of a certain time range")

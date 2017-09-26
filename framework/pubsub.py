@@ -4,7 +4,7 @@ from abc import abstractmethod
 from collections import defaultdict
 
 
-class Event(object):
+class EventTemp(object):
     def __init__(self, topic="unknown", data=None):
         self.data = data
         self.topic = topic

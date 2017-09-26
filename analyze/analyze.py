@@ -1,11 +1,34 @@
 # encoding: utf-8
 
+import json
+import os
+import sys
+from collections import OrderedDict
+
+import matplotlib.pyplot as plt
+from matplotlib.ticker import Formatter
+import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
-import json
-from framework.dataserver import JzDataServer
-import matplotlib.pyplot as plt
+
 from report import Report
+
+sys.path.append(os.path.abspath(".."))
+from framework.dataserver import JzDataServer
+
+
+class MyFormatter(Formatter):
+    def __init__(self, dates, fmt='%Y%m'):
+        self.dates = dates
+        self.fmt = fmt
+
+    def __call__(self, x, pos=0):
+        """Return the label for time x at position pos"""
+        ind = int(np.round(x))
+        if ind >= len(self.dates) or ind < 0:
+            return ''
+
+        return self.dates[ind].strftime(self.fmt)
 
 
 class BaseAnalyzer(object):
@@ -103,10 +126,10 @@ class AlphaAnalyzer(BaseAnalyzer):
         BaseAnalyzer.__init__(self)
         
         self.metrics = dict()
-        self.daily = dict()
-        self.returns = None
-        self.position_change = dict()
-        self.account = dict()
+        self.daily = None
+        self.returns = None  # OrderedDict
+        self.position_change = None  # OrderedDict
+        self.account = None  # OrderedDict
         
     @staticmethod
     def _get_avg_pos_price(pos_arr, price_arr):
@@ -138,6 +161,7 @@ class AlphaAnalyzer(BaseAnalyzer):
     def _process_trades(df):
         """Add various statistics to trades DataFrame."""
         df.index = pd.to_datetime(df.loc[:, 'fill_date'], format="%Y%m%d")
+        df.index.name = 'index'
         
         cols_to_drop = ['task_id', 'entrust_no', 'fill_no']
         df.drop(cols_to_drop, axis=1, inplace=True)
@@ -205,8 +229,8 @@ class AlphaAnalyzer(BaseAnalyzer):
     def get_pos_change_info(self):
         trades = pd.concat(self.trades.values(), axis=0)
         gp = trades.groupby(by=['fill_date'], as_index=False)
-        res = dict()
-        account = dict()
+        res = OrderedDict()
+        account = OrderedDict()
         
         for date, df in gp:
             df_mod = df.loc[:, ['security', 'entrust_action', 'fill_size', 'fill_price',
@@ -232,6 +256,7 @@ class AlphaAnalyzer(BaseAnalyzer):
         benchmark_name = self.configs['benchmark']
         df_bench_value, err_msg = self.data_server.daily(benchmark_name, "close", self.configs['start_date'], self.configs['end_date'])
         df_bench_value.index = pd.to_datetime(df_bench_value.loc[:, 'trade_date'], format="%Y%m%d")
+        df_bench_value.index.name = 'index'
         df_bench_value.drop(['trade_date', 'security'], axis=1, inplace=True)
 
         pnl_return = pd.DataFrame(index=strategy_value.index, data=self._to_return(strategy_value.values))
@@ -240,6 +265,7 @@ class AlphaAnalyzer(BaseAnalyzer):
         returns = pd.concat([bench_return, pnl_return], axis=1).fillna(method='ffill')
         returns.columns = ['Benchmark', 'Strategy']
         returns.loc[:, 'extra'] = returns.loc[:, 'Strategy'] - returns.loc[:, 'Benchmark']
+        # returns.loc[:, 'DD']
         
         start = pd.to_datetime(self.configs['start_date'], format="%Y%d%m")
         end = pd.to_datetime(self.configs['end_date'], format="%Y%d%m")
@@ -253,21 +279,26 @@ class AlphaAnalyzer(BaseAnalyzer):
         self.returns = returns
 
     def plot_pnl(self, save_folder="."):
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), dpi=300)
-        ax1.plot(self.returns.loc[:, 'Benchmark'], label='Benchmark')
-        ax1.plot(self.returns.loc[:, 'Strategy'], label='Strategy')
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), dpi=300, sharex=True)
+        idx0 = self.returns.index
+        idx = range(len(idx0))
+        ax1.plot(idx, self.returns.loc[:, 'Benchmark'], label='Benchmark')
+        ax1.plot(idx, self.returns.loc[:, 'Strategy'], label='Strategy')
         ax1.legend(loc='upper left')
-        ax2.plot(self.returns.loc[:, 'extra'], label='Extra Return')
+        ax2.plot(idx, self.returns.loc[:, 'extra'], label='Extra Return')
         ax2.legend(loc='upper left')
-        #ax2.set_title("Extra Return, beta={:.2f}, yearly_return={:.2f},yearly_vol={:.2f}, sharpe={:.2f}".format(self.metrics['beta'], self.metrics['yearly_return'], self.metrics['yearly_vol'], self.metrics['sharpe']))
+        ax2.set_xlabel("Date")
+        ax2.set_ylabel("Percent")
+        ax1.set_ylabel("Percent")
+        ax2.xaxis.set_major_formatter(MyFormatter(idx0, '%Y%m'))
         
         plt.tight_layout()
         fig.savefig(save_folder + '/' + 'pnl_img.png')
 
-    def gen_report(self, out_folder='output'):
+    def gen_report(self, out_folder='output', selected=[]):
         d = dict()
         d['html_title'] = "Alpha Strategy Backtest Result"
-        d['selected_securities'] = list(self.universe)[::3]
+        d['selected_securities'] = selected
         d['props'] = self.configs
         d['metrics'] = self.metrics
         d['position_change'] = self.position_change
@@ -335,6 +366,7 @@ def plot_trades(df, security="", save_folder="."):
     ax3.plot(idx, df.loc[:, 'position'], marker='D', markersize=3, lw=2)
     ax3.axhline(0, color='k', lw=1)
     
+    
     ax1.set_title(security)
     
     fig.savefig(save_folder + '/' + "{}.png".format(security))
@@ -342,24 +374,35 @@ def plot_trades(df, security="", save_folder="."):
     return
 
 if __name__ == "__main__":
+    import time
+    t_start = time.time()
+    
     ta = AlphaAnalyzer()
     data_server = JzDataServer()
     
     ta.initialize(data_server, '../output/')
     
+    print "process trades..."
     ta.process_trades()
+    print "get daily stats..."
     ta.get_daily()
+    print "calc strategy return..."
     ta.get_returns()
+    print "get position change..."
     ta.get_pos_change_info()
-    
+
+    print "plot..."
     out_foler = "output"
+    selected_sec = list(ta.universe)[::3]
     for sec, df in ta.daily.items():
-        plot_trades(df, sec, out_foler)
+        if sec in selected_sec:
+            plot_trades(df, sec, out_foler)
     ta.plot_pnl(out_foler)
+    print "generate report..."
     ta.gen_report(out_foler)
-    
-    # for sec, df in ta.trades_dic.items():
-    #     calc_uat_metrics(df, sec)
+
+    t1 = time.time() - t_start
+    print "\ntime lapsed in total: {:.2f}".format(t1)
     
     del data_server, ta
     print "Test passed."

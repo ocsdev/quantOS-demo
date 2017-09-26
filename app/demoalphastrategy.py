@@ -20,3 +20,6 @@ class DemoAlphaStrategy(AlphaStrategy):
         w = w0 / w0.sum()
         
         self.weights = w
+    
+    def on_after_rebalance(self, total):
+        print "\n\n{}, cash all = {:9.4e}".format(self.trade_date, total)  # DEBUG

@@ -4,7 +4,7 @@ from event.eventEngine import Event
 from event.eventType import EVENT
 from framework.jzcalendar import JzCalendar
 from framework.pnlreport import PnlManager
-from objectfactory import *
+from framework import common
 from pubsub import *
 
 

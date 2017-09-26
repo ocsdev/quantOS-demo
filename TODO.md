@@ -1,5 +1,8 @@
-- LIMIT ORDER mathing
-- Extract PortfolioManager from a member of Strategy
-- Adjust time of re-balance, send orders and mathcing.
-- Record necessary information during backtest
-- improve code
+-[] LIMIT ORDER mathing
+-[] Extract PortfolioManager from a member of Strategy
+-[x] Adjust time of re-balance, send orders and mathcing.
+-[] Record necessary information during backtest
+-[] improve code
+-[] conversion between trade results and dict/list
+-[] Separate PnL analysis module, can be combined with DataRecorder
+-[] Resolution of fill price of stocks in China is 0.01
