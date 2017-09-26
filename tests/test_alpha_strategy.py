@@ -20,19 +20,17 @@ suspensions and limit reachers:
 import time
 
 import numpy as np
-import pandas as pd
-
-from app.demoalphastrategy import AlphaStrategy, DemoAlphaStrategy
 from data.dataserver import JzDataServer
-from framework import model
-from data.dataview import BaseDataView
-from framework.alphabacktest import AlphaBacktestInstance
-from framework.gateway import DailyStockSimGateway
-import util.fileio
+from example.demoalphastrategy import DemoAlphaStrategy
+
+import quantos.util.fileio
+from quantos.backtest import AlphaBacktestInstance
+from quantos.backtest import DailyStockSimGateway
+from quantos.backtest import model
 
 
 def read_props(fp):
-    props = util.fileio.read_json(fp)
+    props = quantos.util.fileio.read_json(fp)
     
     enum_props = {}
     for k, v in enum_props.iteritems():

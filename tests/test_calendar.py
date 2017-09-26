@@ -1,7 +1,8 @@
 # encoding: utf-8
 
 import datetime
-from framework.jzcalendar import JzCalendar
+
+from quantos.backtest.calendar import JzCalendar
 
 
 def test_jzcalendar():

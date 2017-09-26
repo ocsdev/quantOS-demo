@@ -2,9 +2,10 @@
 
 import json
 
-from framework import *
 from data.dataserver import JzEventServer
-from app.doubleMaStrategy import DoubleMaStrategy
+from example.doubleMaStrategy import DoubleMaStrategy
+
+from quantos.backtest import *
 
 if __name__ == "__main__":
     prop_file_path = r"../etc/backtest.json"

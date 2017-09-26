@@ -1,9 +1,10 @@
 # encoding: UTF-8
 
+import pandas as pd
 import pytest
 from data.dataserver import JzDataServer
-from data.py_expression_eval import Parser
-import pandas as pd
+
+from quantos.data.py_expression_eval import Parser
 
 
 def test_skew():

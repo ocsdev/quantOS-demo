@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-from data.dataview import BaseDataView
+from quantos.data import BaseDataView
 
 
 def test_xarray():
@@ -11,7 +11,7 @@ def test_xarray():
     
     
 def test_dv_write():
-    from data.dataserver import JzDataServer
+    from quantos.data import JzDataServer
     
     ds = JzDataServer()
     dv = BaseDataView()
@@ -35,7 +35,7 @@ def test_dv_write():
 
 
 def test_dv_quarterly():
-    from data.dataserver import JzDataServer
+    from quantos.data import JzDataServer
     
     ds = JzDataServer()
     dv = BaseDataView()
@@ -58,7 +58,7 @@ def test_add_field_quarterly():
     nrows, ncols = dv.data_q.shape
     n_securities = len(dv.data_d.columns.levels[0])
     
-    from data.dataserver import JzDataServer
+    from quantos.data import JzDataServer
     ds = JzDataServer()
     dv.add_field('net_inc_other_ops', ds)
     """
@@ -103,7 +103,6 @@ def test_dv_load():
     ts1 = dv.get_ts('close', security='600030.SH,000063.SZ', start_date=20170101, end_date=20170302)
     assert ts1.shape == (38, 2)
     assert set(ts1.columns.values) == {'600030.SH', '000063.SZ'}
-    from framework.jzcalendar import JzCalendar
     assert ts1.index.values[-1] == 20170302
 
 
@@ -114,7 +113,7 @@ def test_add_field():
     nrows, ncols = dv.data_d.shape
     n_securities = len(dv.data_d.columns.levels[0])
     
-    from data.dataserver import JzDataServer
+    from quantos.data import JzDataServer
     ds = JzDataServer()
     dv.add_field('share_amount', ds)
     assert dv.data_d.shape == (nrows, ncols + 1 * n_securities)
