@@ -104,8 +104,6 @@ class AlphaBacktestInstance(BacktestInstance):
                 
         print "Backtest done. {:d} days, {:.2e} trades in total.".format(len(self.trade_days),
                                                                          len(self.strategy.pm.trades))
-        
-        self.save_results()
     
     def on_new_day(self, date):
         self.strategy.on_new_day(date)

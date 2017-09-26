@@ -25,3 +25,4 @@ if __name__ == "__main__":
     backtest.init_from_config(props, data_server, gateway, strategy)
     
     backtest.run_alpha()
+    backtest.save_results('../output/')

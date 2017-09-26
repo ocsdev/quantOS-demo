@@ -5,45 +5,50 @@ import pandas as pd
 import json
 from framework.dataserver import JzDataServer
 import matplotlib.pyplot as plt
+from report import Report
 
 
 class BaseAnalyzer(object):
     """
     Attributes
     ----------
-    __trades : pd.DataFrame
-    __configs : dict
+    _trades : pd.DataFrame
+    _configs : dict
     data_server : BaseDataServer
-    __universe : set
+    _universe : set
         All securities that have been traded.
         
     """
     def __init__(self):
-        self.__trades = None
-        self.__configs = None
+        self._trades = None
+        self._configs = None
         self.data_server = None
         
-        self.__universe = []
-        self.__prices = None
+        self._universe = []
+        self._closes = None
         
     @property
     def trades(self):
-        return self.__trades
+        """Read-only attribute"""
+        return self._trades
     
     @property
     def universe(self):
-        return self.__universe
+        """Read-only attribute"""
+        return self._universe
     
     @property
     def configs(self):
-        return self.__configs
+        """Read-only attribute"""
+        return self._configs
     
     @property
-    def prices(self):
-        return self.__prices
+    def closes(self):
+        """Read-only attribute, close prices of securities in the universe"""
+        return self._closes
     
     def initialize(self, data_server_, file_folder='../output/', ):
-        """Read trades from csv file."""
+        """Read trades from csv file to DataFrame of given data type."""
         self.data_server = data_server_
         
         type_map = {'task_id': str,
@@ -56,43 +61,59 @@ class BaseAnalyzer(object):
                     'fill_time': int,
                     'fill_no': str}
         trades = pd.read_csv(file_folder + 'trades.csv', ',', dtype=type_map)
-        # for key, t in type_map.items():
-        #     trades.loc[:, key] = trades.loc[:, key].values.astype(t)
-        self.__trades = self._preprocess_trades(trades)
         
-        configs = json.load(open(file_folder + 'configs.json', 'r'))
-        self.__configs = configs
-        
-        self._init_universe()
+        self._init_universe(trades.loc[:, 'security'].values)
+        self._init_configs(file_folder)
+        self._init_trades(trades)
         self._init_security_price()
     
-    @staticmethod
-    def _preprocess_trades(df):
+    def _init_trades(self, df):
+        """Add datetime column. """
         df.loc[:, 'fill_dt'] = df.loc[:, 'fill_date'] + df.loc[:, 'fill_time']
-        return df
+        
+        res = dict()
+        for sec in self.universe:
+            res[sec] = df.loc[df.loc[:, 'security'] == sec, :]
+        
+        self._trades = res
     
     def _init_security_price(self):
-        df_dic = self.data_server.daily(','.join(self.universe), self.configs['start_date'], self.configs['end_date'], "CLOSE")
-        # df_dic_named = [df.rename(columns={'CLOSE': sec}) for sec, df in df_dic.items()]
-        df_list = []
-        for sec, df in df_dic.items():
-            df.index = pd.to_datetime(df.loc[:, 'DATE'], format="%Y%m%d")
-            df.drop('DATE', axis=1, inplace=True)
-            # df.rename(columns={'CLOSE': sec}, inplace=True)
-            df.rename(columns={'CLOSE': 'close'}, inplace=True)
-            df_list.append(df)
-        df_all = pd.concat(df_list, axis=1)
-        self.__prices = df_dic  # TODO
+        """Get close price of securities in the universe from data server."""
+        close_dic = dict()
+        for sec in self.universe:
+            df, err_msg = self.data_server.daily(sec, "close", self.configs['start_date'], self.configs['end_date'])
+            
+            df.index = pd.to_datetime(df.loc[:, 'trade_date'], format="%Y%m%d")
+            df.drop(['trade_date', 'security'], axis=1, inplace=True)
+            close_dic[sec] = df
+        
+        self._closes = close_dic
     
-    def _init_universe(self):
+    def _init_universe(self, securities):
         """Return a set of securities."""
-        securities = self.trades.loc[:, 'security'].values
-        self.__universe = set(securities)
+        self._universe = set(securities)
     
+    def _init_configs(self, file_folder):
+        configs = json.load(open(file_folder + 'configs.json', 'r'))
+        self._configs = configs
+
 
 class AlphaAnalyzer(BaseAnalyzer):
+    def __init__(self):
+        BaseAnalyzer.__init__(self)
+        
+        self.metrics = dict()
+        self.daily = dict()
+        self.returns = None
+        self.position_change = dict()
+        self.account = dict()
+        
     @staticmethod
-    def get_avg_pos_price(pos_arr, price_arr):
+    def _get_avg_pos_price(pos_arr, price_arr):
+        """
+        Calculate average cost price using position and fill price.
+        When position = 0, cost price = security price.
+        """
         assert len(pos_arr) == len(price_arr)
         
         avg_price = np.zeros_like(pos_arr, dtype=float)
@@ -115,102 +136,150 @@ class AlphaAnalyzer(BaseAnalyzer):
     
     @staticmethod
     def _process_trades(df):
-        df = df.copy()
+        """Add various statistics to trades DataFrame."""
+        df.index = pd.to_datetime(df.loc[:, 'fill_date'], format="%Y%m%d")
         
         cols_to_drop = ['task_id', 'entrust_no', 'fill_no']
         df.drop(cols_to_drop, axis=1, inplace=True)
         
-        # df.loc[:, 'FillTime'] = pd.to_datetime(df.loc[:, 'FillTime'], format='%Y%m%d %H:%M:%S %f')
+        fs, fp = df.loc[:, 'fill_size'], df.loc[:, 'fill_price']
+        turnover = fs * fp
         
-        df.loc[:, 'CumVolume'] = df.loc[:, 'fill_size'].cumsum()
-        turnover = df.loc[:, 'fill_size'] * df.loc[:, 'fill_price']
         df.loc[:, 'CumTurnOver'] = turnover.cumsum()
         
-        df.loc[:, 'direction'] = df.loc[:, 'entrust_action'].apply(lambda s: 1 if s == 'buy' else -1)
-        df.loc[:, 'BuyVolume'] = (df.loc[:, 'direction'] + 1) / 2 * df.loc[:, 'fill_size']
-        df.loc[:, 'SellVolume'] = (df.loc[:, 'direction'] - 1) / -2 * df.loc[:, 'fill_size']
-        df.loc[:, 'CumNetTurnOver'] = (turnover * df.loc[:, 'direction'] * -1).cumsum()
-        df.loc[:, 'position'] = (df.loc[:, 'fill_size'] * df.loc[:, 'direction']).cumsum()
-        df.loc[:, 'AvgPosPrice'] = AlphaAnalyzer.get_avg_pos_price(df.loc[:, 'position'].values, df.loc[:, 'fill_price'].values)
-        df.loc[:, 'VirtualProfit'] = (df.loc[:, 'CumNetTurnOver'] + df.loc[:, 'position'] * df.loc[:, 'fill_price'])
-        # df.loc[:, 'commission'] = inst_param[inst]['commission'] * turnover
-        # df.loc[:, 'VirtualProfit2'] = df.loc[:, 'VirtualProfit'] - df.loc[:, 'commission']
+        direction = df.loc[:, 'entrust_action'].apply(lambda s: 1 if s == 'buy' else -1)
         
-        # Execution related
-        # df.loc[:, 'execution_luck'] = (df.loc[:, 'OrderPrice'] - df.loc[:, 'FillPrice']) * df.loc[:, 'direction']
-        # df.loc[:, 'uncome_size'] = df.loc[:, 'OrderSize'] - df.loc[:, 'FillSize']
+        df.loc[:, 'BuyVolume'] = (direction + 1) / 2 * fs
+        df.loc[:, 'SellVolume'] = (direction - 1) / -2 * fs
+        df.loc[:, 'CumVolume'] = fs.cumsum()
+        df.loc[:, 'CumNetTurnOver'] = (turnover * -direction).cumsum()
+        df.loc[:, 'position'] = (fs * direction).cumsum()
+        
+        df.loc[:, 'AvgPosPrice'] = AlphaAnalyzer._get_avg_pos_price(df.loc[:, 'position'].values, fp.values)
+        
+        df.loc[:, 'VirtualProfit'] = (df.loc[:, 'CumNetTurnOver'] + df.loc[:, 'position'] * fp)
         
         return df
     
     def process_trades(self):
-        trades = self.trades.copy()
-        trades.loc[:, 'index'] = trades.index
-        trades.index = pd.to_datetime(trades.loc[:, 'fill_date'], format="%Y%m%d")
+        self._trades = {k: self._process_trades(v) for k, v in self.trades.items()}
     
-        trades_dic = dict()
-        for sec in self.universe:
-            raw = trades.loc[trades.loc[:, 'security'] == sec, :]
-            trades_dic[sec] = self._process_trades(raw)
+    @staticmethod
+    def _get_daily(close, trade):
+        merge = pd.concat([close, trade], axis=1, join='outer')
+        cols = ['close', 'BuyVolume', 'SellVolume',
+                'position', 'AvgPosPrice', 'CumNetTurnOver']
+        merge = merge.loc[:, cols]
     
-        self.trades_dic = trades_dic
+        cols_nan_to_zero = ['BuyVolume', 'SellVolume']
+        cols_nan_fill = ['close', 'position', 'AvgPosPrice', 'CumNetTurnOver']
+        merge.loc[:, cols_nan_fill] = merge.loc[:, cols_nan_fill].fillna(method='ffill')
+        merge.loc[:, cols_nan_fill] = merge.loc[:, cols_nan_fill].fillna(0)
+        
+        merge.loc[:, cols_nan_to_zero] = merge.loc[:, cols_nan_to_zero].fillna(0)
+        
+        merge.loc[merge.loc[:, 'AvgPosPrice'] < 1e-5, 'AvgPosPrice'] = merge.loc[:, 'close']
+    
+        merge.loc[:, 'VirtualProfit'] = merge.loc[:, 'CumNetTurnOver'] + merge.loc[:, 'position'] * merge.loc[:, 'close']
+        
+        return merge
     
     def get_daily(self):
+        """Add various statistics to daily DataFrame."""
         daily_dic = dict()
-        for sec, df in self.trades_dic.items():
-            df_close = self.prices[sec]
+        for sec, df_trade in self.trades.items():
+            df_close = self.closes[sec]
             
-            res = pd.concat([df_close, df], axis=1, join='outer')
-            res = res.loc[:, ['close', 'BuyVolume', 'SellVolume', 'fill_size', 'position', 'AvgPosPrice', 'CumNetTurnOver']]
+            daily_dic[sec] = self._get_daily(df_close, df_trade)
             
-            cols_nan_to_zero = ['BuyVolume', 'SellVolume']
-            cols_nan_fill = ['close', 'position', 'AvgPosPrice', 'CumNetTurnOver']
-            res.loc[:, cols_nan_fill] = res.loc[:, cols_nan_fill].fillna(method='ffill')
-            res.loc[:, cols_nan_fill] = res.loc[:, cols_nan_fill].fillna(0)
-            res.loc[:, cols_nan_to_zero] = res.loc[:, cols_nan_to_zero].fillna(0)
-            res.loc[res.loc[:, 'AvgPosPrice'] < 1e-5, 'AvgPosPrice'] = res.loc[:, 'close']
-            
-            res.loc[:, 'VirtualProfit'] = res.loc[:, 'CumNetTurnOver'] + res.loc[:, 'position'] * res.loc[:, 'close']
-            
-            daily_dic[sec] = res
-        self.daily_dic = daily_dic
+        self.daily = daily_dic
     
-    def _to_return(self, arr):
+    @staticmethod
+    def _to_return(arr):
+        """Convert portfolio value to portfolio (linear) return."""
         r = np.empty_like(arr)
         r[0] = 0.0
         r[1:] = arr[1:] / arr[0] - 1
         return r
     
-    def get_total_pnl(self):
-        l = [df.loc[:, 'VirtualProfit'].copy().rename({'VirtualProfit': sec}) for sec, df in self.daily_dic.items()]
-        df = pd.concat(l, axis=1)
-        pnl = df.sum(axis=1) * 100 + self.configs['init_balance']
+    def get_pos_change_info(self):
+        trades = pd.concat(self.trades.values(), axis=0)
+        gp = trades.groupby(by=['fill_date'], as_index=False)
+        res = dict()
+        account = dict()
         
-        benchmark_name = '000300.SH'
-        dic = self.data_server.daily(benchmark_name, self.configs['start_date'], self.configs['end_date'], "CLOSE")
-        bench = dic[benchmark_name].drop('DATE', axis=1)
+        for date, df in gp:
+            df_mod = df.loc[:, ['security', 'entrust_action', 'fill_size', 'fill_price',
+                                'position', 'AvgPosPrice']]
+            df_mod.columns = ['security', 'action', 'size', 'price',
+                              'position', 'cost price']
+            
+            res[str(date)] = df_mod
+            
+            mv = sum(df_mod.loc[:, 'price'] * df.loc[:, 'position'] * 100.0)
+            current_profit = sum(df.loc[:, 'VirtualProfit'])
+            cash = self.configs['init_balance'] + current_profit - mv
+            
+            account[str(date)] = {'market_value': mv, 'cash': cash}
+        self.position_change = res
+        self.account = account
+            
+    def get_returns(self):
+        vp_list = [df_profit.loc[:, 'VirtualProfit'].copy().rename({'VirtualProfit': sec}) for sec, df_profit in self.daily.items()]
+        df_profit = pd.concat(vp_list, axis=1)
+        strategy_value = df_profit.sum(axis=1) * 100 + self.configs['init_balance']
+        
+        benchmark_name = self.configs['benchmark']
+        df_bench_value, err_msg = self.data_server.daily(benchmark_name, "close", self.configs['start_date'], self.configs['end_date'])
+        df_bench_value.index = pd.to_datetime(df_bench_value.loc[:, 'trade_date'], format="%Y%m%d")
+        df_bench_value.drop(['trade_date', 'security'], axis=1, inplace=True)
 
-        pnl_return = pd.DataFrame(index=pnl.index, data=self._to_return(pnl.values))
-        bench_return = pd.DataFrame(index=bench.index, data=self._to_return(bench.values))
+        pnl_return = pd.DataFrame(index=strategy_value.index, data=self._to_return(strategy_value.values))
+        bench_return = pd.DataFrame(index=df_bench_value.index, data=self._to_return(df_bench_value.values))
         
-        df = pd.concat([bench_return, pnl_return], axis=1).fillna(method='ffill')
-        df.columns = [benchmark_name, 'Strategy']
-        df.loc[:, 'extra'] = df.loc[:, 'Strategy'] - df.loc[:, benchmark_name]
+        returns = pd.concat([bench_return, pnl_return], axis=1).fillna(method='ffill')
+        returns.columns = ['Benchmark', 'Strategy']
+        returns.loc[:, 'extra'] = returns.loc[:, 'Strategy'] - returns.loc[:, 'Benchmark']
+        
         start = pd.to_datetime(self.configs['start_date'], format="%Y%d%m")
         end = pd.to_datetime(self.configs['end_date'], format="%Y%d%m")
         years = (end - start).days / 225.
         
-        yearly_return = df.loc[:, 'extra'].values[-1] / years
-        yearly_vol = df.loc[:, 'extra'].std() / np.sqrt(225.)
-        beta = np.corrcoef(df.loc[:, benchmark_name], df.loc[:, 'Strategy'])[0, 1]
-        sharpe = yearly_return / yearly_vol
+        self.metrics['yearly_return'] = returns.loc[:, 'extra'].values[-1] / years
+        self.metrics['yearly_vol'] = returns.loc[:, 'extra'].std() * np.sqrt(225.)
+        self.metrics['beta'] = np.corrcoef(returns.loc[:, 'Benchmark'], returns.loc[:, 'Strategy'])[0, 1]
+        self.metrics['sharpe'] = self.metrics['yearly_return'] / self.metrics['yearly_vol']
+        
+        self.returns = returns
 
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8))
-        ax1.plot(df.loc[:, benchmark_name], label='Benchmark')
-        ax1.plot(df.loc[:, 'Strategy'], label='Strategy')
-        ax1.legend()
-        ax2.plot(df.loc[:, 'extra'])
-        ax2.set_title("Extra Return, beta={:.2f}, yearly_return={:.2f}, yearly_vol={:.2f}, sharpe={:.2f}".format(beta, yearly_return, yearly_vol, sharpe))
-        plt.show()
+    def plot_pnl(self, save_folder="."):
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), dpi=300)
+        ax1.plot(self.returns.loc[:, 'Benchmark'], label='Benchmark')
+        ax1.plot(self.returns.loc[:, 'Strategy'], label='Strategy')
+        ax1.legend(loc='upper left')
+        ax2.plot(self.returns.loc[:, 'extra'], label='Extra Return')
+        ax2.legend(loc='upper left')
+        #ax2.set_title("Extra Return, beta={:.2f}, yearly_return={:.2f},yearly_vol={:.2f}, sharpe={:.2f}".format(self.metrics['beta'], self.metrics['yearly_return'], self.metrics['yearly_vol'], self.metrics['sharpe']))
+        
+        plt.tight_layout()
+        fig.savefig(save_folder + '/' + 'pnl_img.png')
+
+    def gen_report(self, out_folder='output'):
+        d = dict()
+        d['html_title'] = "Alpha Strategy Backtest Result"
+        d['selected_securities'] = list(self.universe)[::3]
+        d['props'] = self.configs
+        d['metrics'] = self.metrics
+        d['position_change'] = self.position_change
+        d['account'] = self.account
+        
+        r = Report(d,
+                   'static/report_template.html', 'static/blueprint.css',
+                   out_folder=out_folder)
+        
+        r.generate_html()
+        r.output_html('report.html')
+        r.output_pdf('report.pdf')
 
 
 def calc_uat_metrics(t1, security):
@@ -235,16 +304,16 @@ def calc_uat_metrics(t1, security):
     return
 
 
-def plot_trades(df, security=""):
+def plot_trades(df, security="", save_folder="."):
     idx = range(len(df.index))
     price = df.loc[:, 'close']
     bv, sv = df.loc[:, 'BuyVolume'].values, df.loc[:, 'SellVolume'].values
     profit = df.loc[:, 'VirtualProfit'].values
     avgpx = df.loc[:, 'AvgPosPrice']
-    bv *= .3
-    sv *= .3
+    bv *= .1
+    sv *= .1
     
-    fig = plt.figure(figsize=(14, 10))
+    fig = plt.figure(figsize=(14, 10), dpi=300)
     ax1 = plt.subplot2grid((4, 1), (0, 0), rowspan=3)
     ax3 = plt.subplot2grid((4, 1), (3, 0), rowspan=1, sharex=ax1)
     
@@ -267,26 +336,30 @@ def plot_trades(df, security=""):
     ax3.axhline(0, color='k', lw=1)
     
     ax1.set_title(security)
-    # plt.tight_layout()
+    
+    fig.savefig(save_folder + '/' + "{}.png".format(security))
+    plt.tight_layout()
     return
 
 if __name__ == "__main__":
     ta = AlphaAnalyzer()
     data_server = JzDataServer()
     
-    ta.initialize(data_server, '../output/test/')
+    ta.initialize(data_server, '../output/')
+    
     ta.process_trades()
     ta.get_daily()
-
-    assert len(ta.universe) == 6
-    # assert ta.prices.shape == (344, 6)
+    ta.get_returns()
+    ta.get_pos_change_info()
     
-    for sec, df in ta.daily_dic.items():
-        plot_trades(df, sec)
-        plt.show()
-
-    ta.get_total_pnl()
+    out_foler = "output"
+    for sec, df in ta.daily.items():
+        plot_trades(df, sec, out_foler)
+    ta.plot_pnl(out_foler)
+    ta.gen_report(out_foler)
+    
     # for sec, df in ta.trades_dic.items():
     #     calc_uat_metrics(df, sec)
     
+    del data_server, ta
     print "Test passed."
