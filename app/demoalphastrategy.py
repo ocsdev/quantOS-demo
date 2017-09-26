@@ -12,6 +12,11 @@ class DemoAlphaStrategy(AlphaStrategy):
         n = len(univ)
         w0 = np.random.rand(n) + 1e-5
         # w = np.ones(n, dtype=float) / n
+
+        rand_pos = np.random.randint(0, n)
+
+        w0[rand_pos] = 0.0
         w = w0 / w0.sum()
+
         self.weights = w
 

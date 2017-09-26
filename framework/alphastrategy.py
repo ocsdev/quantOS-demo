@@ -111,7 +111,7 @@ class BaseStrategy(object):
         Parameters
         ----------
         security : str
-            the symbol of security to be ordered, eg. "000001.SZ".
+            the security of security to be ordered, eg. "000001.SZ".
         action : str
         price : float.
             The price to be ordered at.
@@ -411,7 +411,7 @@ class AlphaStrategy(BaseStrategy):
         df_dic = ds.daily(univ_str, self.trade_date, self.trade_date, "")
         return df_dic
 
-    def _re_balance(self, suspensions=None):
+    def re_balance(self, suspensions=None):
         """
         Do portfolio re-balance.
         For now, we stick to the same close price when calculate market value and do re-balance.

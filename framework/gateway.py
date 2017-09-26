@@ -710,7 +710,7 @@ class OrderBook(object):
             order = self.orders[i]
             if (quote.security != order.security):
                 continue
-            if (order.is_finished()):
+            if (order.is_finished):
                 continue
 
             if (order.order_type == common.ORDER_TYPE.LIMIT):
@@ -795,7 +795,7 @@ class OrderBook(object):
         for i in xrange(len(self.orders)):
             order = self.orders[i]
 
-            if (order.is_finished()):
+            if (order.is_finished):
                 continue
 
             if (order.entrust_no == entrust_no):
@@ -815,7 +815,7 @@ class OrderBook(object):
         for i in xrange(len(self.orders)):
             order = self.orders[i]
 
-            if (order.is_finished()):
+            if (order.is_finished):
                 continue
             order.cancel_size = order.entrust_size - order.fill_size
             order.order_status = common.ORDER_STATUS.CANCELLED

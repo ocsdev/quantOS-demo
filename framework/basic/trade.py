@@ -46,7 +46,7 @@ class Trade(object):
         self.refquote = None
         self.refcode = ''
 
-        self.reforderid = ''
+        self.entrust_no = ''
 
     def init_from_order(self, order):
         self.task_id = order.task_id

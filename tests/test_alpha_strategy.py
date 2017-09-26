@@ -9,7 +9,7 @@ import json
 
 
 if __name__ == "__main__":
-    prop_file_path = r"../etc/alpha.properties"
+    prop_file_path = r"../etc/alpha.json"
     prop_file = open(prop_file_path, 'r')
 
     props = json.load(prop_file)

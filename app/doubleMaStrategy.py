@@ -12,9 +12,9 @@ class DoubleMaStrategy(EventDrivenStrategy):
         Constructor
         '''
         EventDrivenStrategy.__init__(self)
-        self.symbol = ''
-        self.fastN = 5
-        self.slowN = 10
+        self.security = ''
+        self.fastN = 14
+        self.slowN = 45
         self.bar = None
         self.bufferCount = 0
         self.bufferSize = 20
@@ -23,49 +23,49 @@ class DoubleMaStrategy(EventDrivenStrategy):
         self.slowMa = 0
         self.pos = 0
         
-    def initConfig(self, props):
-        self.symbol = props.get('symbol')
+    def init_from_config(self, props):
+        self.security = props.get('security')
         self.initbalance = props.get('init_balance')
     
-    def initialization(self, runmode):
-        self.initUniverse(self.symbol)
+    def initialize(self, runmode):
+        self.initUniverse(self.security)
         
     def onCycle(self):
         pass
     
     def createOrder(self, quote, price, size):
-        order = Order()
-        order.initFromQuote(quote)            
-        order.symbol = quote.symbol
-        order.order_size = size
-        order.order_price = price
+        order = Order.new_order(quote.security, "", price, size, quote.getDate(), quote.time)
+        order.order_type = common.ORDER_TYPE.LIMIT
         return order
         
     def buy(self, quote, price, size):
         order = self.createOrder(quote, price, size)
-        order.action = common.ORDER_ACTION.BUY
+        order.entrust_action = common.ORDER_ACTION.BUY
         self.context.gateway.sendOrder(order, '','') 
         
     def sell(self, quote, price, size):
         order = self.createOrder(quote, price, size)
-        order.action = common.ORDER_ACTION.SELL
+        order.entrust_action = common.ORDER_ACTION.SELL
         self.context.gateway.sendOrder(order, '','')
         
     def cover(self, quote, price, size):
         order = self.createOrder(quote, price, size)
-        order.action = common.ORDER_ACTION.BUY
+        order.entrust_action = common.ORDER_ACTION.BUY
         self.context.gateway.sendOrder(order, '','') 
          
     def short(self, quote, price, size):
         order = self.createOrder(quote, price, size)
-        order.action = common.ORDER_ACTION.SELL
+        order.entrust_action = common.ORDER_ACTION.SELL
         self.context.gateway.sendOrder(order, '','') 
     def onNewday(self, trade_date):
         print 'new day comes ' + str(trade_date)    
     def onQuote(self, quote):
-        date = quote.getDate()
-        key = quote.symbol + '.' + str(date)
-        self.pos = self.pm.getPosition(key)
+        quote_date = quote.getDate()
+        p = self.pm.get_position(quote.security, quote_date)
+        if p is None:
+            self.pos = 0
+        else:
+            self.pos = p.curr_size
         
         self.closeArray[0:self.bufferSize-1] = self.closeArray[1:self.bufferSize]
         self.closeArray[-1] = quote.close
@@ -79,18 +79,18 @@ class DoubleMaStrategy(EventDrivenStrategy):
         
         if self.fastMa > self.slowMa:
             if self.pos == 0:
-                self.buy(quote, quote.close+3, 1)
+                self.buy(quote, quote.close + 3, 1)
            
             elif self.pos < 0:
-                self.cover(quote, quote.close+3, 1)
-                self.buy(quote, quote.close+3, 1)
+                self.cover(quote, quote.close + 3, 1)
+                self.buy(quote, quote.close + 3, 1)
        
         elif self.fastMa < self.slowMa:
             if self.pos == 0:
-                self.short(quote, quote.close-3, 1)
+                self.short(quote, quote.close - 3, 1)
             elif self.pos > 0:
-                self.sell(quote, quote.close-3, 1)
-                self.short(quote, quote.close-3, 1)
+                self.sell(quote, quote.close - 3, 1)
+                self.short(quote, quote.close - 3, 1)
         
         
         

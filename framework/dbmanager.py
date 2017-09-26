@@ -43,7 +43,7 @@ class DbManager(object):
         if conn_name != '':
             if conn_name in self.conns:
                 print " Connection name %s has been used, failed to create connection" %(conn_name)
-                conn.close()
+                conn._close()
                 return None
             else :
                 self.conns[conn_name] = conn 

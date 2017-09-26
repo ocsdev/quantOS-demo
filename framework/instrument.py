@@ -27,7 +27,7 @@ class Instrument(object):
     
 class InstManager(object):
     def __init__(self):        
-        self.conn = getJztsConnection()        
+        self.conn = get_jzts_connection()
         self.instmap = {}
         self.loadInstruments()
         

@@ -1,0 +1,5 @@
+- LIMIT ORDER mathing
+- Extract PortfolioManager from a member of Strategy
+- Adjust time of re-balance, send orders and mathcing.
+- Record necessary information during backtest
+- improve code

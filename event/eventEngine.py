@@ -18,6 +18,8 @@ class Event:
         """Constructor"""
         self.type_ = type_      # 事件类型
         self.event = None       # 字典用于保存具体的事件数据
+        self.data = None
+        self.kwargs = {}
 
 ########################################################################
 class EventEngine(object):
@@ -87,7 +89,15 @@ class EventEngine(object):
                 self.__process(event)
             except Empty:
                 pass
-            
+
+    def process_once(self):
+        try:
+            event = self.__queue.get(block=True, timeout=1)
+            self.__process(event)
+            return True
+        except Empty:
+            return False
+
     #----------------------------------------------------------------------
     def __process(self, event):
         """处理事件"""

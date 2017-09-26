@@ -13,8 +13,8 @@ class Quote(object):
     def __init__(self, type):
         self.type = type
         self.frequency   = 0
-        self.symbol      = ''
-        self.refsymbol   = ''
+        self.security      = ''
+        self.refsecurity   = ''
         self.time        = ''
         self.open        = 0.0
         self.high        = 0.0
@@ -42,7 +42,7 @@ class Quote(object):
         return int(dt.strftime('%H%M%S'))
     
     def show(self):
-        print self.type, self.time, self.symbol, self.open, self.high, self.low, self.close, self.volume, self.turnover
+        print self.type, self.time, self.security, self.open, self.high, self.low, self.close, self.volume, self.turnover
 
 
 class BaseDataServer(Publisher):
@@ -84,7 +84,7 @@ class BaseDataServer(Publisher):
         pass
 
     # TODO deprecated
-    def add_batch_subsribe(self, subscriber, securities):
+    def add_batch_subscribe(self, subscriber, securities):
         """
         Add subscriber to multiple securities at once.
 
@@ -305,7 +305,7 @@ class DataServer(Publisher):
     def getNextQuote(self):
         pass
     
-    def subscribe(self, subscriber, univlist):
+    def add_batch_subscribe(self, subscriber, univlist):
         
         for i in xrange(len(univlist)):
             self.add_subscriber(subscriber, univlist[i])
@@ -318,7 +318,7 @@ class JshHistoryBarDataServer(DataServer):
         self.api    = None
         self.addr   = ''
         self.bar_type   = common.QUOTE_TYPE.MIN
-        self.symbol     = ''
+        self.security     = ''
         
         self.daily_quotes_cache      = None
 
@@ -327,7 +327,7 @@ class JshHistoryBarDataServer(DataServer):
     def init_from_config(self, props):
         self.addr       = props.get('jsh.addr')
         self.bar_type   = props.get('bar_type')
-        self.symbol     = props.get('symbol')
+        self.security     = props.get('security')
     
     def initialize(self):
         self.api = jzquant_api.get_jzquant_api(address=self.addr, user="TODO", password="TODO")
@@ -399,7 +399,7 @@ class JshHistoryBarDataServer(DataServer):
                     key = keys[j]
                     bar = dict_bar.get(key)
                     quote = Quote(self.bar_type)
-                    quote.symbol   = bar['SYMBOL']
+                    quote.security   = bar['SYMBOL']
                     quote.open     = bar['OPEN']
                     quote.close    = bar['CLOSE']
                     quote.high     = bar['HIGH']
@@ -421,18 +421,18 @@ def test_old():
     props = dict()
     props['jsh.addr'] = 'tcp://10.2.0.14:61616'
     props['bar_type'] = common.QUOTE_TYPE.MIN
-    props['symbol'] = '600030.SH'
+    props['security'] = '600030.SH'
 
     server = JshHistoryBarDataServer()
     server.init_from_config(props)
 
     server.initialize()
 
-    server.subscribe(None, ['600030.SH'])
+    server.add_batch_subscribe(None, ['600030.SH'])
 
     quotes = server.get_daily_quotes(20170712)
     for quote in quotes:
-        print quote.symbol, quote.time, quote.open, quote.high
+        print quote.security, quote.time, quote.open, quote.high
 
 
 def test_new():

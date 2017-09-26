@@ -11,15 +11,15 @@ class CtaStrategy(EventDrivenStrategy):
     #----------------------------------------------------------------------
     def __init__(self):
         EventDrivenStrategy.__init__(self)
-        self.symbol = ''
+        self.security = ''
         
-    def initConfig(self, props):
-        self.symbol = props.get('symbol')
+    def init_from_config(self, props):
+        self.security = props.get('security')
         self.initbalance = props.get('init_balance')
         
         
-    def initialization(self, runmode):
-        self.initUniverse(self.symbol)
+    def initialize(self, runmode):
+        self.initUniverse(self.security)
         
     def onCycle(self):
         pass
@@ -31,23 +31,25 @@ class CtaStrategy(EventDrivenStrategy):
         if (time == 100000):
             quote.show()
             order = Order()
-            order.action = common.ORDER_ACTION.BUY
-            order.initFromQuote(quote)            
-            order.symbol = quote.symbol
-            order.order_size = 10000
-            order.order_price = quote.close
+            order.entrust_action = common.ORDER_ACTION.BUY
+            order.entrust_date = quote.getDate()
+            order.entrust_time = quote.time
+            order.security = quote.security
+            order.entrust_size = 10000
+            order.entrust_price = quote.close
             self.context.gateway.sendOrder(order, '','') 
-            print 'send order %s: %s %s %f'%(order.orderid, order.symbol, order.action, order.order_price)         
+            print 'send order %s: %s %s %f'%(order.entrust_id, order.security, order.entrust_action, order.entrust_price)
         if (time == 140000):
             quote.show()
             order = Order()
-            order.action = common.ORDER_ACTION.SELL
-            order.initFromQuote(quote)            
-            order.symbol = quote.symbol
-            order.order_size = 5000
-            order.order_price = quote.close
+            order.entrust_action = common.ORDER_ACTION.SELL
+            order.entrust_date = quote.getDate()
+            order.entrust_time = quote.time
+            order.security = quote.security
+            order.entrust_size = 5000
+            order.entrust_price = quote.close
             self.context.gateway.sendOrder(order, '','') 
-            print 'send order %s: %s %s %f'%(order.orderid, order.symbol, order.action, order.order_price) 
+            print 'send order %s: %s %s %f'%(order.entrust_id, order.security, order.entrust_action, order.entrust_price)
             
     def onNewday(self, trade_date):
         print 'new day comes ' + str(trade_date)

@@ -71,7 +71,7 @@ class Order(object):
         # TODO attributes below only for backward compatibility
         self.errmsg = ""
         self.cancel_size = 0
-        self.reforderid = ''
+        self.entrust_no = ''
 
     def __eq__(self, other):
         return self.entrust_no == other.entrust_no
@@ -105,7 +105,7 @@ class Order(object):
         self.time_in_force = order.time_in_force
 
         self.cancel_size = order.cancel_size
-        self.reforderid = order.reforderid
+        self.entrust_no = order.entrust_no
         self.errmsg = order.errmsg
 
     @property

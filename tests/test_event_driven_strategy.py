@@ -8,7 +8,7 @@ import json
 
 
 if __name__ == "__main__":
-    prop_file_path = r"etc/backtest.properties"
+    prop_file_path = r"../etc/backtest.json"
     prop_file = open(prop_file_path, 'r')
 
     props = json.load(prop_file)
@@ -20,10 +20,10 @@ if __name__ == "__main__":
     # strategy   = CtaStrategy()
     strategy = DoubleMaStrategy()
     gateway = BarSimulatorGateway()
-    dataserver = JshHistoryBarDataServer()
+    data_server = JshHistoryBarDataServer()
 
     backtest = BacktestInstance()
-    backtest.initFromConfig(props['instanceid'], props, dataserver, gateway, strategy)
+    backtest.initFromConfig(props, data_server, gateway, strategy)
 
     # backtest.run()
     backtest.run2()
