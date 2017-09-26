@@ -1,5 +1,6 @@
 import pandas as pd
 from collections import namedtuple
+import datetime as dt
 
 def _to_date(row):
     date = int(row['DATE'])
@@ -48,6 +49,25 @@ def to_obj(class_name, data):
         print class_name, data, e
         return data
 
+def to_date_int(date):
+    if type(date)==str:
+        t = dt.datetime.strptime(date, "%Y-%m-%d")
+        date_int = t.year * 10000 + t.month * 100 + t.day
+        return date_int
+    elif type(date)==int:
+        return date
+    else:
+        return -1
+
+def to_time_int(time):
+    if type(time)==str:
+        t = dt.datetime.strptime(time, "%H:%M:%S")
+        time_int = t.hour * 10000 + t.minute * 100 + t.second
+        return time_int
+    elif type(time)==int:
+        return time
+    else:
+        return -1 
 
 def extract_result(cr, data_format="", index_column=None, class_name=""):
     """

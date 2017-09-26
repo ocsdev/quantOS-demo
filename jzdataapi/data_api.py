@@ -53,6 +53,8 @@ class DataApi:
         self._callback = None
         self._schema = []
         self._schema_id = 0
+        self._sub_hash = ""
+        self._subscribed_set = set()
 
     def __del__(self):
         self._remote.close()
@@ -71,6 +73,7 @@ class DataApi:
         self._connected = True
 
         self._do_login()
+        self._do_subscribe()
 
         if self._callback:
             self._callback("connection", True)
@@ -133,16 +136,20 @@ class DataApi:
         return quote
 
     def _on_rpc_callback(self, method, data):
-        print "_on_rpc_callback:", method, data
-
-        if not self._callback:
-            return
+        #print "_on_rpc_callback:", method, data
 
         try:
             if method == "jsq.quote_ind":
-                q = self._convert_quote_ind(data)
-                if q :
-                    self._callback("quote", q)
+                if self._callback:
+                    q = self._convert_quote_ind(data)
+                    if q :
+                        self._callback("quote", q)
+
+            elif method == ".sys.heartbeat":
+                if 'sub_hash' in data:
+                    if self._sub_hash and self._sub_hash != data['sub_hash']:
+                        print "sub_hash is not same", self._sub_hash, data['sub_hash']
+                        self._do_subscribe()
 
         except Exception as e:
             print "Can't load jrpc", e.message
@@ -211,7 +218,30 @@ class DataApi:
                                 **kwargs)
         return (r, msg)    
 
-    def jsq_sub(self, security, fields="", func=None, data_format=""):
+    def _do_subscribe(self):
+        """Subscribe again when reconnected or hash_code is not same"""
+        if not self._subscribed_set: return
+
+        codes = list(self._subscribed_set)
+        codes.sort()
+        
+        # XXX subscribe with default fields!
+        rpc_params = {"security" : ",".join(codes),
+                      "fields"   : "" }
+
+        cr = self._remote.call("jsq.subscribe", rpc_params)
+        
+        rsp, msg = utils.extract_result(cr, data_format="", class_name="SubRsp")
+        if not rsp:
+            #return (rsp, msg)
+            return
+
+        self._schema_id     = rsp['schema_id']
+        self._schema        = rsp['schema']
+        self._sub_hash      = rsp['sub_hash']
+        #return (rsp.securities, msg)
+
+    def subscribe(self, security, func=None, fields="", data_format=""):
         """Subscribe securites
         
         This function adds new securities to subscribed list on the server. If
@@ -235,12 +265,16 @@ class DataApi:
         if not rsp:
             return (rsp, msg)
 
-        self._schema_id = rsp.schema_id
-        self._schema    = rsp.schema
-        return (rsp.securities, msg)
+        new_codes = [ x.strip() for x in security.split(',') if x ]
+        
+        self._subscribed_set = self._subscribed_set.union( set(new_codes) )
+        self._schema_id     = rsp['schema_id']
+        self._schema        = rsp['schema']
+        self._sub_hash      = rsp['sub_hash']
+        return (rsp['securities'], msg)
         
 
-    def jsq_unsub(self, security):
+    def unsubscribe(self, security):
         """Unsubscribe securities.
 
         Unscribe codes and return list of subscribed code.
@@ -248,8 +282,18 @@ class DataApi:
         assert False, "NOT IMPLEMENTED"
 
 
-    def bar(self, security, fields="", begin_time=200000, end_time=160000, 
-        trade_date=0, cycle="1m", data_format="", **kwargs ) :
+    def bar(self, security, start_time=200000, end_time=160000, 
+        trade_date=0, cycle="1m", fields="", data_format="", **kwargs ) :
+        
+        begin_time = utils.to_time_int(start_time)
+        if(begin_time == -1):
+            return(-1, "Begin time format error")
+        end_time   = utils.to_time_int(end_time)
+        if(end_time == -1):
+            return(-1, "End time format error")
+        trade_date = utils.to_date_int(trade_date)
+        if(trade_date == -1):
+            return(-1, "Trade date format error")
 
         return self._call_rpc("jsi.query",
                               self._get_format(data_format, "pandas"),
@@ -262,8 +306,18 @@ class DataApi:
                               end_time   = end_time,
                               **kwargs)
 
-    def bar_view(self, security, fields="", begin_time=200000, end_time=160000, 
-        trade_date=0, cycle="1m", data_format="", **kwargs ) :
+    def bar_view(self, security, start_time=200000, end_time=160000, 
+        trade_date=0, cycle="1m", fields="", data_format="", **kwargs ) :
+
+        begin_time = utils.to_time_int(start_time)
+        if(begin_time == -1):
+            return(-1, "Begin time format error")
+        end_time   = utils.to_time_int(end_time)
+        if(end_time == -1):
+            return(-1, "End time format error")
+        trade_date = utils.to_date_int(trade_date)
+        if(trade_date == -1):
+            return(-1, "Trade date format error")
 
         return self._call_rpc("jsi.bar_view",
                               self._get_format(data_format, "pandas"),
@@ -277,12 +331,19 @@ class DataApi:
                               **kwargs)    
 
 
-    def daily(self, security, begin_date=0, end_date=0, 
-        fields="",  adjust_mode = None, 
+    def daily(self, security, start_date, end_date, 
+        adjust_mode = None, fields="",
         data_format="", **kwargs ) :
 
         if adjust_mode == None:
             adjust_mode = "none"
+
+        begin_date = utils.to_date_int(start_date)
+        if(begin_date == -1):
+            return(-1, "Begin date format error")
+        end_date   = utils.to_date_int(end_date)
+        if(end_date == -1):
+            return(-1, "End date format error")
 
         return self._call_rpc("jsd.query",
                               self._get_format(data_format, "pandas"),
@@ -294,7 +355,7 @@ class DataApi:
                               adjust_mode    = adjust_mode,                             
                               **kwargs)
 
-    def query(self, view, fields="", filter="", data_format="", **kwargs ) :
+    def query(self, view, filter="", fields="", data_format="", **kwargs ) :
         return self._call_rpc( "jset.query",
                                self._get_format(data_format, "pandas"),
                                "JSetData",
