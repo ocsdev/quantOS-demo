@@ -247,7 +247,9 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False, outp
     if output_format == 'plot':
         gf.fig.show()
     elif output_format == 'pdf':
-        gf.fig.savefig('output/returns_tear_sheet.pdf')
+        from quantos import SOURCE_ROOT_DIR
+        from os.path import join
+        gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'returns_tear_sheet.pdf'))
 
 
 @plotting.customize
@@ -308,7 +310,9 @@ def create_information_tear_sheet(factor_data,
     if output_format == 'plot':
         gf.fig.show()
     elif output_format == 'pdf':
-        gf.fig.savefig('output/infomation_tear_sheet.pdf')
+        from quantos import SOURCE_ROOT_DIR
+        from os.path import join
+        gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'infomation_tear_sheet.pdf'))
 
 
 @plotting.customize
@@ -359,7 +363,9 @@ def create_turnover_tear_sheet(factor_data, output_format='plot'):
     if output_format == 'plot':
         gf.fig.show()
     elif output_format == 'pdf':
-        gf.fig.savefig('output/turnover_tear_sheet.pdf')
+        from quantos import SOURCE_ROOT_DIR
+        from os.path import join
+        gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'turnover_tear_sheet.pdf'))
 
 
 @plotting.customize
