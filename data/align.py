@@ -59,8 +59,7 @@ def align(df_value, df_ann, date_arr):
     
     res = np.apply_along_axis(lambda date: get_neareast(df_ann, df_formula, date), 1, date_arr.reshape(-1, 1))
 
-    idx = JzCalendar.convert_int_to_datetime(date_arr)
-    df_res = pd.DataFrame(index=idx, columns=df_value.columns, data=res)
+    df_res = pd.DataFrame(index=date_arr, columns=df_value.columns, data=res)
     return df_res
 
 
