@@ -55,10 +55,24 @@ class Position(object):
         self.cur_size = 0
 
 
-class GoalPosition(Position):
-    def __init__(self):
-        Position.__init__()
+class GoalPosition(object):
+    """
+    Used in goal_portfolio function to generate orders.
 
-        self.ref_price = 0.0  # TODO undocumented
-        self.urgency = 0  # TODO undocumented
+    Attributes
+    ----------
+    security : str
+    ref_price : float
+        Reference price, used by risk management, not by order.
+    size : int
+        Target position size.
+    urgency : int
+        The urgency to adjust position, used to determine trading algorithm.
+
+    """
+    def __init__(self):
+        self.security = ""
+        self.ref_price = 0.0
+        self.size = 0
+        self.urgency = 0
 
