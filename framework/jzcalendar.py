@@ -2,6 +2,7 @@
 
 import datetime
 
+import numpy as np
 import pandas as pd
 from pandas.tseries import offsets
 
@@ -78,6 +79,10 @@ class JzCalendar(object):
     
     @staticmethod
     def convert_datetime_to_int(dt):
+        if isinstance(dt, datetime.datetime):
+            dt = pd.Timestamp(dt)
+        elif isinstance(dt, np.datetime64):
+            dt = pd.Timestamp(dt)
         return dt.year * 10000 + dt.month * 100 + dt.day
 
 
