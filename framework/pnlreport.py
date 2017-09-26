@@ -72,6 +72,8 @@ class PnlManager(object):
         self.end_date = 0
         self.close_prices = {}
         self.universe = []
+        
+        self.data_api = None
     
     def setStrategy(self, sta):
         self.strategy = sta
@@ -92,7 +94,7 @@ class PnlManager(object):
                     pos[key] = p.__getattribute__(key)
             result[int(p.fill_no)] = pos
         
-        return pd.DataFrame(result).transpose().sort()
+        return pd.DataFrame(result).transpose().sort_values(['fill_date', 'fill_time'])
     
     def generateStatisticReport(self, pnls):
         report = PnlReport()
@@ -166,8 +168,9 @@ class PnlManager(object):
         plt.show()
         return report
     
-    def initFromConfig(self, props):
-        self.api = jzquant_api.get_jzquant_api(address=props.get("jsh.addr"), user="TODO", password="TODO")
+    def initFromConfig(self, props, data_server):
+        self.data_api = data_server
+        
         self.start_date = props.get('start_date')
         self.end_date = props.get('end_date')
         self.fut_commission = props.get('future_commission_rate', 0.0)
@@ -182,12 +185,10 @@ class PnlManager(object):
     def prepareData(self):
         begindate = self.calendar.get_last_trade_date(self.start_date)
         enddate = self.calendar.get_next_trade_date(self.end_date)
-        begin_str = dt.datetime.strptime(str(begindate), '%Y%m%d').strftime('%Y-%m-%d')
-        end_str = dt.datetime.strptime(str(enddate), '%Y%m%d').strftime('%Y-%m-%d')
         for security in self.universe:
-            df, msg = self.api.jz_unified('jsd', security, fields="", start_date=begin_str, end_date=end_str)
+            df, msg = self.data_api.daily(security, begin_date=begindate, end_date=enddate, fields="")
             for i in range(0, len(df.index)):
-                date = (df['DATE'][i])
+                date = (df['trade_date'][i])
                 close = df['close'][i]
                 if self.close_prices.has_key(date) == False:
                     self.close_prices[date] = {}

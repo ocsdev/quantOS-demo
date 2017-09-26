@@ -6,46 +6,42 @@ from framework.jzcalendar import JzCalendar
 from framework.pnlreport import PnlManager
 from framework import common
 from pubsub import *
+from framework.alphabacktest import BacktestInstance
 
 
 ########################################################################
-class BacktestInstance(Subscriber):
+class EventBacktestInstance(BacktestInstance):
     # ----------------------------------------------------------------------
     def __init__(self):
-        self.instanceid = ''
-        self.strategy = None
-        self.start_date = 0
-        self.end_date = 0
-        self.current_date = 0
-        self.last_date = 0
-        self.folder = ''
+        super(EventBacktestInstance, self).__init__()
+        pass
         
-        self.calendar = JzCalendar()
-    
-    def initFromConfig(self, props, data_server, gateway, strategy):
+    def init_from_config(self, props, data_api, gateway, strategy):
+        self.props = props
         self.instanceid = props.get("instanceid")
         
         self.start_date = props.get("start_date")
         self.end_date = props.get("end_date")
-        self.folder = props.get("folder")
         
-        data_server.init_from_config(props)
-        data_server.initialize()
+        data_api.init_from_config(props)
+        data_api.initialize()
         
         gateway.init_from_config(props)
         
-        strategy.context.dataserver = data_server
+        strategy.context.dataserver = data_api
         strategy.context.gateway = gateway
         strategy.context.calendar = self.calendar
+        
         gateway.register_callback(strategy.pm)
         
         strategy.init_from_config(props)
         strategy.initialize(common.RUN_MODE.BACKTEST)
         
+        self.strategy = strategy
+        
         self.pnlmgr = PnlManager()
         self.pnlmgr.setStrategy(strategy)
-        self.pnlmgr.initFromConfig(props)
-        self.strategy = strategy
+        self.pnlmgr.initFromConfig(props, data_api)
         
         return True
     
@@ -69,14 +65,14 @@ class BacktestInstance(Subscriber):
             if (trade_date != last_trade_date):
                 
                 if (last_trade_date > 0):
-                    self.closeDay(last_trade_date)
+                    self.close_day(last_trade_date)
                 
                 self.strategy.trade_date = trade_date
                 self.strategy.pm.on_new_day(trade_date, last_trade_date)
                 self.strategy.onNewday(trade_date)
                 last_trade_date = trade_date
             
-            self.processQuote(quote)
+            self.process_quote(quote)
     
     def get_next_trade_date(self, current):
         next_dt = self.calendar.get_next_trade_date(current)
@@ -96,8 +92,8 @@ class BacktestInstance(Subscriber):
         
         ee = self.strategy.eventEngine  # TODO event-driven way of lopping, is it proper?
         ee.register(EVENT.CALENDAR_NEW_TRADE_DATE, __extract(self.strategy.onNewday))
-        ee.register(EVENT.MD_QUOTE, __extract(self.processQuote))
-        ee.register(EVENT.MARKET_CLOSE, __extract(self.closeDay))
+        ee.register(EVENT.MD_QUOTE, __extract(self.process_quote))
+        ee.register(EVENT.MARKET_CLOSE, __extract(self.close_day))
         
         # ------------
         
@@ -124,7 +120,7 @@ class BacktestInstance(Subscriber):
                 # self.strategy.onMarketClose()
                 # self.closeDay(self.current_date)
                 e_close = Event(EVENT.MARKET_CLOSE)
-                e_quote.data = self.current_date
+                e_close.data = self.current_date
                 ee.put(e_close)
                 ee.process_once()
                 # self.strategy.onSettle()
@@ -138,8 +134,8 @@ class BacktestInstance(Subscriber):
             
             # self.strategy.onTradingEnd()
     
-    def processQuote(self, quote):
-        result = self.strategy.context.gateway.processQuote(quote)
+    def process_quote(self, quote):
+        result = self.strategy.context.gateway.process_quote(quote)
         
         for (tradeInd, statusInd) in result:
             self.strategy.pm.on_trade_ind(tradeInd)
@@ -148,12 +144,12 @@ class BacktestInstance(Subscriber):
         self.strategy.onQuote(quote)
     
     # close one trade day, cancel all orders    
-    def closeDay(self, trade_date):
+    def close_day(self, trade_date):
         print 'close trade_date ' + str(trade_date)
-        result = self.strategy.context.gateway.closeDay(trade_date)
+        result = self.strategy.context.gateway.close_day(trade_date)
         
         for statusInd in result:
             self.strategy.pm.on_order_status(statusInd)
     
-    def generateReport(self):
+    def generate_report(self):
         return self.pnlmgr.generateReport()

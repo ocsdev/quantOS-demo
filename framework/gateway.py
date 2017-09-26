@@ -351,15 +351,15 @@ class Gateway(object):
         pass
     
     @abstractmethod
-    def sendOrder(self, order, algo, param):
+    def send_order(self, order, algo, param):
         pass
     
     @abstractmethod
-    def processQuote(self, quote):
+    def process_quote(self, quote):
         pass
     
     @abstractmethod
-    def closeDay(self, trade_date):
+    def close_day(self, trade_date):
         pass
 
 
@@ -608,7 +608,7 @@ class StockSimulatorDaily(object):
             # get fill price
             if isinstance(order, FixedPriceTypeOrder):
                 price_target = order.price_target
-                 = df.loc[:, price_target].values[0]
+                fill_price = df.loc[:, price_target].values[0]
             elif isinstance(order, VwapOrder):
                 if order.start != -1:
                     raise NotImplementedError("Vwap of a certain time range")
@@ -815,12 +815,12 @@ class BarSimulatorGateway(Gateway):
     def init_from_config(self, props):
         pass
     
-    def sendOrder(self, order, algo, param):
+    def send_order(self, order, algo, param):
         self.orderbook.addOrder(order)
         self.callback.on_order_rsp(order, True, '')
     
-    def processQuote(self, quote):
+    def process_quote(self, quote):
         return self.orderbook.makeTrade(quote)
     
-    def closeDay(self, trade_date):
+    def close_day(self, trade_date):
         return self.orderbook.cancelAllOrder()

@@ -69,7 +69,7 @@ class Strategy(object):
     
     # -------------------------------------------
     def sendOrder(self, order, algo, param):
-        self.context.gateway.sendOrder(order, algo, param)
+        self.context.gateway.send_order(order, algo, param)
     
     def cancelOrder(self, order):
         self.context.gateway.cancelOrder(order)
