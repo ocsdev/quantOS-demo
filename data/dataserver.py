@@ -296,6 +296,7 @@ class JzDataServer(BaseDataServer):
         
         address = 'tcp://10.1.0.210:8910'
         self.api = DataApi(address, use_jrpc=False)
+        self.api.set_timeout(60)
         self.api.login("test", "123")
 
     def daily(self, security, start_date, end_date,

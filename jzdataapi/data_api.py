@@ -55,6 +55,7 @@ class DataApi:
         self._schema_id = 0
         self._sub_hash = ""
         self._subscribed_set = set()
+        self._timeout = 20
 
     def __del__(self):
         self._remote.close()
@@ -204,7 +205,7 @@ class DataApi:
         for kw in kwargs.items():
             rpc_params[ str(kw[0]) ] = kw[1]
 
-        cr = self._remote.call(method, rpc_params)
+        cr = self._remote.call(method, rpc_params, timeout=self._timeout)
         
         return utils.extract_result(cr, data_format=data_format, class_name=data_class)
 
@@ -367,4 +368,5 @@ class DataApi:
     def set_heartbeat(self, interval, timeout):
         self._remote.set_hearbeat_options(interval, timeout)
 
-
+    def set_timeout(self, timeout):
+        self._timeout = timeout

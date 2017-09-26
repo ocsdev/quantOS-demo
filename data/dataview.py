@@ -59,7 +59,15 @@ class BaseDataView(object):
         self.reference_quarterly_fields = {'ann_date', 'int_inc', 'net_profit_incl_min_int_inc', 'oper_exp',
                                            'oper_profit', 'oper_rev', 'report_date', 'security',
                                            'tot_oper_rev', 'tot_profit'}
-
+        self.ANN_DATE_FIELD_NAME = 'ann_date'
+        self.REPORT_DATE_FIELD_NAME = 'report_date'
+    
+    @staticmethod
+    def _group_df_to_dict(df, by):
+        gp = df.groupby(by=by)
+        res = {key: value for key, value in gp}
+        return res
+    
     def _query_data(self, security, fields):
         """
         Query data using different APIs, then store them in dict.
@@ -91,31 +99,30 @@ class BaseDataView(object):
             dic_market_daily = dict()
             dic_ref_daily = dict()
             dic_ref_quarterly = dict()
-            
-            for sec in security:
-                # TODO : use fields = {field: kwargs} to enable params
-                if fields_market_daily:
-                    df_daily, msg1 = self.data_api.daily(sec, start_date=self.start_date, end_date=self.end_date,
-                                                         adjust_mode=None, fields=sep.join(fields_market_daily))
-                    if msg1 != '0,':
-                        print msg1
-                    dic_market_daily[sec] = df_daily
-                
-                if fields_ref_daily:
-                    df_ref_daily, msg2 = self._query_wd_dailyindicator(sec, self.start_date, self.end_date,
-                                                                       sep.join(fields_ref_daily))
-                    if msg2 != '0,':
-                        print msg2
-                    dic_ref_daily[sec] = df_ref_daily
-                
-                if fields_ref_quarterly:
-                    df_ref_quarterly, msg3 = self._query_wd_income(sec, self.start_date, self.end_date,
-                                                                   sep.join(fields_ref_quarterly))
-                    if msg3 != '0,':
-                        print msg3
-                    dic_ref_quarterly[sec] = df_ref_quarterly
-                    
-                
+
+            # TODO : use fields = {field: kwargs} to enable params
+            # TODO: read securities together
+            security_str = sep.join(security)
+            if fields_market_daily:
+                df_daily, msg1 = self.data_api.daily(security_str, start_date=self.start_date, end_date=self.end_date,
+                                                     adjust_mode=None, fields=sep.join(fields_market_daily))
+                if msg1 != '0,':
+                    print msg1
+                dic_market_daily = self._group_df_to_dict(df_daily, 'security')
+
+            if fields_ref_daily:
+                df_ref_daily, msg2 = self._query_wd_dailyindicator(security_str, self.start_date, self.end_date,
+                                                                   sep.join(fields_ref_daily))
+                if msg2 != '0,':
+                    print msg2
+                dic_ref_daily = self._group_df_to_dict(df_ref_daily, 'security')
+
+            if fields_ref_quarterly:
+                df_ref_quarterly, msg3 = self._query_wd_income(security_str, self.start_date, self.end_date,
+                                                               sep.join(fields_ref_quarterly))
+                if msg3 != '0,':
+                    print msg3
+                dic_ref_quarterly = self._group_df_to_dict(df_ref_quarterly, 'security')
         else:
             raise NotImplementedError("freq = {}".format(self.freq))
         
@@ -225,7 +232,7 @@ class BaseDataView(object):
         for sec, df in dic.viewitems():
             # df_mod = self._process_index(df)
             # df_mod = df_mod.loc[:, self.reference_daily_fields.intersection(fields)]
-            idx_list = ['report_period', 'security']
+            idx_list = [self.REPORT_DATE_FIELD_NAME, 'security']
             raw_idx = df.set_index(idx_list)
             raw_idx.sort_index(axis=0, level=idx_list, inplace=True)
             dic[sec] = raw_idx
@@ -322,7 +329,7 @@ class BaseDataView(object):
     
     @staticmethod
     def _split_ann_value(df, field_name):
-        df_ann = df.loc[pd.IndexSlice[:, :], 'ann_date']
+        df_ann = df.loc[pd.IndexSlice[:, :], self.ANN_DATE_FIELD_NAME]
         df_ann = df_ann.unstack(level=1)
     
         df_value = df.loc[pd.IndexSlice[:, :], field_name]
@@ -407,8 +414,10 @@ class BaseDataView(object):
 
     def _query_wd_income(self, security, start_date, end_date, fields=""):
         """Helper function to call data_api.query with 'wd.income' more conveniently."""
-        if 'ann_date' not in fields:
-            fields = ','.join(['ann_date', fields])
+        fields = set(fields.split(','))
+        fields.add(self.ANN_DATE_FIELD_NAME)
+        fields.add(self.REPORT_DATE_FIELD_NAME)
+        fields = ','.join(list(fields))
         filter_argument = self._dic2url({'security': security,
                                          'start_date': start_date,
                                          'end_date': end_date,
@@ -416,7 +425,7 @@ class BaseDataView(object):
         return self.data_api.query("wd.income",
                                    fields=fields,
                                    filter=filter_argument,
-                                   order_by="ann_date")
+                                   order_by=self.ANN_DATE_FIELD_NAME)
     
     def _query_wd_dailyindicator(self, security, start_date, end_date, fields=""):
         """Helper function to call data_api.query with 'wd.secDailyIndicator' more conveniently."""
