@@ -48,29 +48,38 @@ class RUN_MODE(ReprIntEnum):
 
 @unique
 class ORDER_TYPE(ReprStrEnum):
-    LIMITORDER = "LimitOrder"
-    STOPORDER = "StopOrder"
+    MARKET = "market"
+    LIMIT = "limit"
+    STOP = "stop"  # convert to market order once security price meet certain conditions.
+
 
 
 @unique
 class ORDER_ACTION(ReprStrEnum):
-    BUY = "Buy"
-    SELL = "Sell"
-    SHORT = "Short"
-    COVER = "Cover"
-    SELLTODAY = "SellToday"
-    SELLYESTERDAY = "SellYesterday"
-    COVERYESTERDAY = "CoverYesterday"
-    COVERTODAY = "CoverToday"
+    BUY = "buy"
+    SELL = "sell"
+    SHORT = "short"
+    COVER = "cover"
+    SELLTODAY = "sellToday"
+    SELLYESTERDAY = "sellYesterday"
+    COVERYESTERDAY = "coverYesterday"
+    COVERTODAY = "coverToday" #TODO not appears in API doc
 
 
 @unique
 class ORDER_STATUS(ReprStrEnum):
-    NEW = "New"
-    ACCEPTED = "Accepted"
-    FILLED = "Filled"
-    CANCELLED = "Cancelled"
-    REJECTED = "Rejected"
+    NEW = "new"
+    ACCEPTED = "accepted"
+    FILLED = "filled"
+    CANCELLED = "cancelled"
+    REJECTED = "rejected"
+
+
+@unique
+class ORDER_TIME_IN_FORCE(ReprStrEnum):
+    FOK = 'fok'
+    FAK = 'fak'
+    IOC = 'ioc'
 
 
 """
@@ -106,6 +115,13 @@ ORDER_STATUS_REJECTED  = "Rejected"
 
 if __name__ == "__main__":
     """What below are actually unit tests. """
-    print QUOTE_TYPE.TICK == 0
-    print RUN_MODE.BACKTEST == 1
-    print ORDER_ACTION.BUY == 'Buy'
+
+    print "Running test..."
+
+    assert QUOTE_TYPE.TICK == 0
+    assert RUN_MODE.BACKTEST == 1
+    assert ORDER_ACTION.BUY == 'buy'
+    assert ORDER_TYPE.MARKET == 'market'
+    assert ORDER_STATUS.FILLED == 'filled'
+
+    print "Test passed."
