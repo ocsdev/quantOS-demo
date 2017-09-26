@@ -97,11 +97,13 @@ class JshHistoryBarDataServer(DataServer):
         self.calendar = JzCalendar()
         self.bar_type   = QUOTE_TYPE_MINBAR
         self.begin_date = 0
+        self.current_date = self.begin_date
+        self.last_date = self.begin_date
         self.end_date   = 0
         self.symbol     = ''
         
-        self.cache      = None
-        self.read_pos   = 0
+        self.daily_quotes_cache      = None
+        self.next_day_pos   = 0
         self.cache_pos  = 0
         
         DataServer.__init__(self)
@@ -115,7 +117,7 @@ class JshHistoryBarDataServer(DataServer):
     
     def initialization(self):
         self.api = jzquant_api.connect(addr=self.addr,user="TODO", password="TODO")
-        self.read_pos = self.begin_date
+        self.next_day_pos = self.begin_date
     
     def start(self):
         pass
@@ -127,29 +129,46 @@ class JshHistoryBarDataServer(DataServer):
         pass
     
     def getNextQuote(self):
-        if (self.cache is not None and self.cache_pos < len(self.cache)):
-            quote = self.cache[self.cache_pos]
+        if (self.daily_quotes_cache is not None and self.cache_pos < len(self.daily_quotes_cache)):
+            quote = self.daily_quotes_cache[self.cache_pos]
             self.cache_pos = self.cache_pos + 1
             return quote
         
         else:
-            self.cache = None
+            self.daily_quotes_cache = None
             self.cache_pos = 0
             
-            while (self.cache is None or len(self.cache) == 0):
-                if (self.read_pos > self.end_date):
+            while (self.daily_quotes_cache is None or len(self.daily_quotes_cache) == 0):
+                if (self.next_day_pos > self.end_date):
                     return None
                 
-                self.cache = self.makeCache(self.read_pos)
-                self.read_pos = self.getNextDate(self.read_pos)    
+                self.daily_quotes_cache = self.makeCache(self.next_day_pos)
+                self.next_day_pos = self.getNextDate(self.next_day_pos)
             
             return self.getNextQuote();
-    
+
+    def onNewDay(self):
+        self.last_date = self.current_date
+
+        self.daily_quotes_cache = None
+        while self.daily_quotes_cache is None or len(self.daily_quotes_cache) == 0:
+            self.daily_quotes_cache = self.makeCache(self.next_day_pos)
+            self.current_date = self.next_day_pos
+            self.next_day_pos = self.getNextDate(self.next_day_pos)
+
+        self.cache_pos = 0
+
+    def quoteGenerator(self):
+        while self.cache_pos < len(self.daily_quotes_cache):
+            yield self.daily_quotes_cache[self.cache_pos]
+            self.cache_pos += 1
+
+
     def getNextDate(self, read_pos):
         dt = datetime.strptime(str(read_pos) , '%Y%m%d')
-        next_dt = dt + timedelta(days = 1)
-        next_pos = int(next_dt.strftime('%Y%m%d'))
-#         today = self.calendar.transferDtToInt(dt)
+        # next_dt = dt + timedelta(days = 1)
+        # next_pos = int(next_dt.strftime('%Y%m%d'))
+        # today = self.calendar.transferDtToInt(dt)
         next_pos = self.calendar.getNextTradeDate(read_pos)
         return next_pos
     

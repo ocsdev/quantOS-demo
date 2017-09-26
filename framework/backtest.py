@@ -77,6 +77,29 @@ class BacktestInstance(Subscriber):
                 
             self.processQuote(quote)
 
+    def run2(self):
+        dataserver = self.strategy.context.dataserver
+        universe = self.strategy.context.universe
+
+        dataserver.subscribe(self, universe)
+
+        while True:  # each loop is a new trading day
+            dataserver.onNewDay()
+            if dataserver.current_date > self.end_date:
+                break
+            # gateway.oneNewDay()
+            self.strategy.onNewday(dataserver.current_date)
+            self.strategy.pm.onNewDay(dataserver.current_date, dataserver.last_date)
+            self.strategy.trade_date = dataserver.current_date
+
+            quote_generator = dataserver.quoteGenerator()
+            for quote in quote_generator:
+                self.processQuote(quote)
+
+            # self.strategy.onMarketClose()
+
+        # self.strategy.onTradingEnd()
+
     def processQuote(self, quote):
         result = self.strategy.context.gateway.processQuote(quote)
         
