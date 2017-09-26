@@ -18,8 +18,11 @@ class BacktestInstance(Subscriber):
         self.folder = ''
         
         self.calendar = JzCalendar()
+        
+        self.props = None
     
     def init_from_config(self, props, data_server, gateway, strategy):
+        self.props = props
         self.instanceid = props.get("instanceid")
         
         self.start_date = props.get("start_date")
@@ -43,6 +46,12 @@ class BacktestInstance(Subscriber):
 
 
 class AlphaBacktestInstance(BacktestInstance):
+    """
+    Attributes
+    ----------
+    strategy : AlphaStrategy
+    
+    """
     def __init__(self):
         BacktestInstance.__init__(self)
         pass
@@ -56,33 +65,59 @@ class AlphaBacktestInstance(BacktestInstance):
         
         self.current_date = self.start_date
         while self.current_date <= self.end_date:
-            # recorder.record_info()
-            # self.last_date = self.current_date
-            
-            if not gateway.match_finished:
-                self.current_date = self.calendar.get_next_trade_date(self.current_date)
-            else:
+            if gateway.match_finished:
                 self.current_date = self.calendar.get_next_period_day(self.current_date,
                                                                       self.strategy.period, self.strategy.days_delay)
-            
-            # self.last_date = self.calendar.get_last_trade_date(self.current_date)
-            self.strategy.on_new_day(self.current_date)
-            gateway.on_new_day(self.current_date)
-            
-            if not gateway.match_finished:
-                # TODO here we must make sure the matching will not last to next period
-                
-                df_dic = self.strategy.get_univ_prices()
-                trade_indications = gateway.match(df_dic, self.current_date)
-                for trade_ind in trade_indications:
-                    gateway.on_trade_ind(trade_ind)
+                self.last_date = self.calendar.get_last_trade_date(self.current_date)
+
+                self.on_new_day(self.last_date)
+                self.strategy.re_balance()
+
+                self.on_new_day(self.current_date)
+                self.strategy.send_bullets()
             else:
-                # suspension_list = data_server.get_suspensions(strategy.context.universe, current_date)
-                suspension_list = None
+                # TODO here we must make sure the matching will not last to next period
+                self.current_date = self.calendar.get_next_trade_date(self.current_date)
+                self.on_new_day(self.current_date)
                 
-                self.strategy.re_balance(suspension_list)
+            df_dic = self.strategy.get_univ_prices()
+            trade_indications = gateway.match(df_dic, self.current_date)
+            for trade_ind in trade_indications:
+                gateway.on_trade_ind(trade_ind)
                 
-                # TODO settle function
+        print "Backtest done."
+        self.save_results()
+    
+    def on_new_day(self, date):
+        self.strategy.on_new_day(date)
+        self.strategy.context.gateway.on_new_day(date)
+    
+    def save_results(self, folder='../output/'):
+        import pandas as pd
+        import json
+        
+        trades = self.strategy.pm.trades
+        
+        type_map = {'task_id': str,
+                    'entrust_no': str,
+                    'entrust_action': str,
+                    'security': str,
+                    'fill_price': float,
+                    'fill_size': int,
+                    'fill_date': int,
+                    'fill_time': int,
+                    'fill_no': str}
+        # keys = trades[0].__dict__.keys()
+        ser_list = dict()
+        for key in type_map.keys():
+            v = [t.__getattribute__(key) for t in trades]
+            ser = pd.Series(data=v, index=None, dtype=type_map[key], name=key)
+            ser_list[key] = ser
+        df_trades = pd.DataFrame(ser_list)
+        
+        df_trades.to_csv(folder+'trades.csv')
+        
+        json.dump(self.props, open(folder+'configs.json', 'w'))
 
 
 if __name__ == "__main__":
