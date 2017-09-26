@@ -1,6 +1,6 @@
 # encoding: UTF-8
 
-from data.dataserver import JzDataServer, BaseDataServer
+from data.dataserver import JzDataServer
 
 
 def test_jz_data_server_daily():
@@ -63,11 +63,27 @@ def test_jz_data_server_wd():
     for res4, msg4 in [ds.query("wd.income", fields="",
                                 filter="security=600000.SH&start_date=20150101&end_date=20170101&report_type=408002000",
                                 order_by="report_date"),
-                       ds.query_wd_income('600000.SH', 20150101, 20170101, fields="")]:
+                       ds.query_wd_fin_stat('income', '600000.SH', 20150101, 20170101, fields="")]:
         assert msg4 == '0,'
         assert res4.shape == (8, 12)
         print res4.loc[4, 'oper_rev'] == 37918000000
         assert res4.loc[4, 'oper_rev'] == 37918000000
+
+
+def test_jz_data_server_daily_ind_performance():
+    ds = JzDataServer()
+    
+    hs300 = ds.get_index_comp('000300.SH', 20140101, 20170101)
+    hs300_str = ','.join(hs300)
+    
+    fields = "pb,pe,share_float_free,net_assets,limit_status"
+    res, msg = ds.query("wd.secDailyIndicator", fields=fields,
+                          filter=("security=" + hs300_str
+                                  + "&start_date=20160907&end_date=20170907"),
+                          orderby="trade_date")
+    assert msg == '0,'
+    
+    print
 
 
 def test_jz_data_server_components():
@@ -77,3 +93,7 @@ def test_jz_data_server_components():
     
     arr = ds.get_index_comp(index='000300.SH', start_date=20140101, end_date=20170505)
     assert len(arr) == 430
+
+
+if __name__ == "__main__":
+    test_jz_data_server_daily_ind_performance()

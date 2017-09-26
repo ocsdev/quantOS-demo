@@ -21,7 +21,8 @@ def test_dv_write():
              'fields': 'open,close,high,low,volume,pb,net_assets,ncf', 'freq': 1}
     
     dv.prepare_data(props=props, data_api=ds)
-    assert dv.data.shape == (242, 27)
+    assert dv.data_d.shape == (242, 27)
+    assert dv.dates.shape == (242, )
     # TODO
     """
     PerformanceWarning:
@@ -30,7 +31,7 @@ def test_dv_write():
     """
     
     folder_path = '../output/prepared'
-    dv.save_dataview(folder=folder_path)
+    dv.save_dataview(folder_path=folder_path)
 
 
 def test_dv_quarterly():
@@ -40,12 +41,12 @@ def test_dv_quarterly():
     dv = BaseDataView()
     
     secs = '600030.SH,000063.SZ,000001.SZ'
-    props = {'start_date': 20170309, 'end_date': 20170601, 'universe': '000300.SH', 'security': secs,
-             'fields': 'open,close,pb,net_assets,total_oper_rev,total_oper_exp', 'freq': 1}
+    props = {'start_date': 20160609, 'end_date': 20170601, 'universe': '000300.SH', 'security': secs,
+             'fields': 'open,close,pb,net_assets,total_oper_rev,oper_exp', 'freq': 1}
     
     dv.prepare_data(props=props, data_api=ds)
     folder_path = '../output/prepared'
-    dv.save_dataview(folder=folder_path)
+    dv.save_dataview(folder_path=folder_path)
     
     res = dv.get("", 0, 0, 'total_oper_rev')
 
@@ -55,11 +56,15 @@ def test_add_field_quarterly():
     folder_path = '../output/prepared/20160609_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
     nrows, ncols = dv.data_q.shape
-    n_securities = len(dv.data.columns.levels[0])
+    n_securities = len(dv.data_d.columns.levels[0])
     
     from data.dataserver import JzDataServer
     ds = JzDataServer()
-    dv.add_field(ds, 'net_inc_other_ops')
+    dv.add_field('net_inc_other_ops', ds)
+    """
+    dv.add_field('oper_rev', ds)
+    dv.add_field('turnover', ds)
+    """
     assert dv.data_q.shape == (nrows, ncols + 1 * n_securities)
     
     
@@ -67,21 +72,21 @@ def test_add_formula_quarterly():
     dv = BaseDataView()
     folder_path = '../output/prepared/20160609_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
-    nrows, ncols = dv.data.shape
-    n_securities = len(dv.data.columns.levels[0])
+    nrows, ncols = dv.data_d.shape
+    n_securities = len(dv.data_d.columns.levels[0])
     
     formula = 'total_oper_rev / close'
-    dv.add_formula(formula, 'myvar1')
+    dv.add_formula('myvar1', formula)
     df1 = dv.get_ts('myvar1')
     assert df1.shape[0] == len(dv.dates)
     
     formula2 = 'Delta(total_oper_exp * myvar1 - open, 3)'
-    dv.add_formula(formula2, 'myvar2')
+    dv.add_formula('myvar2', formula2)
     df2 = dv.get_ts('myvar2')
     assert df2.shape[0] == len(dv.dates)
 
 
-def test_dv_read():
+def test_dv_load():
     dv = BaseDataView()
     folder_path = '../output/prepared/20160601_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
@@ -106,37 +111,37 @@ def test_add_field():
     dv = BaseDataView()
     folder_path = '../output/prepared/20160601_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
-    nrows, ncols = dv.data.shape
-    n_securities = len(dv.data.columns.levels[0])
+    nrows, ncols = dv.data_d.shape
+    n_securities = len(dv.data_d.columns.levels[0])
     
     from data.dataserver import JzDataServer
     ds = JzDataServer()
-    dv.add_field(ds, 'share_amount')
-    assert dv.data.shape == (nrows, ncols + 1 * n_securities)
+    dv.add_field('share_amount', ds)
+    assert dv.data_d.shape == (nrows, ncols + 1 * n_securities)
 
 
 def test_add_formula():
     dv = BaseDataView()
     folder_path = '../output/prepared/20160601_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
-    nrows, ncols = dv.data.shape
-    n_securities = len(dv.data.columns.levels[0])
+    nrows, ncols = dv.data_d.shape
+    n_securities = len(dv.data_d.columns.levels[0])
     
     formula = 'Delta(high - close, 1)'
-    dv.add_formula(formula, 'myvar1')
-    assert dv.data.shape == (nrows, ncols + 1 * n_securities)
+    dv.add_formula('myvar1', formula)
+    assert dv.data_d.shape == (nrows, ncols + 1 * n_securities)
     
     formula2 = 'myvar1 - close'
-    dv.add_formula(formula2, 'myvar2')
-    assert dv.data.shape == (nrows, ncols + 2 * n_securities)
+    dv.add_formula('myvar2', formula2)
+    assert dv.data_d.shape == (nrows, ncols + 2 * n_securities)
 
 
 if __name__ == "__main__":
-    test_dv_write()
-    test_dv_read()
+    # test_dv_write()
+    # test_dv_read()
     # test_xarray()
-    test_add_field()
+    # test_add_field()
     # test_add_formula()
-    # test_dv_quarterly()
+    test_dv_quarterly()
     # test_add_field_quarterly()
     # test_add_formula_quarterly()

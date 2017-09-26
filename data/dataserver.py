@@ -382,7 +382,44 @@ class JzDataServer(BaseDataServer):
         l = ['='.join([key, str(value)]) for key, value in d.items()]
         return '&'.join(l)
 
-    def query_wd_income(self, security, start_date, end_date, fields="", extend=0):
+    def query_wd_fin_stat(self, type_, security, start_date, end_date, fields=""):
+        """
+        Helper function to call data_api.query with 'wd.income' more conveniently.
+        
+        Parameters
+        ----------
+        type_ : {'income', 'balance_sheet', 'cash_flow'}
+        security : str
+            separated by ','
+        start_date : int
+            Annoucement date in results will be no earlier than start_date
+        end_date : int
+            Annoucement date in results will be no later than start_date
+        fields : str, optional
+            separated by ',', default ""
+
+        Returns
+        -------
+        df : pd.DataFrame
+            index date, columns fields
+        msg : str
+
+        """
+        view_map = {'income': 'wd.income', 'cash_flow': 'wd.cashFlow', 'balance_sheet': 'wd.balanceSheet'}
+        view_name = view_map.get(type_, None)
+        if view_name is None:
+            raise NotImplementedError("type_ = {:s}".format(type_))
+        
+        filter_argument = self._dic2url({'security': security,
+                                         'start_date': start_date,
+                                         'end_date': end_date,
+                                         'report_type': '408002000',  # joint sheet
+                                         'update_flag': '0'})  # 0 means first time, not update
+        
+        return self.query(view_name, fields=fields, filter=filter_argument,
+                          order_by=self.REPORT_DATE_FIELD_NAME)
+
+    def query_wd_balance_sheet(self, security, start_date, end_date, fields="", extend=0):
         """
         Helper function to call data_api.query with 'wd.income' more conveniently.
         
@@ -416,10 +453,48 @@ class JzDataServer(BaseDataServer):
                                          'start_date': start_date,
                                          'end_date': end_date,
                                          'report_type': '408002000'})
-        
-        return self.query("wd.income", fields=fields, filter=filter_argument,
+    
+        return self.query("wd.balanceSheet", fields=fields, filter=filter_argument,
                           order_by=self.REPORT_DATE_FIELD_NAME)
 
+    def query_wd_cash_flow(self, security, start_date, end_date, fields="", extend=0):
+        """
+        Helper function to call data_api.query with 'wd.income' more conveniently.
+        
+        Parameters
+        ----------
+        security : str
+            separated by ','
+        start_date : int
+            Annoucement date in results will be no earlier than start_date
+        end_date : int
+            Annoucement date in results will be no later than start_date
+        fields : str, optional
+            separated by ',', default ""
+        extend : int, optional
+            If not zero, extend for weeks.
+
+        Returns
+        -------
+        df : pd.DataFrame
+            index date, columns fields
+        msg : str
+
+        """
+        # extend 1 year
+        if extend:
+            start_dt = JzCalendar.convert_int_to_datetime(start_date)
+            start_dt = start_dt - pd.Timedelta(weeks=extend)
+            start_date = JzCalendar.convert_datetime_to_int(start_dt)
+    
+        filter_argument = self._dic2url({'security': security,
+                                         'start_date': start_date,
+                                         'end_date': end_date,
+                                         'report_type': '408002000'})
+    
+        return self.query("wd.cashFlow", fields=fields, filter=filter_argument,
+                          order_by=self.REPORT_DATE_FIELD_NAME)
+    
     def query_wd_dailyindicator(self, security, start_date, end_date, fields=""):
         """
         Helper function to call data_api.query with 'wd.secDailyIndicator' more conveniently.
@@ -450,6 +525,21 @@ class JzDataServer(BaseDataServer):
                           orderby="trade_date")
 
     def get_index_comp(self, index, start_date, end_date):
+        """
+        Return all securities that have been in index during start_date and end_date.
+        
+        Parameters
+        ----------
+        index : str
+            separated by ','
+        start_date : int
+        end_date : int
+
+        Returns
+        -------
+        list
+
+        """
         filter_argument = self._dic2url({'index_code': index,
                                          'start_date': start_date,
                                          'end_date': end_date})
