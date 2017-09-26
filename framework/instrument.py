@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from dbmanager import *
+from data.dbmanager import *
 
 
 class Instrument(object):

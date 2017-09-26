@@ -44,22 +44,22 @@ class DoubleMaStrategy(EventDrivenStrategy):
     def buy(self, quote, price, size):
         order = self.createOrder(quote, price, size)
         order.entrust_action = common.ORDER_ACTION.BUY
-        self.context.gateway.sendOrder(order, '', '')
+        self.context.gateway.send_order(order, '', '')
     
     def sell(self, quote, price, size):
         order = self.createOrder(quote, price, size)
         order.entrust_action = common.ORDER_ACTION.SELL
-        self.context.gateway.sendOrder(order, '', '')
+        self.context.gateway.send_order(order, '', '')
     
     def cover(self, quote, price, size):
         order = self.createOrder(quote, price, size)
         order.entrust_action = common.ORDER_ACTION.BUY
-        self.context.gateway.sendOrder(order, '', '')
+        self.context.gateway.send_order(order, '', '')
     
     def short(self, quote, price, size):
         order = self.createOrder(quote, price, size)
         order.entrust_action = common.ORDER_ACTION.SELL
-        self.context.gateway.sendOrder(order, '', '')
+        self.context.gateway.send_order(order, '', '')
     
     def onNewday(self, trade_date):
         print 'new day comes ' + str(trade_date)

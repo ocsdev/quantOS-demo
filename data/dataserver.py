@@ -16,7 +16,8 @@ class Quote(object):
         self.frequency = 0
         self.security = ''
         self.refsecurity = ''
-        self.time = ''
+        self.date = 0
+        self.time = 0
         self.open = 0.0
         self.high = 0.0
         self.low = 0.0
@@ -35,12 +36,18 @@ class Quote(object):
         self.format = '%Y%m%d %H:%M:%S %f'
     
     def getDate(self):
+        """
         dt = datetime.strptime(self.time, self.format)
         return int(dt.strftime('%Y%m%d'))
+        """
+        return self.date
     
     def getTime(self):
+        """
         dt = datetime.strptime(self.time, self.format)
         return int(dt.strftime('%H%M%S'))
+        """
+        return self.time
     
     def show(self):
         print self.type, self.time, self.security, self.open, self.high, self.low, self.close, self.volume, self.turnover
@@ -145,7 +152,7 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def daily(self, security, begin_date, end_date, fields="", adjust_mode=None):
+    def daily(self, security, start_date, end_date, fields="", adjust_mode=None):
         """
         Query dar bar,
         support auto-fill suspended securities data,
@@ -155,7 +162,7 @@ class BaseDataServer(Publisher):
         ----------
         security : str
             support multiple securities, separated by comma.
-        begin_date : int or str
+        start_date : int or str
             YYYMMDD or 'YYYY-MM-DD'
         end_date : int or str
             YYYMMDD or 'YYYY-MM-DD'
@@ -176,14 +183,14 @@ class BaseDataServer(Publisher):
 
         Examples
         --------
-        df, msg = api.daily("00001.SH,cu1709.SHF",begin_date=20170503, end_date=20170708,
+        df, msg = api.daily("00001.SH,cu1709.SHF",start_date=20170503, end_date=20170708,
                             fields="open,high,low,last,volume", fq=None, skip_suspended=True)
 
         """
         pass
     
     @abstractmethod
-    def bar(self, security, begin_time=200000, end_time=160000, trade_date=None, cycle='1m', fields=""):
+    def bar(self, security, start_time=200000, end_time=160000, trade_date=None, cycle='1m', fields=""):
         """
         Query minute bars of various type, return DataFrame.
 
@@ -191,7 +198,7 @@ class BaseDataServer(Publisher):
         ----------
         security : str
             support multiple securities, separated by comma.
-        begin_time : int (HHMMSS) or str ('HH:MM:SS')
+        start_time : int (HHMMSS) or str ('HH:MM:SS')
             Default is market open time.
         end_time : int (HHMMSS) or str ('HH:MM:SS')
             Default is market close time.
@@ -212,7 +219,7 @@ class BaseDataServer(Publisher):
 
         Examples
         --------
-        df, msg = api.bar("000001.SH,cu1709.SHF", begin_time="09:56:00", end_time="13:56:00",
+        df, msg = api.bar("000001.SH,cu1709.SHF", start_time="09:56:00", end_time="13:56:00",
                           trade_date="20170823", fields="open,high,low,last,volume", cycle="5m")
 
         """
@@ -220,14 +227,14 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def tick(self, security, begin_time=200000, end_time=160000, trade_date=None, fields=""):
+    def tick(self, security, start_time=200000, end_time=160000, trade_date=None, fields=""):
         """
         Query tick data in DataFrame.
         
         Parameters
         ----------
         security : str
-        begin_time : int (HHMMSS) or str ('HH:MM:SS')
+        start_time : int (HHMMSS) or str ('HH:MM:SS')
             Default is market open time.
         end_time : int (HHMMSS) or str ('HH:MM:SS')
             Default is market close time.
@@ -291,17 +298,17 @@ class JzDataServer(BaseDataServer):
         self.api = DataApi(address, use_jrpc=False)
         self.api.login("test", "123")
 
-    def daily(self, security, begin_date, end_date,
+    def daily(self, security, start_date, end_date,
               fields="", adjust_mode=None):
-        df, err_msg = self.api.daily(security=security, begin_date=begin_date, end_date=end_date,
+        df, err_msg = self.api.daily(security=security, start_date=start_date, end_date=end_date,
                                      fields=fields, adjust_mode=adjust_mode, data_format="")
         return df, err_msg
 
     def bar(self, security,
-            begin_time=200000, end_time=160000,trade_date=None,
+            start_time=200000, end_time=160000, trade_date=None,
             cycle='1m', fields=""):
         df, msg = self.api.bar(security=security, fields=fields,
-                               begin_time=begin_time, end_time=end_time, trade_date=trade_date,
+                               start_time=start_time, end_time=end_time, trade_date=trade_date,
                                cycle='1m', data_format="")
         return df, msg
     
@@ -339,8 +346,71 @@ class JzDataServer(BaseDataServer):
     
     def get_suspensions(self):
         return None
+    
+    def get_trade_date(self, start_date, end_date, security=None):
+        if security is None:
+            security = '000300.SH'
+        df, msg = self.daily(security, start_date, end_date, fields="close")
+        return df.loc[:, 'trade_date'].values
 
 
+class JzEventServer(JzDataServer):
+    def __init__(self):
+        super(JzEventServer, self).__init__()
+        
+        self.bar_type = common.QUOTE_TYPE.MIN
+        self.security = ''
+
+        self.daily_quotes_cache = None
+
+    def get_daily_quotes(self, target_date):
+        self.daily_quotes_cache = self.make_cache(target_date)
+        return self.daily_quotes_cache
+    
+    @staticmethod
+    def make_time(timestamp):
+        return timestamp.strftime('%Y%m%d %H:%M:%S %f')
+    
+    def make_cache(self, target_date):
+        """Return a list of quotes of a single day. If any error, print error msg and return None.
+
+        """
+        topic_list = self.get_topics()
+        
+        for sec in topic_list:
+            pd_bar, msg = self.bar(sec, start_time=200000, end_time=160000,
+                                   trade_date=target_date, cycle='1m', fields="")
+            
+            if pd_bar is not None:
+                cache = []
+                
+                dict_bar = pd_bar.transpose().to_dict()
+                keys = sorted(dict_bar.keys())
+                
+                for j in xrange(len(keys)):
+                    key = keys[j]
+                    bar = dict_bar.get(key)
+                    quote = Quote(self.bar_type)
+                    quote.security = bar['security']
+                    quote.open = bar['open']
+                    quote.close = bar['close']
+                    quote.high = bar['high']
+                    quote.low = bar['low']
+                    quote.volume = bar['volume']
+                    quote.turnover = bar['turnover']
+                    quote.oi = bar['oi']
+                    quote.date = bar['trade_date']
+                    quote.time = bar['time']
+                    # quote.time = self.make_time(key)
+                    
+                    cache.append(quote)
+                return cache
+            else:
+                print msg
+        
+        return None
+    
+    
 class DataServer(Publisher):
     def __init__(self):
         Publisher.__init__(self)
@@ -390,10 +460,6 @@ class JshHistoryBarDataServer(DataServer):
         self.addr = props.get('jsh.addr')
         self.bar_type = props.get('bar_type')
         self.security = props.get('security')
-    
-    def initialize(self):
-        # TODO obsolete api
-        self.api = jzquant_api.get_jzquant_api(address=self.addr, user="TODO", password="TODO")
     
     def start(self):
         pass
@@ -449,6 +515,7 @@ class JshHistoryBarDataServer(DataServer):
         topic_list = self.get_topics()
         
         for sec in topic_list:
+            pd_bar, msg = self.bar('rb1710.SHF,600662.SH', start_time=200000, end_time=160000, trade_date=20170831, fields="")
             pd_bar, msg = self.api.jz_unified('jsh', sec, fields='', date=target_date,
                                               start_time='', end_time='', bar_size=self.bar_type.value)
             
@@ -480,30 +547,12 @@ class JshHistoryBarDataServer(DataServer):
         return None
 
 
-def _test_old():
-    props = dict()
-    props['jsh.addr'] = 'tcp://10.2.0.14:61616'
-    props['bar_type'] = common.QUOTE_TYPE.MIN
-    props['security'] = '600030.SH'
-    
-    server = JshHistoryBarDataServer()
-    server.init_from_config(props)
-    
-    server.initialize()
-    
-    server.add_batch_subscribe(None, ['600030.SH'])
-    
-    quotes = server.get_daily_quotes(20170712)
-    for quote in quotes:
-        print quote.security, quote.time, quote.open, quote.high
-
-
 def test_jz_data_server():
     ds = JzDataServer()
     
     # test daily
     res, msg = ds.daily('rb1710.SHF,600662.SH', fields="",
-                        begin_date=20170828, end_date=20170831,
+                        start_date=20170828, end_date=20170831,
                         adjust_mode=None)
     rb = res.loc[res.loc[:, 'security'] == 'rb1710.SHF', :]
     stk = res.loc[res.loc[:, 'security'] == '600662.SH', :]
@@ -513,7 +562,7 @@ def test_jz_data_server():
     assert stk.loc[:, 'volume'].values[0] == 7174813
     
     # test bar
-    res2, msg2 = ds.bar('rb1710.SHF,600662.SH', begin_time=200000, end_time=160000, trade_date=20170831, fields="")
+    res2, msg2 = ds.bar('rb1710.SHF,600662.SH', start_time=200000, end_time=160000, trade_date=20170831, fields="")
     rb2 = res2.loc[res2.loc[:, 'security'] == 'rb1710.SHF', :]
     stk2 = res2.loc[res2.loc[:, 'security'] == '600662.SH', :]
     assert msg2 == '0,'
@@ -531,15 +580,6 @@ def test_jz_data_server():
     assert abs(res3.loc[0, 'net_assets'] - 1.437e11) < 1e8
     assert res3.loc[0, 'limit_status'] == 0
     
-    print "Test passed."
 
-
-def test_data_view():
-    pass
-
-
-# 直接运行脚本可以进行测试
 if __name__ == '__main__':
-    # test_old()
     test_jz_data_server()
-    pass

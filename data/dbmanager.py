@@ -1,5 +1,6 @@
 # encoding: utf-8
 
+# TODO MySQLdb: is it indispensable?
 import MySQLdb
 
 
