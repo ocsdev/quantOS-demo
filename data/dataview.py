@@ -388,6 +388,14 @@ class BaseDataView(object):
     
         return merge
 
+    def _validate_fields(self):
+        for field_name in self.fields:
+            flag = (field_name in self.market_daily_fields
+                    or field_name in self.reference_daily_fields
+                    or field_name in self.reference_quarterly_fields)
+            if not flag:
+                print "Field name {:s} not valid, ignore.".format(field_name)
+    
     def prepare_data(self, props, data_api):
         """
         Query various data from data_server and automatically merge them.
@@ -412,6 +420,9 @@ class BaseDataView(object):
             self.security = data_api.get_index_comp(self.universe, self.start_date, self.end_date)
         else:
             self.security = props['security'].split(sep)
+        
+        # check validity of fields
+        self._validate_fields()
         
         # query data
         print "\nQuery data..."
