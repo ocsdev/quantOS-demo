@@ -90,5 +90,32 @@ class JzCalendar(object):
             dt = pd.Series(dt)
             res = dt.apply(f)
         return res
+
+    @staticmethod
+    def shift(date, n_weeks=0):
+        """Shift date backward or forward for n weeks.
         
-        return dt.apply()
+        Parameters
+        ----------
+        date : int or datetime
+            The date to be shifted.
+        n_weeks : int, optional
+            Positive for increasing date, negative for decreasing date.
+            Default 0 (no shift).
+        
+        Returns
+        -------
+        res : int or datetime
+        
+        """
+        delta = pd.Timedelta(weeks=n_weeks)
+        
+        is_int = isinstance(date, (int, np.integer))
+        if is_int:
+            dt = JzCalendar.convert_int_to_datetime(date)
+        else:
+            dt = date
+        res = dt + delta
+        if is_int:
+            res = JzCalendar.convert_datetime_to_int(res)
+        return res
