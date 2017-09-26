@@ -1,9 +1,7 @@
-import time
-
 import jrpc_py
-# import jrpc
+#import jrpc
 import utils
-
+import time
 
 #def set_log_dir(log_dir):
 #    if log_dir:
@@ -48,8 +46,9 @@ class DataApi:
         self._on_jsq_callback = None
 
         self._connected   = False
-#        self._username    = ""
-#        self._password    = ""
+        self._loggined    = False
+        self._username    = ""
+        self._password    = ""
         self._data_format = "default"
         self._callback = None
         self._schema = []
@@ -69,8 +68,9 @@ class DataApi:
 
     def _on_connected(self):
         """JsonRpc callback"""
-        #print "DataApi: _on_connected"
         self._connected = True
+
+        self._do_login()
 
         if self._callback:
             self._callback("connection", True)
@@ -78,38 +78,22 @@ class DataApi:
     def _check_session(self):
         if not self._connected:
             return (False, "no connection")
-        else:
+        elif self._loggined:
             return (True, "")
-#        r, msg = self._do_login()
-#        if not r: return (r, msg)
-#        if self._strategy_id :
-#            return self._do_use_strategy()
-#        else :
-#            return (r,msg)
-
-
-    def connect(self , timeout=3):
-        """Connect to server
-        """
-        for i in xrange(timeout):
-            if self._connected:
-                break
-            time.sleep(1)
-        if self._connected:
-            return (True, "0,")
+        elif self._username and self._password:
+            return self._do_login()
         else:
-            return (False, "-1,timeout")
+            return (False, "no login session")
+
 
     def close(self):
         self._remote.close()
-
 
     def set_data_format(self, format):
         """Set queried data format.
         
         Available formats are:
             ""        -- Don't convert data, usually the type is map
-            "obj"     -- Convert map to object
             "pandas"  -- Convert table likely data to DataFrame
         """
         self._data_format = format
@@ -126,7 +110,7 @@ class DataApi:
         self._callback = callback
 
     def _convert_quote_ind(self, quote_ind):
-        """Convert original quote_ind to an object or a map.
+        """Convert original quote_ind to a map.
         
         The original quote_ind contains field index instead of field name!
         """
@@ -146,10 +130,7 @@ class DataApi:
             else:
                 quote[str(indicators[i])] =  values[i]
 
-        if self._get_format("", "obj") == "obj":
-            return utils.to_obj("Quote", quote)
-        else:
-            return quote
+        return quote
 
     def _on_rpc_callback(self, method, data):
         print "_on_rpc_callback:", method, data
@@ -166,33 +147,45 @@ class DataApi:
         except Exception as e:
             print "Can't load jrpc", e.message
 
-#    def login(self, username, password, format=""):
-#        self._username = username
-#        self._password = password
-#        return self._do_login(format=format)
-#
-#    def _do_login(self, format=""):
-#        # Shouldn't check connected flag here. ZMQ is a mesageq queue!
-#        # if !self._connected :
-#        #    return (False, "-1,no connection")
-#
-#        if self._username and self._password:
-#            rpc_params = { "username" : self._username,
-#                           "password" : self._password }
-#
-#            cr = self._remote.call("auth.login", rpc_params)
-#            f = self._get_format(format, "")
-#            if f != "obj" and f != "":
-#                f = ""
-#            return utils.extract_result(cr, format=f, class_name="UserInfo")
-#        else:
-#            return (False, "-1,empty username or password")
-#        
-#    def logout(self):
-#        rpc_params = { }
-#    
-#        cr = self._remote.call("auth.logout", rpc_params)
-#        return utils.extract_result(cr)
+    def login(self, username, password):
+        
+        for i in xrange(3):
+            if self._connected:
+                break
+            time.sleep(1)
+
+        if not self._connected:
+            return (None, "-1,no connection")
+        
+        self._username = username
+        self._password = password
+        return self._do_login()
+
+    def _do_login(self):
+        # Shouldn't check connected flag here. ZMQ is a mesageq queue!
+        # if !self._connected :
+        #    return (False, "-1,no connection")
+
+        if self._username and self._password:
+            rpc_params = { "username" : self._username,
+                           "password" : self._password }
+
+            cr = self._remote.call("auth.login", rpc_params)
+            r, msg = utils.extract_result(cr, data_format="", class_name="UserInfo")
+            self._loggined = r
+            return (r, msg)
+        else:
+            self._loggined = None
+            return (False, "-1,empty username or password")
+        
+    def logout(self):
+        
+        self._loggined = None
+
+        rpc_params = { }
+    
+        cr = self._remote.call("auth.logout", rpc_params)
+        return utils.extract_result(cr)
 
     def _call_rpc(self, method, data_format, data_class, **kwargs):
 
@@ -211,7 +204,7 @@ class DataApi:
     def quote(self, security, fields="", data_format="", **kwargs):
         
         r, msg = self._call_rpc("jsq.query",
-                                self._get_format(data_format, "obj"),
+                                self._get_format(data_format, ""),
                                 "Quote",
                                 security = str(security),
                                 fields   = fields,
@@ -238,7 +231,7 @@ class DataApi:
 
         cr = self._remote.call("jsq.subscribe", rpc_params)
         
-        rsp, msg = utils.extract_result(cr, data_format="obj", class_name="SubRsp")
+        rsp, msg = utils.extract_result(cr, data_format="", class_name="SubRsp")
         if not rsp:
             return (rsp, msg)
 
@@ -268,6 +261,20 @@ class DataApi:
                               begin_time = begin_time,
                               end_time   = end_time,
                               **kwargs)
+
+    def bar_view(self, security, fields="", begin_time=200000, end_time=160000, 
+        trade_date=0, cycle="1m", data_format="", **kwargs ) :
+
+        return self._call_rpc("jsi.bar_view",
+                              self._get_format(data_format, "pandas"),
+                              "Bar",
+                              security   = str(security),
+                              fields     = fields,
+                              cycle      = cycle,
+                              trade_date = trade_date,
+                              begin_time = begin_time,
+                              end_time   = end_time,
+                              **kwargs)    
 
 
     def daily(self, security, begin_date=0, end_date=0, 
