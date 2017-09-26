@@ -1,4 +1,5 @@
-from common import *
+# encoding: UTF-8
+
 from dbmanager import *
 import pandas as pd
 class Instrument(object):

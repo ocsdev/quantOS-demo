@@ -1,7 +1,7 @@
 # encoding: UTF-8
 
 from abc import abstractmethod
-from common import *
+from framework import common
 from framework.jzcalendar import *
 import jzquant
 from jzquant import jzquant_api
@@ -9,7 +9,7 @@ from jzquant import jzquant_api
 class Order(object):
     #----------------------------------------------------------------------
     def __init__(self):
-        self.ordertype  = ORDER_TYPE_LIMITORDER
+        self.ordertype  = common.ORDER_TYPE.LIMITORDER
         self.orderid    = ''
         self.reforderid = ''
         self.symbol  = ''
@@ -25,7 +25,7 @@ class Order(object):
         self.errmsg      = ''
     
     def isFinished(self):
-        if self.order_status == ORDER_STATUS_FILLED or self.order_status == ORDER_STATUS_CANCELLED or self.order_status == ORDER_STATUS_REJECTED:
+        if self.order_status == common.ORDER_STATUS.FILLED or self.order_status == common.ORDER_STATUS.CANCELLED or self.order_status == common.ORDER_STATUS.REJECTED:
             return True
         else:
             return False 
@@ -198,7 +198,7 @@ class PortfolioManager(TradeCallback):
             self.tradestat[order.symbol] = tradestat
 
         tradestat = self.tradestat.get(order.symbol)
-        if (order.action == ORDER_ACTION_BUY):
+        if (order.action == common.ORDER_ACTION.BUY):
             tradestat.buy_uncome_size += order.order_size
         else:
             tradestat.sell_uncome_size += order.order_size
@@ -209,7 +209,7 @@ class PortfolioManager(TradeCallback):
         if (ind.order_status is None):
             return
         
-        if (ind.order_status == ORDER_STATUS_CANCELLED or ind.order_status == ORDER_STATUS_REJECTED):
+        if (ind.order_status == common.ORDER_STATUS.CANCELLED or ind.order_status == common.ORDER_STATUS.REJECTED):
             orderid = ind.orderid
             if (self.orders.has_key(orderid)):
                 order = self.orders.get(orderid)
@@ -218,7 +218,7 @@ class PortfolioManager(TradeCallback):
                 tradestat = self.tradestat.get(ind.symbol)
                 release_size = ind.order_size - ind.fill_size
                 
-                if (ind.action == ORDER_ACTION_BUY):
+                if (ind.action == common.ORDER_ACTION.BUY):
                     tradestat.buy_uncome_size -= release_size
                 else:
                     tradestat.sell_uncome_size -= release_size
@@ -236,28 +236,28 @@ class PortfolioManager(TradeCallback):
         order.fill_size += ind.fill_size
         
         if (order.fill_size == order.order_size):
-            order.order_status = ORDER_STATUS_FILLED
+            order.order_status = common.ORDER_STATUS.FILLED
         else:
-            order.order_status = ORDER_STATUS_ACCEPTED
+            order.order_status = common.ORDER_STATUS.ACCEPTED
         
         tradestat = self.tradestat.get(ind.symbol)
         positionKey = self.makePositionKey(ind.symbol, self.strategy.trade_date)
         position  = self.positions.get(positionKey)
         
-        if (ind.action == ORDER_ACTION_BUY 
-            or ind.action == ORDER_ACTION_COVER
-            or ind.action == ORDER_ACTION_COVERYESTERDAY
-            or ind.action == ORDER_ACTION_COVERTODAY):
+        if (ind.action == common.ORDER_ACTION.BUY
+            or ind.action == common.ORDER_ACTION.COVER
+            or ind.action == common.ORDER_ACTION.COVERYESTERDAY
+            or ind.action == common.ORDER_ACTION.COVERTODAY):
             
             tradestat.buy_filled_size += ind.fill_size;
             tradestat.buy_uncome_size -= ind.fill_size;
             
             position.curr_size += ind.fill_size;
             
-        elif (ind.action == ORDER_ACTION_SELL
-              or ind.action == ORDER_ACTION_SELLTODAY
-              or ind.action == ORDER_ACTION_SELLYESTERDAY
-              or ind.action == ORDER_ACTION_SHORT):
+        elif (ind.action == common.ORDER_ACTION.SELL
+              or ind.action == common.ORDER_ACTION.SELLTODAY
+              or ind.action == common.ORDER_ACTION.SELLYESTERDAY
+              or ind.action == common.ORDER_ACTION.SHORT):
             
             tradestat.sell_filled_size += ind.fill_size;
             tradestat.sell_uncome_size -= ind.fill_size;
@@ -316,16 +316,16 @@ class OrderBook(object):
 
     def makeTrade(self, quote):
         
-        if (quote.type == QUOTE_TYPE_TICK):
+        if (quote.type == common.QUOTE_TYPE.TICK):
             return self.makeTickTrade(quote)
-        
-        if (quote.type == QUOTE_TYPE_MINBAR 
-            or quote.type == QUOTE_TYPE_FiVEMINBAR 
-            or quote.type == QUOTE_TYPE_QUARTERBAR 
-            or quote.type == QUOTE_TYPE_SPECIALBAR):
+
+        if (quote.type == common.QUOTE_TYPE.MINBAR
+            or quote.type == common.QUOTE_TYPE.FiVEMINBAR
+            or quote.type == common.QUOTE_TYPE.QUARTERBAR
+            or quote.type == common.QUOTE_TYPE.SPECIALBAR):
             return self.makeBarTrade(quote)
         
-        if (quote.type == QUOTE_TYPE_DAILY):
+        if (quote.type == common.QUOTE_TYPE.DAILY):
             return self.makeDaiylTrade(quote)
 
     def makeBarTrade(self, quote):
@@ -339,8 +339,8 @@ class OrderBook(object):
             if (order.isFinished()):
                 continue
             
-            if (order.ordertype == ORDER_TYPE_LIMITORDER):
-                if (order.action == ORDER_ACTION_BUY and order.order_price >= quote.low):
+            if (order.ordertype == common.ORDER_TYPE.LIMITORDER):
+                if (order.action == common.ORDER_ACTION.BUY and order.order_price >= quote.low):
                     trade = TradeInd()
                     trade.tradeid = self.nextTradeId()
                     trade.reforderid = order.orderid
@@ -351,7 +351,7 @@ class OrderBook(object):
                     trade.fill_date  = order.order_date
                     trade.fill_time  = quote.time
                     
-                    order.order_status = ORDER_STATUS_FILLED
+                    order.order_status = common.ORDER_STATUS.FILLED
                     order.fill_size = trade.fill_size
                     order.fill_price = trade.fill_price
                     
@@ -359,7 +359,7 @@ class OrderBook(object):
                     orderstatusInd.initOrderStatus(order)
                     result.append((trade, orderstatusInd))                
                 
-                if (order.action == ORDER_ACTION_SELL and order.order_price <= quote.high):
+                if (order.action == common.ORDER_ACTION.SELL and order.order_price <= quote.high):
                     trade = TradeInd()
                     trade.tradeid = self.nextTradeId()
                     trade.reforderid = order.orderid
@@ -370,7 +370,7 @@ class OrderBook(object):
                     trade.fill_date  = order.order_date
                     trade.fill_time  = quote.time
                     
-                    order.order_status = ORDER_STATUS_FILLED
+                    order.order_status = common.ORDER_STATUS.FILLED
                     order.fill_size = trade.fill_size
                     order.fill_price = trade.fill_price
                     
@@ -378,8 +378,8 @@ class OrderBook(object):
                     orderstatusInd.initOrderStatus(order)
                     result.append((trade, orderstatusInd))                
 
-            if (order.ordertype == ORDER_TYPE_STOPORDER):
-                if (order.action == ORDER_ACTION_BUY and order.order_price <= quote.high):
+            if (order.ordertype == common.ORDER_TYPE.STOPORDER):
+                if (order.action == common.ORDER_ACTION.BUY and order.order_price <= quote.high):
                     
                     trade = TradeInd()
                     trade.tradeid = self.nextTradeId()
@@ -391,14 +391,14 @@ class OrderBook(object):
                     trade.fill_date  = order.order_date
                     trade.fill_time  = quote.time
                     
-                    order.order_status = ORDER_STATUS_FILLED
+                    order.order_status = common.ORDER_STATUS.FILLED
                     order.fill_size = trade.fill_size
                     order.fill_price = trade.fill_price
                     orderstatusInd = OrderStatusInd()
                     orderstatusInd.initOrderStatus(order)
                     result.append((trade, orderstatusInd))  
                     
-                if (order.action == ORDER_ACTION_SELL and order.order_price >= quote.low):
+                if (order.action == common.ORDER_ACTION.SELL and order.order_price >= quote.low):
                     
                     trade = TradeInd()
                     trade.tradeid = self.nextTradeId()
@@ -410,7 +410,7 @@ class OrderBook(object):
                     trade.fill_date  = order.order_date
                     trade.fill_time  = quote.time
                     
-                    order.order_status = ORDER_STATUS_FILLED
+                    order.order_status = common.ORDER_STATUS.FILLED
                     order.fill_size = trade.fill_size
                     order.fill_price = trade.fill_price
                     orderstatusInd = OrderStatusInd()
@@ -428,7 +428,7 @@ class OrderBook(object):
             
             if (order.orderid == orderid):
                 order.cancel_size = order.order_size - order.fill_size
-                order.order_status = ORDER_STATUS_CANCELLED
+                order.order_status = common.ORDER_STATUS.CANCELLED
             
             # todo
             orderstatus = OrderStatusInd()            
@@ -446,7 +446,7 @@ class OrderBook(object):
             if (order.isFinished()):
                 continue
             order.cancel_size = order.order_size - order.fill_size
-            order.order_status = ORDER_STATUS_CANCELLED
+            order.order_status = common.ORDER_STATUS.CANCELLED
             
             # todo
             orderstatus = OrderStatusInd()

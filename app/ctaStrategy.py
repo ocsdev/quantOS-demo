@@ -3,7 +3,7 @@
 import framework
 from framework.strategy import EventDrivenStrategy
 from framework.gateway import Order
-from framework.common import *
+from framework import common
 
 
 ########################################################################
@@ -31,7 +31,7 @@ class CtaStrategy(EventDrivenStrategy):
         if (time == 100000):
             quote.show()
             order = Order()
-            order.action = ORDER_ACTION_BUY
+            order.action = common.ORDER_ACTION.BUY
             order.initFromQuote(quote)            
             order.symbol = quote.symbol
             order.order_size = 10000
@@ -41,7 +41,7 @@ class CtaStrategy(EventDrivenStrategy):
         if (time == 140000):
             quote.show()
             order = Order()
-            order.action = ORDER_ACTION_SELL
+            order.action = common.ORDER_ACTION.SELL
             order.initFromQuote(quote)            
             order.symbol = quote.symbol
             order.order_size = 5000

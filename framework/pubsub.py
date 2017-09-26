@@ -1,6 +1,5 @@
 # encoding: UTF-8
 
-from common import *
 from abc import abstractmethod
 
 

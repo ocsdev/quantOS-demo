@@ -1,6 +1,6 @@
 # encoding: UTF-8
 
-from common import *
+from framework import common
 from objectfactory import *
 
 from pubsub import *
@@ -39,7 +39,7 @@ class BacktestInstance(Subscriber):
         gateway.registerCallback(strategy.pm)
         
         strategy.initConfig(props)
-        strategy.initialization(RUNMODE_BACKTEST)
+        strategy.initialization(common.RUN_MODE.BACKTEST)
         
         self.pnlmgr = PnlManager()
         self.pnlmgr.setStrategy(strategy)

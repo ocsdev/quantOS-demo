@@ -1,6 +1,6 @@
 # encoding: UTF-8
 
-from common import *
+from framework import common
 from abc import abstractmethod
 
 from event import EventEngine, eventType
@@ -30,7 +30,7 @@ class Strategy(object):
         self.pm.strategy = self
         self.instanceid = ""
         self.trade_date = 0
-        self.runmode = RUNMODE_REALTIME
+        self.runmode = common.RUN_MODE.REALTIME
         
         self.initbalance = 0.0
     
@@ -82,7 +82,7 @@ class EventDrivenStrategy(Strategy, Subscriber):
         pass
     
     def initialization(self, runmode):
-        if runmode == RUNMODE_REALTIME :
+        if runmode == common.RUN_MODE.REALTIME :
             self.subscribeEvents()
             
     def subscribeEvents(self):

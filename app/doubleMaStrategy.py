@@ -1,7 +1,6 @@
-import framework
 from framework.strategy import EventDrivenStrategy
 from framework.gateway import Order
-from framework.common import *
+from framework import common
 import numpy as np
 
 class DoubleMaStrategy(EventDrivenStrategy):
@@ -44,22 +43,22 @@ class DoubleMaStrategy(EventDrivenStrategy):
         
     def buy(self, quote, price, size):
         order = self.createOrder(quote, price, size)
-        order.action = ORDER_ACTION_BUY        
+        order.action = common.ORDER_ACTION.BUY
         self.context.gateway.sendOrder(order, '','') 
         
     def sell(self, quote, price, size):
         order = self.createOrder(quote, price, size)
-        order.action = ORDER_ACTION_SELL        
+        order.action = common.ORDER_ACTION.SELL
         self.context.gateway.sendOrder(order, '','')
         
     def cover(self, quote, price, size):
         order = self.createOrder(quote, price, size)
-        order.action = ORDER_ACTION_BUY       
+        order.action = common.ORDER_ACTION.BUY
         self.context.gateway.sendOrder(order, '','') 
          
     def short(self, quote, price, size):
         order = self.createOrder(quote, price, size)
-        order.action = ORDER_ACTION_SELL        
+        order.action = common.ORDER_ACTION.SELL
         self.context.gateway.sendOrder(order, '','') 
     def onNewday(self, trade_date):
         print 'new day comes ' + str(trade_date)    

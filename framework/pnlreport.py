@@ -5,6 +5,7 @@ import datetime as dt
 from jzquant import *
 from Cython.Compiler.Symtab import Entry
 from framework.gateway import TradeInd
+from framework import common
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -190,19 +191,19 @@ class PnlManager(object):
                 self.close_prices[date][code] = close
                 
     def isBuyAction(self, action):
-        if (action == ORDER_ACTION_BUY 
-            or action == ORDER_ACTION_COVER
-            or action == ORDER_ACTION_COVERYESTERDAY
-            or action == ORDER_ACTION_COVERTODAY) :
+        if (action == common.ORDER_ACTION.BUY 
+            or action == common.ORDER_ACTION.COVER
+            or action == common.ORDER_ACTION.COVERYESTERDAY
+            or action == common.ORDER_ACTION.COVERTODAY) :
             return True
         else :
             return False
         
     def isSellAction(self, action):
-        if (action == ORDER_ACTION_SELL
-            or action == ORDER_ACTION_SELLTODAY
-            or action == ORDER_ACTION_SELLYESTERDAY
-            or action == ORDER_ACTION_SHORT):
+        if (action == common.ORDER_ACTION.SELL
+            or action == common.ORDER_ACTION.SELLTODAY
+            or action == common.ORDER_ACTION.SELLYESTERDAY
+            or action == common.ORDER_ACTION.SHORT):
             return True
         else :
             return False      
@@ -361,19 +362,19 @@ if __name__ == '__main__':
     trades = []
     t1 = TradeInd()
     t1.symbol = '600030.SH'
-    t1.action = ORDER_ACTION_BUY
+    t1.action = common.ORDER_ACTION.BUY
     t1.fill_date = 20170704
     t1.fill_size = 100
     t1.fill_price = 16.72
     t2 = TradeInd()
     t2.symbol = '600030.SH'
-    t2.action = ORDER_ACTION_SELL
+    t2.action = common.ORDER_ACTION.SELL
     t2.fill_date = 20170706
     t2.fill_size = 50
     t2.fill_price = 16.69
     t3 = TradeInd()
     t3.symbol = '600030.SH'
-    t3.action = ORDER_ACTION_SELL
+    t3.action = common.ORDER_ACTION.SELL
     t3.fill_date = 20170707
     t3.fill_size = 50
     t3.fill_price = 16.75

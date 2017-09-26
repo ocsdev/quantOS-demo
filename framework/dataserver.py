@@ -4,13 +4,13 @@ from datetime import datetime
 from datetime import timedelta
 
 from abc import abstractmethod
-from common import *
 
 from pubsub import Publisher
 
 import jzquant
 from jzquant import jzquant_api
 from framework.jzcalendar import *
+from framework import common
 
 ########################################################################
 class Quote(object):
@@ -95,7 +95,7 @@ class JshHistoryBarDataServer(DataServer):
         self.api    = None
         self.addr   = ''
         self.calendar = JzCalendar()
-        self.bar_type   = QUOTE_TYPE_MINBAR
+        self.bar_type   = common.QUOTE_TYPE.MINBAR
         self.begin_date = 0
         self.current_date = self.begin_date
         self.last_date = self.begin_date
@@ -145,7 +145,7 @@ class JshHistoryBarDataServer(DataServer):
                 self.daily_quotes_cache = self.makeCache(self.next_day_pos)
                 self.next_day_pos = self.getNextDate(self.next_day_pos)
             
-            return self.getNextQuote();
+            return self.getNextQuote()
 
     def onNewDay(self):
         self.last_date = self.current_date
@@ -181,7 +181,8 @@ class JshHistoryBarDataServer(DataServer):
         
         for i in xrange(len(topicList)):
             instcode = topicList[i]
-            pd_bar, msg = self.api.jsh(instcode, fields='', date=read_pos, start_time='', end_time = '', bar_size=self.bar_type)
+            pd_bar, msg = self.api.jsh(instcode, fields='', date=read_pos,
+                                       start_time='', end_time = '', bar_size=self.bar_type.value)
             
             if pd_bar is not None :
                 cache = []
@@ -204,7 +205,7 @@ class JshHistoryBarDataServer(DataServer):
                     quote.time     = self.makeTime(key)
                     
                     cache.append(quote)
-                return cache    
+                return cache
             else:
                 print msg
 
