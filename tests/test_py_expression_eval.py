@@ -11,6 +11,11 @@ def test_skew():
     print expression.evaluate({'close': dfy, 'open': dfx})
 
 
+def test_variables():
+    expression = parser.parse('Ts_Skewness(open,4)+close / what')
+    assert set(expression.variables()) == {'open', 'close', 'what'}
+    
+    
 def test_product():
     expression = parser.parse('Product(open,2)')
     print expression.evaluate({'close': dfy, 'open': dfx})

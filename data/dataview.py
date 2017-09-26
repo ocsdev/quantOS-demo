@@ -20,11 +20,7 @@ class BaseDataView(object):
     end_date : int
     fields : list
     freq : int
-    market_daily_fields, reference_fields : list
-    dic_market, dic_ref : dict
-        {security: DataFrame with date be index and fields be columns}
-    multi_market, multi_ref : DataFrame
-        index is date, columns is security-field MultiIndex
+    market_daily_fields, reference_daily_fields : list
     data : pd.DataFrame
         Final merged data.
         index is date, columns is security-field MultiIndex
@@ -52,14 +48,17 @@ class BaseDataView(object):
                             'askvolume1', 'askvolume2', 'askvolume3', 'askvolume4', 'askvolume5',
                             'bidvolume1', 'bidvolume2', 'bidvolume3', 'bidvolume4', 'bidvolume5'}
         self.market_daily_fields = {'open', 'high', 'low', 'close', 'volume', 'turnover', 'vwap', 'oi', 'trade_status'}
-        self.reference_fields = {'currency', 'total_market_value', 'float_market_value',
-                                 'high_52w', 'low_52w', 'high_52w_adj', 'low_52w_adj', 'close_price',
-                                 'price_level', 'limit_status',
-                                 'pe', 'pb', 'pe_ttm', 'pcf', 'pcf_ttm', 'ncf', 'ncf_ttm', 'ps', 'ps_ttm',
-                                 'turnover_ratio', 'turnover_ratio_float',
-                                 'share_amount', 'share_float', 'price_div_dps',
-                                 'share_float_free', 'nppc_ttm', 'nppc_lyr', 'net_assets',
-                                 'ncfoa_ttm', 'ncfoa_lyr', 'rev_ttm', 'rev_lyr', 'nicce_ttm'}
+        self.reference_daily_fields = {'currency', 'total_market_value', 'float_market_value',
+                                       'high_52w', 'low_52w', 'high_52w_adj', 'low_52w_adj', 'close_price',
+                                       'price_level', 'limit_status',
+                                       'pe', 'pb', 'pe_ttm', 'pcf', 'pcf_ttm', 'ncf', 'ncf_ttm', 'ps', 'ps_ttm',
+                                       'turnover_ratio', 'turnover_ratio_float',
+                                       'share_amount', 'share_float', 'price_div_dps',
+                                       'share_float_free', 'nppc_ttm', 'nppc_lyr', 'net_assets',
+                                       'ncfoa_ttm', 'ncfoa_lyr', 'rev_ttm', 'rev_lyr', 'nicce_ttm'}
+        self.reference_quarterly_fields = {'ann_date', 'int_inc', 'net_profit_incl_min_int_inc', 'oper_exp',
+                                           'oper_profit', 'oper_rev', 'report_date', 'security',
+                                           'tot_oper_rev', 'tot_profit'}
 
     def _query_data(self, security, fields):
         """
@@ -76,21 +75,25 @@ class BaseDataView(object):
         -------
         dic_market_daily : dict
             {str: DataFrame}
-        dic_ref : dict
+        dic_ref_daily : dict
+            {str: DataFrame}
+        dic_ref_quarterly: dict
             {str: DataFrame}
 
         """
         sep = ','
     
         if self.freq == 1:
-            fields_reference = set.intersection(set(self.reference_fields), set(fields))
+            fields_ref_daily = set.intersection(set(self.reference_daily_fields), set(fields))
             fields_market_daily = set.intersection(set(self.market_daily_fields), set(fields))
+            fields_ref_quarterly = set.intersection(set(self.reference_quarterly_fields), set(fields))
+            
             dic_market_daily = dict()
-            dic_ref = dict()
+            dic_ref_daily = dict()
+            dic_ref_quarterly = dict()
+            
             for sec in security:
                 # TODO : use fields = {field: kwargs} to enable params
-                df_daily, df_ref = None, None
-                
                 if fields_market_daily:
                     df_daily, msg1 = self.data_api.daily(sec, start_date=self.start_date, end_date=self.end_date,
                                                          adjust_mode=None, fields=sep.join(fields_market_daily))
@@ -98,16 +101,25 @@ class BaseDataView(object):
                         print msg1
                     dic_market_daily[sec] = df_daily
                 
-                if fields_reference:
-                    df_ref, msg2 = self._query_wd(sec, self.start_date, self.end_date, sep.join(fields_reference))
+                if fields_ref_daily:
+                    df_ref_daily, msg2 = self._query_wd_dailyindicator(sec, self.start_date, self.end_date,
+                                                                       sep.join(fields_ref_daily))
                     if msg2 != '0,':
                         print msg2
-                    dic_ref[sec] = df_ref
+                    dic_ref_daily[sec] = df_ref_daily
+                
+                if fields_ref_quarterly:
+                    df_ref_quarterly, msg3 = self._query_wd_income(sec, self.start_date, self.end_date,
+                                                                   sep.join(fields_ref_quarterly))
+                    if msg3 != '0,':
+                        print msg3
+                    dic_ref_quarterly[sec] = df_ref_quarterly
+                    
                 
         else:
             raise NotImplementedError("freq = {}".format(self.freq))
         
-        return dic_market_daily, dic_ref
+        return dic_market_daily, dic_ref_daily, dic_ref_quarterly
         
     @staticmethod
     def _process_index(df):
@@ -168,7 +180,7 @@ class BaseDataView(object):
         res = self.dic_of_df_to_multi_index_df(dic)
         return res
         
-    def _preprocess_ref(self, dic, fields):
+    def _preprocess_ref_daily(self, dic, fields):
         """
         Process data and construct MultiIndex.
         
@@ -185,7 +197,7 @@ class BaseDataView(object):
             return None
         for sec, df in dic.viewitems():
             df_mod = self._process_index(df)
-            df_mod = df_mod.loc[:, self.reference_fields.intersection(fields)]
+            df_mod = df_mod.loc[:, self.reference_daily_fields.intersection(fields)]
             if 'pe' in df_mod.columns:
                 df_mod.loc[:, 'pe'] = df_mod.loc[:, 'pe'].values.astype(float)
             if 'price_level' in df_mod.columns:
@@ -195,7 +207,34 @@ class BaseDataView(object):
         res = self.dic_of_df_to_multi_index_df(dic)
         return res
 
-    def _merge_data(self, dfs, trade_date=True):
+    def _preprocess_ref_quarterly(self, dic, fields):
+        """
+        Process data and construct MultiIndex.
+        
+        Parameters
+        ----------
+        dic : dict
+
+        Returns
+        -------
+        res : pd.DataFrame
+
+        """
+        if not dic:
+            return None
+        for sec, df in dic.viewitems():
+            # df_mod = self._process_index(df)
+            # df_mod = df_mod.loc[:, self.reference_daily_fields.intersection(fields)]
+            idx_list = ['report_period', 'security']
+            raw_idx = df.set_index(idx_list)
+            raw_idx.sort_index(axis=0, level=idx_list, inplace=True)
+            dic[sec] = raw_idx
+    
+        res = self.dic_of_df_to_multi_index_df(dic)
+        return res
+    
+    @staticmethod
+    def _merge_data(dfs, trade_date=True):
         """
         Merge data from different APIs into one DataFrame.
         
@@ -248,13 +287,16 @@ class BaseDataView(object):
         self.freq = props['freq']
         
         # query data
-        dic_market_daily, dic_ref = self._query_data(self.security, self.fields)
+        dic_market_daily, dic_ref_daily, dic_ref_quarterly = self._query_data(self.security, self.fields)
         
         # pre-process data
         multi_market_daily = self._preprocess_market_daily(dic_market_daily)
-        multi_ref = self._preprocess_ref(dic_ref, self.fields)
+        multi_ref_daily = self._preprocess_ref_daily(dic_ref_daily, self.fields)
+        multi_ref_quarterly = self._preprocess_ref_quarterly(dic_ref_quarterly, self.fields)
         
-        self.data = self._merge_data([multi_market_daily, multi_ref], trade_date=trade_date)
+        self.data = self._merge_data([multi_market_daily, multi_ref_daily],
+                                     trade_date=trade_date)
+        self.data_q = multi_ref_quarterly
 
     def add_field(self, data_api, field_name):
         """
@@ -270,24 +312,47 @@ class BaseDataView(object):
         """
         self.data_api = data_api
         
-        dic_market_daily, dic_ref = self._query_data(self.security, [field_name])
+        dic_market_daily, dic_ref_daily, dic_ref_quarterly = self._query_data(self.security, [field_name])
         multi_market_daily = self._preprocess_market_daily(dic_market_daily)
-        multi_ref = self._preprocess_ref(dic_ref, [field_name])
+        multi_ref = self._preprocess_ref_daily(dic_ref_daily, [field_name])
+        multi_ref_quarterly = self._preprocess_ref_quarterly(dic_ref_quarterly, self.fields)
 
         merge = self._merge_data([multi_market_daily, multi_ref], trade_date=False)  # contain all days
         self._append(merge, field_name)  # whether contain only trade days is decided by existing data.
     
+    @staticmethod
+    def _split_ann_value(df, field_name):
+        df_ann = df.loc[pd.IndexSlice[:, :], 'ann_date']
+        df_ann = df_ann.unstack(level=1)
+    
+        df_value = df.loc[pd.IndexSlice[:, :], field_name]
+        df_value = df_value.unstack(level=1)
+        
+        return df_ann, df_value
+        
     def add_formula(self, formula, field_name):
+        import align
         parser = Parser()
         expr = parser.parse(formula)
         var_dic = dict()
         var_list = expr.variables()
         for var in var_list:
-            var_dic[var] = self.get_ts(','.join(self.security), self.start_date, self.end_date, field=var)
+            df_var = self.get_ts(var)
+            
+            if var[-3:] == '__D':
+                var = var.split('__')[0]
+                
+                df_ann, df_value = self._split_ann_value(self.data_q, var)
+                date_arr = self.data.index.values
+                
+                df_var = align.align(df_ann, df_var, date_arr)
+                
+            var_dic[var] = df_var
+        
+        #TODO: send ann_date into expr.evaluate. We assume that ann_date of all fields of a security is the same
         df_eval = expr.evaluate(var_dic)
         self._append(df_eval, field_name)
             
-
     @staticmethod
     def _load_h5(fp):
         """Load data and meta_data from hd5 file.
@@ -340,8 +405,21 @@ class BaseDataView(object):
         l = ['='.join([key, str(value)]) for key, value in d.items()]
         return '&'.join(l)
 
-    def _query_wd(self, security, start_date, end_date, fields=""):
-        """Helper function to call data_api.query with 'wd.secDailyIndicator more conveniently."""
+    def _query_wd_income(self, security, start_date, end_date, fields=""):
+        """Helper function to call data_api.query with 'wd.income' more conveniently."""
+        if 'ann_date' not in fields:
+            fields = ','.join(['ann_date', fields])
+        filter_argument = self._dic2url({'security': security,
+                                         'start_date': start_date,
+                                         'end_date': end_date,
+                                         'statement_type': '408002000'})
+        return self.data_api.query("wd.income",
+                                   fields=fields,
+                                   filter=filter_argument,
+                                   order_by="ann_date")
+    
+    def _query_wd_dailyindicator(self, security, start_date, end_date, fields=""):
+        """Helper function to call data_api.query with 'wd.secDailyIndicator' more conveniently."""
         filter_argument = self._dic2url({'security': security,
                                          'start_date': start_date,
                                          'end_date': end_date})
@@ -350,45 +428,77 @@ class BaseDataView(object):
                                    fields=fields,
                                    filter=filter_argument,
                                    orderby="trade_date")
-    
-    def get(self, security, start_date=0, end_date=999999, fields=""):
+
+    @property
+    def dates(self):
+        """
+        Get date array of underlying data.
+        
+        Returns
+        -------
+        res : np.array
+            dtype: np.datetime64
+
+        """
+        res = JzCalendar.convert_datetime_to_int(self.data.index.values)
+        return res
+
+    def get(self, security="", start_date=0, end_date=0, fields=""):
         """
         Basic API to get arbitrary data.
         
         Parameters
         ----------
-        security : str
-            Separated by ','
-        start_date : int
-        end_date : int
-        fields : str
-            Separated by ','
+        security : str, optional
+            Separated by ',' default "" (all securities).
+        start_date : int, optional
+            Default 0 (self.start_date).
+        end_date : int, optional
+            Default 0 (self.start_date).
+        fields : str, optional
+            Separated by ',' default "" (all fields).
 
         Returns
         -------
         res : pd.DataFrame
+            index is datetimeindex, columns are (security, fields) MultiIndex
 
         """
         sep = ','
-        fields = fields.split(sep)
-        security = security.split(sep)
+        
+        if not fields:
+            fields = self.fields
+        else:
+            fields = fields.split(sep)
+        
+        if not security:
+            security = self.security
+        else:
+            security = security.split(sep)
+        
+        if not start_date:
+            start_date = self.start_date
+        if not end_date:
+            end_date = self.end_date
+        
         start_date = JzCalendar.convert_int_to_datetime(start_date)
         end_date = JzCalendar.convert_int_to_datetime(end_date)
         
         res = self.data.loc[pd.IndexSlice[start_date: end_date], pd.IndexSlice[security, fields]]
         return res
     
-    def get_snapshot(self, security, snapshot_date=0, fields=""):
+    def get_snapshot(self, snapshot_date, security="", fields=""):
         """
         Get snapshot of fields at snapshot_date.
         
         Parameters
         ----------
-        security : str
-            Separated by ','
         snapshot_date : int
-        fields : str
-            Separated by ','
+            Date of snapshot.
+        security : str, optional
+            Separated by ',' default "" (all securities).
+        fields : str, optional
+            Separated by ',' default "" (all fields).
 
         Returns
         -------
@@ -396,23 +506,26 @@ class BaseDataView(object):
 
         """
         # return single security snapshot
-        res = self.get(security, start_date=snapshot_date, end_date=snapshot_date, fields=fields)
+        res = self.get(security=security, start_date=snapshot_date, end_date=snapshot_date, fields=fields)
         # result: security as index, field as columns
         res = res.stack(level='security')
         res.index = res.index.droplevel(level='date')
         return res
     
-    def get_ts(self, security, start_date, end_date, field):
+    def get_ts(self, field, security="", start_date=0, end_date=0):
         """
         Get time series data of single field.
         
         Parameters
         ----------
-        security : str
-            Separated by ','
-        start_date : int
-        end_date : int
         field : str
+            Single field.
+        security : str, optional
+            Separated by ',' default "" (all securities).
+        start_date : int, optional
+            Default 0 (self.start_date).
+        end_date : int, optional
+            Default 0 (self.start_date).
 
         Returns
         -------
@@ -523,97 +636,3 @@ class BaseDataView(object):
 
 
 """
-
-
-def test_xarray():
-    import numpy as np
-    import xarray as xr
-    
-    a = xr.DataArray(np.random.randn(2, 3))
-    
-    
-def test_dv_write():
-    from data.dataserver import JzDataServer
-    
-    ds = JzDataServer()
-    dv = BaseDataView()
-    
-    secs = '600030.SH,000063.SZ,000001.SZ'
-    props = {'start_date': 20170605, 'end_date': 20170701, 'security': secs,
-             'fields': 'close,high,volume,pb,net_assets,ncf', 'freq': 1}
-    
-    # formula = ' pb * close / open'
-    # dv.fill_data('mypb', furmula)
-    
-    dv.prepare_data(props=props, data_api=ds, trade_date=False)
-    assert dv.data.shape == (27, 18)
-    dv.prepare_data(props=props, data_api=ds, trade_date=True)
-    assert dv.data.shape == (20, 18)
-    
-    dv.save_dataview('prepared')
-    
-    snap1 = dv.get_snapshot('600030.SH,000063.SZ', 20170606, 'close,pb')
-    assert snap1.shape == (2, 2)
-    assert set(snap1.columns.values) == {'close', 'pb'}
-    assert set(snap1.index.values) == {'600030.SH', '000063.SZ'}
-
-
-def test_dv_read():
-    dv = BaseDataView()
-    dv.load_dataview(folder='prepared/20170605_20170701_freq=1D')
-    
-    assert dv.start_date == 20170605 and set(dv.security) == set('000001.SZ,600030.SH,000063.SZ'.split(','))
-
-    snap1 = dv.get_snapshot('600030.SH,000063.SZ', 20170606, 'close,pb')
-    assert snap1.shape == (2, 2)
-    assert set(snap1.columns.values) == {'close', 'pb'}
-    assert set(snap1.index.values) == {'600030.SH', '000063.SZ'}
-
-
-def _test_join():
-    dv = BaseDataView()
-    dv.load_dataview(folder='prepared/20170605_20170701_freq=1D')
-    
-    raw = dv.data
-    df1 = raw.loc[:, pd.IndexSlice[:, ['pb', 'close', 'high', 'net_assets']]]
-    df2 = raw.loc[:, pd.IndexSlice[:, 'volume']]
-    
-    df2.columns = df2.columns.droplevel(level=1)
-    df2.columns = pd.MultiIndex.from_product([df2.columns, ['volume']])
-    
-    merge = df1.join(df2, how='outer')
-    merge.sort_index(axis=1, level=['security', 'field'], inplace=True)
-    
-    print merge
-    print raw
-
-
-def test_add_field():
-    dv = BaseDataView()
-    dv.load_dataview(folder='prepared/20170605_20170701_freq=1D')
-    assert dv.data.shape == (20, 18)
-    
-    from data.dataserver import JzDataServer
-    ds = JzDataServer()
-    dv.add_field(ds, 'share_amount')
-    assert dv.data.shape == (20, 21)
-
-
-def test_add_formula():
-    dv = BaseDataView()
-    dv.load_dataview(folder='prepared/20170605_20170701_freq=1D')
-    assert dv.data.shape == (20, 18)
-    
-    formula = 'Delta(high - close, 1)'
-    dv.add_formula(formula, 'myvar1')
-    print dv.data.shape
-    
-    formula2 = 'myvar1 - close'
-    dv.add_formula(formula2, 'myvar2')
-    print dv.data.shape
-    
-    
-if __name__ == "__main__":
-    test_add_formula()
-    # _test_join()
-    pass

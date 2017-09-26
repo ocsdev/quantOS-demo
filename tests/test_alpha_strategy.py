@@ -42,7 +42,7 @@ def read_props(fp):
 
 
 def my_selector(security, trade_date, dataview):
-    df = dataview.get_snapshot(security, trade_date, 'close,pb')
+    df = dataview.get_snapshot(trade_date, security, 'close,pb')
     close = df.loc[security, 'close']
     pb = df.loc[security, 'pb']
     
@@ -115,33 +115,6 @@ def test_alpha_strategy():
     
     backtest.save_results('../output/')
 
-
-def test_prepare():
-    ds = JzDataServer()
-    dv = BaseDataView()
-    
-    secs = '600030.SH,000063.SZ,600000.SH'
-    props = {'start_date': 20100605, 'end_date': 20170701,
-             'security': secs, 'freq': 1,
-             'fields': 'open,close,high,low,oi,volume,vwap,pb,net_assets,ncf'}
-    
-    dv.prepare_data(props=props, data_api=ds)
-    
-    dv.save_dataview('../data/prepared/test_store.hd5', append_info=False)
-    
-    # ds.api.close()
-
-
-def test_read():
-    dv = BaseDataView()
-    dv.load_dataview(file_path='../data/prepared/test_store.hd5')
-    
-    df_snap = dv.get_snapshot('600030.SH,000063.SZ', 20170606, 'close,pb')
-    df_snap2 = dv.get_snapshot('600000.SH,000063.SZ', 20170609, 'high,oi,net_assets')
-    
-    print df_snap
-    print df_snap2
-    
     
 """
 def main_new():
