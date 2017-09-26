@@ -108,8 +108,23 @@ class Order(object):
         self.reforderid = order.reforderid
         self.errmsg = order.errmsg
 
+    @property
     def is_finished(self):
-        return self.order_status == common.ORDER_STATUS.FILLED or self.order_status == common.ORDER_STATUS.CANCELLED or self.order_status == common.ORDER_STATUS.REJECTED
+        return (self.order_status == common.ORDER_STATUS.FILLED
+                or self.order_status == common.ORDER_STATUS.CANCELLED
+                or self.order_status == common.ORDER_STATUS.REJECTED)
+
+    @classmethod
+    def new_order(cls, security, action, price, size, date, time):
+        o = cls()
+        o.security = security
+        o.entrust_action = action
+        o.entrust_price = price
+        o.entrust_size = size
+        o.entrust_date = date
+        o.entrust_time = time
+        o.order_status = common.ORDER_STATUS.NEW
+        return o
 
 
 class FixedPriceTypeOrder(Order):
@@ -157,3 +172,6 @@ class VwapOrder(Order):
         return self.start, self.end
 
 
+if __name__ == "__main__":
+    order = FixedPriceTypeOrder.new_order('cu', 'buy', 1.0, 100, 20170505, 130524)
+    print order.__dict__
