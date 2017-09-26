@@ -4,7 +4,7 @@ from abc import abstractmethod
 from datetime import datetime
 
 from framework import common
-from jzquant import jzquant_api
+from jzdataapi.data_api import DataApi
 from pubsub import Publisher
 
 
@@ -49,6 +49,7 @@ class BaseDataServer(Publisher):
     """
     DataServer is a base class providing both historic and live data
     from various data sources.
+    Current API version: 1.6
 
     Derived classes of DataServer hide different data source, but use the same API.
 
@@ -59,16 +60,14 @@ class BaseDataServer(Publisher):
 
     Methods
     -------
-    subscribe(securities, call_back)
-    quote(security, field)
-    daily(security, begin_date, end_date, field="", fq=None, skip_paused=False)
-    bar(security, begin_time=[MARKET_OPEN], end_time=[NOW, MARKET_CLOSE], trade_date=[TODAY], field="", cycle='1m')
-    tick(security, begin_time=[MARKET_OPEN], end_time=[NOW, MARKET_CLOSE], trade_date=[TODAY], field="")
-    query(query_type, param, field)
+    subscribe
+    quote
+    daily
+    bar
+    tick
+    query
 
     """
-    
-    # TODO for now, all query functions return DataFrame, they will return custrom data type in later version.
     # TODO we need a uniform convert from str/int to standard date object, for all derived classes.
     def __init__(self, name=""):
         Publisher.__init__(self)
@@ -129,7 +128,7 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def daily(self, security, begin_date, end_date, field="", fq=None, skip_paused=False):
+    def daily(self, security, begin_date, end_date, field="", adjust_mode=None):
         """
         Query dar bar,
         support auto-fill suspended securities data,
@@ -143,11 +142,10 @@ class BaseDataServer(Publisher):
         end_date : int (YYYMMDD) or str ('YYYY-MM-DD')
         field : separated by comma ','
             Default is all fields included.
-        fq : {'pre', 'post', None}
-            How to adjust price. None for no adjust.
-        skip_paused : bool
-            True for filter out those suspended,
-            False for auto fill using last trade date's close price.
+        adjust_mode : str or None
+            None for no adjust;
+            'pre' for forward adjust;
+            'post' for backward adjust.
 
         Returns
         -------
@@ -164,7 +162,7 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def bar(self, security, begin_time=None, end_time=None, trade_date=None, field="", cycle='1m'):
+    def bar(self, security, begin_time=200000, end_time=160000, trade_date=None, field="", cycle='1m'):
         """
         Query minute bars of various type, return DataFrame.
 
@@ -203,11 +201,33 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def query(self, query_type, param, field):
+    def query(self, view, field, filter):
+        """
+        Query reference data.
+        Input query type and parameters, return DataFrame.
+        
+        Parameters
+        ----------
+        view : str
+            Type of reference data. See doc for details.
+        field : str
+            Fields to return, separated by ','.
+        filter : str
+            Query conditions, separated by '&'.
+
+        Returns
+        -------
+        df : pd.DataFrame
+        err_msg : str
+
+        """
         pass
     
     @abstractmethod
     def get_split_dividend(self):
+        pass
+    
+    def get_suspensions(self):
         pass
 
 
@@ -216,67 +236,32 @@ class JzDataServer(BaseDataServer):
     JzDataServer uses data from jz's local database.
 
     """
-    
     # TODO no validity check for input parameters
     
     def __init__(self):
         BaseDataServer.__init__(self)
         
-        address = 'tcp://10.2.0.14:61616'
-        usr, pwd = "TODO", "TODO"
-        self.api = jzquant_api.get_jzquant_api(address, usr, pwd)
+        address = 'tcp://10.1.0.210:8910'
+        self.api = DataApi(address, use_jrpc=False)
+        self.api.connect()
     
-    @staticmethod
-    def _to_int(dt):
-        """dt is int or str"""
-        if isinstance(dt, (str, unicode)):
-            year, month, day = dt[:4], dt[5: 7], dt[8:]
-            return int(year) * 10000 + int(month) * 100 + int(day)
-        elif isinstance(dt, (int, long)):
-            return dt
-        else:
-            raise NotImplementedError("Only support int or str of certain format")
-    
-    @staticmethod
-    def _to_str(dt):
-        """int to str"""
-        year = str(dt // 10000)
-        month = str(dt // 100 % 100)
-        day = str(dt % 100)
-        return '-'.join([year, month, day])
-    
-    def daily(self, security, begin_date, end_date, field="", fq=None, skip_paused=False):
-        # convert to int format YYYYMMDD
-        begin_date = self._to_int(begin_date)
-        end_date = self._to_int(end_date)
-        # convert to str 'YYYY-MM-DD' (only for jsd api)
-        begin_date = self._to_str(begin_date)
-        end_date = self._to_str(end_date)
-        
-        securities = security.split(',')
-        d = dict()
-        for sec in securities:
-            df, err_msg = self.api.jz_unified('jsd', sec, fields=field, format_='pandas',
-                                              start_date=begin_date, end_date=end_date)
-            if err_msg:
-                d[sec] = err_msg
-            else:
-                d[sec] = df
-        return d
-    
-    def bar(self, security, begin_time=None, end_time=None, trade_date=None, field="", cycle='1m'):
-        securities = security.split(',')
-        d = dict()
-        for sec in securities:
-            df, err_msg = self.api.jz_unified('jsh', sec, fields=field, format_='pandas',
-                                              date=trade_date, start_time=begin_time, end_time=end_time,
-                                              bar_size=cycle.replace('m', ''))
-            if err_msg:
-                d[sec] = err_msg
-            else:
-                d[sec] = df
-        return d
+    def daily(self, security, field="",
+              begin_date=0, end_date=0,
+              adjust_mode=None, data_format=""):
+        df, err_msg = self.api.daily(security=security, begin_date=begin_date, end_date=end_date,
+                                     fields=field, adjust_mode=adjust_mode, data_format=data_format)
+        return df, err_msg
 
+    def bar(self, security, field="",
+            begin_time=200000, end_time=160000, trade_date=0,
+            cycle="1m", data_format=""):
+        df, msg = self.api.bar(security=security, fields=field,
+                               begin_time=begin_time, end_time=end_time, trade_date=trade_date,
+                               cycle='1m', data_format=data_format)
+        return df, msg
+    
+    def get_suspensions(self):
+        return None
 
 class DataServer(Publisher):
     def __init__(self):
@@ -329,6 +314,7 @@ class JshHistoryBarDataServer(DataServer):
         self.security = props.get('security')
     
     def initialize(self):
+        # TODO obsolete api
         self.api = jzquant_api.get_jzquant_api(address=self.addr, user="TODO", password="TODO")
     
     def start(self):
@@ -400,7 +386,7 @@ class JshHistoryBarDataServer(DataServer):
                     quote = Quote(self.bar_type)
                     quote.security = bar['SYMBOL']
                     quote.open = bar['OPEN']
-                    quote.close = bar['CLOSE']
+                    quote.close = bar['close']
                     quote.high = bar['HIGH']
                     quote.low = bar['LOW']
                     quote.volume = bar['VOLUME']
@@ -416,7 +402,7 @@ class JshHistoryBarDataServer(DataServer):
         return None
 
 
-def test_old():
+def _test_old():
     props = dict()
     props['jsh.addr'] = 'tcp://10.2.0.14:61616'
     props['bar_type'] = common.QUOTE_TYPE.MIN
@@ -434,15 +420,22 @@ def test_old():
         print quote.security, quote.time, quote.open, quote.high
 
 
-def test_new():
+def test_jz_data_server():
     ds = JzDataServer()
-    res = ds.daily('rb1710.SHF,600662.SH', '2017-08-28', 20170831, "")
-    assert res['rb1710.SHF'].shape == (4, 12)
-    assert res['600662.SH'].ix[0, 'VOLUME'] == 7174813.00
+    res, msg = ds.daily('rb1710.SHF,600662.SH', "", 20170828, 20170831)
+    rb = res.loc[res.loc[:, 'security'] == 'rb1710.SHF', :]
+    stk = res.loc[res.loc[:, 'security'] == '600662.SH', :]
+    assert rb.shape == (4, 13)
+    assert msg == '0,'
+    # TODO format of volume
+    # assert stk.loc[:, 'volume'].values[0] == 7174813.00
     
-    res2 = ds.bar('rb1710.SHF,600662.SH', '', '', 20170831, '', '1m')
-    assert res2['rb1710.SHF'].shape == (345, 10)
-    assert res2['600662.SH'].shape == (240, 10)
+    res2, msg2 = ds.bar('rb1710.SHF,600662.SH', "", 200000, 160000, 20170831)
+    rb = res2.loc[res2.loc[:, 'security'] == 'rb1710.SHF', :]
+    stk = res2.loc[res2.loc[:, 'security'] == '600662.SH', :]
+    assert rb.shape == (345, 14)
+    assert stk.shape == (240, 14)
+    assert msg2 == '0,'
     
     print "Test passed."
 
@@ -450,4 +443,4 @@ def test_new():
 # 直接运行脚本可以进行测试
 if __name__ == '__main__':
     # test_old()
-    test_new()
+    test_jz_data_server()

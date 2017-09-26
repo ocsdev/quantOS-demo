@@ -54,30 +54,47 @@ class AlphaBacktestInstance(BacktestInstance):
     """
     def __init__(self):
         BacktestInstance.__init__(self)
-        pass
+        
+        self.trade_days = None
     
+    def _is_trade_date(self, start, end, date, data_server):
+        if self.trade_days is None:
+            df, msg = data_server.daily('000300.SH', "close", start, end)
+            self.trade_days = df.loc[:, 'trade_date'].values
+        return date in self.trade_days
+    
+    def go_next_trade_date(self):
+        if self.strategy.context.gateway.match_finished:
+            self.current_date = self.calendar.get_next_period_day(self.current_date,
+                                                                  self.strategy.period, self.strategy.days_delay)
+            self.last_date = self.calendar.get_last_trade_date(self.current_date)
+        else:
+            # TODO here we must make sure the matching will not last to next period
+            self.current_date = self.calendar.get_next_trade_date(self.current_date)
+            
+        while (self.current_date < self.end_date and
+               not self._is_trade_date(self.start_date, self.end_date, self.current_date,
+                                       self.strategy.context.data_server)):
+            self.current_date = self.calendar.get_next_trade_date(self.current_date)
+        
     def run_alpha(self):
         data_server = self.strategy.context.data_server
         universe = self.strategy.context.universe
         gateway = self.strategy.context.gateway
         
-        data_server.add_batch_subscribe(self, universe)
-        
         self.current_date = self.start_date
-        while self.current_date <= self.end_date:
+        while True:
+            self.go_next_trade_date()
+            if self.current_date > self.end_date:
+                break
+                
             if gateway.match_finished:
-                self.current_date = self.calendar.get_next_period_day(self.current_date,
-                                                                      self.strategy.period, self.strategy.days_delay)
-                self.last_date = self.calendar.get_last_trade_date(self.current_date)
-
                 self.on_new_day(self.last_date)
                 self.strategy.re_balance()
 
                 self.on_new_day(self.current_date)
                 self.strategy.send_bullets()
             else:
-                # TODO here we must make sure the matching will not last to next period
-                self.current_date = self.calendar.get_next_trade_date(self.current_date)
                 self.on_new_day(self.current_date)
                 
             df_dic = self.strategy.get_univ_prices()
@@ -85,7 +102,9 @@ class AlphaBacktestInstance(BacktestInstance):
             for trade_ind in trade_indications:
                 gateway.on_trade_ind(trade_ind)
                 
-        print "Backtest done."
+        print "Backtest done. {:d} days, {:.2e} trades in total.".format(len(self.trade_days),
+                                                                         len(self.strategy.pm.trades))
+        
         self.save_results()
     
     def on_new_day(self, date):

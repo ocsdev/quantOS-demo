@@ -2,6 +2,7 @@
 
 from abc import abstractmethod
 
+from framework import common
 from framework.basic.order import *
 from framework.basic.position import Position
 from framework.basic.trade import Trade
@@ -367,30 +368,6 @@ class BaseGateway(object):
     Strategy communicates with Gateway using APIs defined by ourselves;
     Gateway communicates with brokers using brokers' APIs;
     Gateway can also communicate with simulator.
-    See the flow chart below:
-          +--------+
-          |Strategy|
-          +--------+
-              |
-    portfolio | Custom API
-         goal |
-              |
-      +-------v--------+
-      |ManagementSystem|
-      +----------------+
-              |
-       orders | Custom API
-              |
-          +---v---+
-          |Gateway|
-          +-------+
-              |
-       orders | Broker's API
-              |
-              |
-         +----v-------------+
-         |Exchange/Simulator|
-         +------------------+
 
     Note: Gateway knows nothing about task_id but entrust_no,
           so does Simulator.
@@ -618,27 +595,27 @@ class StockSimulatorDaily(object):
             order_status_ind.order_status = common.ORDER_STATUS.CANCELLED
         return order_status_ind, err_msg
     
-    def match(self, price_dic, date=19700101, time=0):
+    def match(self, price_dic, date=19700101, time=150000):
         self._validate_price(price_dic)
         
         results = []
         for order in self.__orders.values():  # TODO viewvalues()
             security = order.security
             df = price_dic[security]
-            if 'VWAP' not in df.columns:
-                df.loc[:, 'VWAP'] = df.loc[:, 'TURNOVER'] / df.loc[:, 'VOLUME']
+            if 'vwap' not in df.columns:
+                df.loc[:, 'vwap'] = df.loc[:, 'TURNOVER'] / df.loc[:, 'VOLUME']
             
             # get fill price
             if isinstance(order, FixedPriceTypeOrder):
                 price_target = order.price_target
-                fill_price = df.loc[:, price_target.upper()].values[0]
+                fill_price = df.loc[:, price_target].values[0]
             elif isinstance(order, VwapOrder):
                 if order.start != -1:
                     raise NotImplementedError("Vwap of a certain time range")
-                fill_price = df.loc[:, 'VWAP'].values[0]
+                fill_price = df.loc[:, 'vwap'].values[0]
             elif isinstance(order, Order):
                 # TODO
-                fill_price = df.loc[:, 'CLOSE'].values[0]
+                fill_price = df.loc[:, 'close'].values[0]
             else:
                 raise NotImplementedError("order class {} not support!".format(order.__class__))
             

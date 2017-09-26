@@ -257,7 +257,7 @@ class BaseStrategy(object):
                 action = common.ORDER_ACTION.BUY if diff_size > 0 else common.ORDER_ACTION.SELL
                 
                 order = FixedPriceTypeOrder.new_order(sec, action, 0.0, abs(diff_size), self.trade_date, 0)
-                order.price_target = 'VWAP'  # TODO
+                order.price_target = 'vwap'  # TODO
                 
                 orders.append(order)
         self.place_batch_order(orders)
@@ -354,6 +354,8 @@ class AlphaStrategy(BaseStrategy):
         self.weights = None
         
         self.benchmark = ""
+        
+        self.goal_positions = None
     
     def init_from_config(self, props):
         BaseStrategy.init_from_config(self, props)
@@ -406,12 +408,14 @@ class AlphaStrategy(BaseStrategy):
     def get_univ_prices(self):
         ds = self.context.data_server
         
-        univ_str = ','.join(self.context.universe)
-        
-        df_dic = ds.daily(univ_str, self.trade_date, self.trade_date, "")
+        # univ_str = ','.join(self.context.universe)
+        df_dic = dict()
+        for sec in self.context.universe:
+            df, msg = ds.daily(sec, "", self.trade_date, self.trade_date)
+            df_dic[sec] = df
         return df_dic
     
-    def re_balance(self, suspensions=None):
+    def re_balance(self):
         """
         Do portfolio re-balance.
         For now, we stick to the same close price when calculate market value and do re-balance.
@@ -423,31 +427,37 @@ class AlphaStrategy(BaseStrategy):
         """
         
         self.calc_weights()
+        
+        suspensions = self.context.data_server.get_suspensions()
         self.re_weight_suspension(suspensions)
         
         df_dic = self.get_univ_prices()
-        prices = {k: v.loc[:, 'CLOSE'].values[0] for k, v in df_dic.items()}
+        prices = {k: v.loc[:, 'close'].values[0] for k, v in df_dic.items()}
         
         market_value = self.pm.market_value(self.trade_date, prices, suspensions)  # TODO need close price
         cash_available = self.cash + market_value
-        print "\n\n{}, cash all = {:9.4e}".format(self.trade_date, cash_available)  # DEBUG
         
         cash_use = cash_available * self.position_ratio
         cash_unuse = cash_available - cash_use
         
-        cash_remain = self.generate_weights_order(dict(zip(self.context.universe, self.weights)),
-                                                  cash_use,
-                                                  prices,
-                                                  algo='CLOSE')
+        goals, cash_remain = self.generate_weights_order(dict(zip(self.context.universe, self.weights)),
+                                                         cash_use,
+                                                         prices,
+                                                         algo='close')
+        self.goal_positions = goals
         self.cash = cash_remain + cash_unuse
         # self.liquidate_all()
         # self.place_batch_order(orders)
+        
+        self.on_after_rebalance(cash_available)
     
-    def liquidate_all(self):
-        for sec in self.pm.holding_securities:
-            curr_size = self.pm.get_position(sec, self.trade_date).curr_size
-            self.place_order(sec, common.ORDER_ACTION.SELL, 1e-3, curr_size)
+    @abstractmethod
+    def on_after_rebalance(self, total):
+        pass
     
+    def send_bullets(self):
+        self.goal_portfolio(self.goal_positions)
+
     def generate_weights_order(self, weights_dic, turnover, prices, algo="close"):
         """
         Send order according subject to total turnover and weights of different securities.
@@ -461,25 +471,26 @@ class AlphaStrategy(BaseStrategy):
         prices : dict of {str: float}
             {security: price}
         algo : str
-            {'CLOSE', 'open', 'vwap', etc.}
+            {'close', 'open', 'vwap', etc.}
 
         Returns
         -------
+        goals : list of GoalPosition
         cash_left : float
 
         """
-        if algo not in ['CLOSE', 'vwap']:
+        if algo not in ['close', 'vwap']:
             raise NotImplementedError("Currently we only suport order at close price.")
         
         cash_left = 0.0
         goals = []
-        if algo == 'CLOSE' or 'vwap':  # order a certain amount of shares according to current close price
+        if algo == 'close' or 'vwap':  # order a certain amount of shares according to current close price
             for sec, w in weights_dic.items():
                 goal_pos = GoalPosition()
                 goal_pos.security = sec
                 
-                # if algo == 'CLOSE':
-                # order.price_target = 'CLOSE'
+                # if algo == 'close':
+                # order.price_target = 'close'
                 # else:
                 # order = VwapOrder()
                 # order.security = sec
@@ -504,6 +515,9 @@ class AlphaStrategy(BaseStrategy):
                 # orders.append(order)
                 goals.append(goal_pos)
         
-        self.goal_portfolio(goals)
-        
-        return cash_left
+        return goals, cash_left
+
+    def liquidate_all(self):
+        for sec in self.pm.holding_securities:
+            curr_size = self.pm.get_position(sec, self.trade_date).curr_size
+            self.place_order(sec, common.ORDER_ACTION.SELL, 1e-3, curr_size)
