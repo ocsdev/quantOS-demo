@@ -25,8 +25,11 @@ def get_neareast(df_ann, df_value, date):
 
     """
     date = date[0]
+    """
     df_ann.fillna(99999999, inplace=True)  # IMPORTANT: At cells where no quarterly data is available,
                                            # we know nothing, thus it will be filled nan in the next step
+    """
+    df_ann = df_ann.fillna(99999999)
     res = np.where(date - df_ann.values >= 0, df_value, np.nan)
     df = pd.DataFrame(res).fillna(method='ffill', axis=0)
     res = df.values[-1, :]
