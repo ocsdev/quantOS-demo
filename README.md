@@ -1,5 +1,5 @@
-# Alpha Backtesting Framework
-This is an **open source** backtest framework.
+# About quantOS
+This is an **open source** framework, aiming for helping data, research and backtest.
 
 ## LICENSE
 no
