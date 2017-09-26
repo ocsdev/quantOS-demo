@@ -44,6 +44,7 @@ class Strategy(object):
     
     def initUniverse(self, universe):
         self.context.addUniverse(universe)
+        self.pm.setUniverse(universe)
 
     def getUniverse(self):
         return self.context.universe

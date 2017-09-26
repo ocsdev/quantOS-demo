@@ -9,7 +9,6 @@ from pubsub import Publisher
 
 import jzquant
 from jzquant import jzquant_api
-from framework.jzcalendar import *
 from framework import common
 
 ########################################################################
@@ -94,31 +93,21 @@ class JshHistoryBarDataServer(DataServer):
     def __init__(self):
         self.api    = None
         self.addr   = ''
-        self.calendar = JzCalendar()
         self.bar_type   = common.QUOTE_TYPE.MINBAR
-        self.begin_date = 0
-        self.current_date = self.begin_date
-        self.last_date = self.begin_date
-        self.end_date   = 0
         self.symbol     = ''
         
         self.daily_quotes_cache      = None
-        self.next_day_pos   = 0
-        self.cache_pos  = 0
-        
+
         DataServer.__init__(self)
     
     def initConfig(self, props):
         self.addr       = props.get('jsh.addr')
-        self.begin_date = props.get('begin_date')
-        self.end_date   = props.get('end_date')
-        self.bar_type   = props.get('bar_type') 
+        self.bar_type   = props.get('bar_type')
         self.symbol     = props.get('symbol')
     
     def initialization(self):
         self.api = jzquant_api.connect(addr=self.addr,user="TODO", password="TODO")
-        self.next_day_pos = self.begin_date
-    
+
     def start(self):
         pass
     
@@ -127,7 +116,8 @@ class JshHistoryBarDataServer(DataServer):
     
     def stop(self):
         pass
-    
+
+    """
     def getNextQuote(self):
         if (self.daily_quotes_cache is not None and self.cache_pos < len(self.daily_quotes_cache)):
             quote = self.daily_quotes_cache[self.cache_pos]
@@ -146,24 +136,13 @@ class JshHistoryBarDataServer(DataServer):
                 self.next_day_pos = self.getNextDate(self.next_day_pos)
             
             return self.getNextQuote()
+    """
 
-    def onNewDay(self):
-        self.last_date = self.current_date
+    def get_daily_quotes(self, target_date):
+        self.daily_quotes_cache = self.makeCache(target_date)
+        return self.daily_quotes_cache
 
-        self.daily_quotes_cache = None
-        while self.daily_quotes_cache is None or len(self.daily_quotes_cache) == 0:
-            self.daily_quotes_cache = self.makeCache(self.next_day_pos)
-            self.current_date = self.next_day_pos
-            self.next_day_pos = self.getNextDate(self.next_day_pos)
-
-        self.cache_pos = 0
-
-    def quoteGenerator(self):
-        while self.cache_pos < len(self.daily_quotes_cache):
-            yield self.daily_quotes_cache[self.cache_pos]
-            self.cache_pos += 1
-
-
+    """
     def getNextDate(self, read_pos):
         dt = datetime.strptime(str(read_pos) , '%Y%m%d')
         # next_dt = dt + timedelta(days = 1)
@@ -171,20 +150,23 @@ class JshHistoryBarDataServer(DataServer):
         # today = self.calendar.transferDtToInt(dt)
         next_pos = self.calendar.getNextTradeDate(read_pos)
         return next_pos
-    
+    """
+
     def makeTime(self, timestamp):
         return timestamp.strftime('%Y%m%d %H:%M:%S %f')
         
-    def makeCache(self, read_pos):
-        
+    def makeCache(self, target_date):
+        """Return a list of quotes of a single day. If any error, print error msg and return None.
+
+        """
         topicList = self.getTopic()
         
         for i in xrange(len(topicList)):
             instcode = topicList[i]
-            pd_bar, msg = self.api.jsh(instcode, fields='', date=read_pos,
+            pd_bar, msg = self.api.jsh(instcode, fields='', date=target_date,
                                        start_time='', end_time = '', bar_size=self.bar_type.value)
             
-            if pd_bar is not None :
+            if pd_bar is not None:
                 cache = []
             
                 dict_bar = pd_bar.transpose().to_dict()
@@ -215,11 +197,9 @@ class JshHistoryBarDataServer(DataServer):
 if __name__ == '__main__':
     
     props = {}
-    props['jsh.addr']   = 'tcp://10.2.0.14:61616'
-    props['begin_date'] = 20170712
-    props['end_date']   = 20170713
-    props['bar_type']   = QUOTE_TYPE_MINBAR
-    props['symbol']     = '600030.SH'
+    props['jsh.addr'] = 'tcp://10.2.0.14:61616'
+    props['bar_type'] = common.QUOTE_TYPE.MINBAR
+    props['symbol'] = '600030.SH'
     
     server = JshHistoryBarDataServer()
     server.initConfig(props)
@@ -227,11 +207,8 @@ if __name__ == '__main__':
     server.initialization()
     
     server.subscribe(None, ['600030.SH'])
-    
-    quote = server.getNextQuote()
-    while (quote is not None):
+
+    quotes = server.get_daily_quotes(20170712)
+    for quote in quotes:
         print quote.symbol, quote.time, quote.open, quote.high
-        quote = server.getNextQuote()
-        
-        
-    
+

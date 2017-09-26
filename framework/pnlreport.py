@@ -67,7 +67,7 @@ class PnlManager(object):
         self.jzquant_api = None 
         self.strategy = None
         self.pnls = []
-        self.begin_date = 0
+        self.start_date = 0
         self.end_date = 0
         self.close_prices = {} 
         self.universe = []
@@ -165,7 +165,7 @@ class PnlManager(object):
         
     def initFromConfig(self, props):
         self.api = jzquant_api.connect(addr=props.get("jsh.addr"),user="TODO", password="TODO")
-        self.begin_date = props.get('begin_date')
+        self.start_date = props.get('start_date')
         self.end_date   = props.get('end_date') 
         self.fut_commission = props.get('future_commission_rate', 0.0)  
         self.stk_commission = props.get('stock_commission_rate', 0.0)  
@@ -177,7 +177,7 @@ class PnlManager(object):
         self.prepareData() 
            
     def prepareData(self):         
-        begindate = self.calendar.getPreTradeDate(self.begin_date)
+        begindate = self.calendar.getPreTradeDate(self.start_date)
         enddate = self.calendar.getNextTradeDate(self.end_date)
         begin_str = dt.datetime.strptime(str(begindate) , '%Y%m%d').strftime('%Y-%m-%d')
         end_str = dt.datetime.strptime(str(enddate) , '%Y%m%d').strftime('%Y-%m-%d')
@@ -229,7 +229,7 @@ class PnlManager(object):
         return total_pnls    
                 
     def calculateHoldPnl(self):
-        dates = self.calendar.getTradeDates(self.begin_date, self.end_date)        
+        dates = self.calendar.getTradeDates(self.start_date, self.end_date)
         hold_pnl = []
         for date in dates : 
             hold_pnl.append(self.calcOneDayHoldPnl(date))
@@ -267,7 +267,7 @@ class PnlManager(object):
         for key, value in trades.items():
             pnl = self.calcOneDayTradePnl(key, value)   
             trade_pnls[pnl.date] = pnl 
-        dates = self.calendar.getTradeDates(self.begin_date, self.end_date) 
+        dates = self.calendar.getTradeDates(self.start_date, self.end_date)
         i = 0     
         pre_position = {} 
         cur_position = {}   
@@ -351,7 +351,7 @@ if __name__ == '__main__':
     
     props = {}
     props['jsh.addr']   = 'tcp://10.2.0.14:61616'
-    props['begin_date'] = 20170702
+    props['start_date'] = 20170702
     props['end_date']   = 20170712
     props['future_commission_rate']  = 0.005
     props['stock_commission_rate']   = 0.005

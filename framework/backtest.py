@@ -7,6 +7,7 @@ from pubsub import *
 from framework.strategy import StrategyContext
 from framework.jzcalendar import JzCalendar
 from framework.pnlreport import PnlManager
+import datetime
 
 ########################################################################
 class BacktestInstance(Subscriber):
@@ -17,16 +18,18 @@ class BacktestInstance(Subscriber):
         self.strategy   = None
         self.start_date = 0
         self.end_date   = 0
+        self.current_date = 0
+        self.last_date = 0
         self.folder     = ''
-        
+
+        self.calendar = JzCalendar()
+
     def initFromConfig(self, instanceid, props, dataserver, gateway, strategy):
         self.instanceid = instanceid
         
         self.start_date = props.get("start_date")
         self.end_date   = props.get("end_date")
         self.folder     = props.get("folder")
-        
-        calendar = JzCalendar()
         
         dataserver.initConfig(props)
         dataserver.initialization()
@@ -35,7 +38,7 @@ class BacktestInstance(Subscriber):
         
         strategy.context.dataserver = dataserver
         strategy.context.gateway    = gateway
-        strategy.context.calendar   = calendar
+        strategy.context.calendar   = self.calendar
         gateway.registerCallback(strategy.pm)
         
         strategy.initConfig(props)
@@ -77,26 +80,39 @@ class BacktestInstance(Subscriber):
                 
             self.processQuote(quote)
 
+    def get_next_trade_date(self, current):
+        next_dt = self.calendar.getNextTradeDate(current)
+        return next_dt
+
     def run2(self):
         dataserver = self.strategy.context.dataserver
         universe = self.strategy.context.universe
 
         dataserver.subscribe(self, universe)
 
-        while True:  # each loop is a new trading day
-            dataserver.onNewDay()
-            if dataserver.current_date > self.end_date:
-                break
-            # gateway.oneNewDay()
-            self.strategy.onNewday(dataserver.current_date)
-            self.strategy.pm.onNewDay(dataserver.current_date, dataserver.last_date)
-            self.strategy.trade_date = dataserver.current_date
+        self.current_date = self.start_date
+        while self.current_date <= self.end_date:  # each loop is a new trading day
+            quotes = dataserver.get_daily_quotes(self.current_date)
+            if quotes is None:
+                # no quotes because of holiday or other issues. We don't update last_date
+                print "in backtest.py: function run(): {} quotes is None, continue.".format(self.last_date)
+                self.current_date = self.get_next_trade_date(self.current_date)
+                continue
 
-            quote_generator = dataserver.quoteGenerator()
-            for quote in quote_generator:
+            # gateway.oneNewDay()
+            self.strategy.onNewday(self.current_date)
+            self.strategy.pm.onNewDay(self.current_date, self.last_date)
+            self.strategy.trade_date = self.current_date
+
+            for quote in quotes:
                 self.processQuote(quote)
 
             # self.strategy.onMarketClose()
+            self.closeDay(self.current_date)
+            # self.strategy.onSettle()
+
+            self.last_date = self.current_date
+            self.current_date = self.get_next_trade_date(self.current_date)
 
         # self.strategy.onTradingEnd()
 

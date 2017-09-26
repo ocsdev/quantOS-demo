@@ -142,7 +142,7 @@ class PortfolioManager(TradeCallback):
         self.strategy  = None
     
     def setUniverse(self, universe): 
-        self.universe = universe
+        self.universe = universe.split(',')
         
     def makePositionKey(self, symbol, trade_date):
         return symbol + "." + str(trade_date);
