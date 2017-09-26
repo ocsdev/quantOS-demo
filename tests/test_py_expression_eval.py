@@ -8,7 +8,7 @@ import pandas as pd
 
 def test_skew():
     expression = parser.parse('Ts_Skewness(open,4)')
-    print expression.evaluate({'close': dfy, 'open': dfx})
+    print parser.evaluate({'close': dfy, 'open': dfx})
 
 
 def test_variables():
@@ -18,39 +18,39 @@ def test_variables():
     
 def test_product():
     expression = parser.parse('Product(open,2)')
-    print expression.evaluate({'close': dfy, 'open': dfx})
+    print parser.evaluate({'close': dfy, 'open': dfx})
 
 
 def test_rank():
     expression = parser.parse('Rank(close)')
-    print expression.evaluate({'close': dfy, 'open': dfx})
+    print parser.evaluate({'close': dfy, 'open': dfx})
 
 
 def test_tail():
     expression = parser.parse('Tail(close/open,0.99,1.01,1.0)')
-    print expression.evaluate({'close': dfy, 'open': dfx})
+    print parser.evaluate({'close': dfy, 'open': dfx})
 
 
 def test_step():
     expression = parser.parse('Step(close,10)')
-    print expression.evaluate({'close': dfy, 'open': dfx})
+    print parser.evaluate({'close': dfy, 'open': dfx})
 
 
 def test_decay_linear():
     expression = parser.parse('Decay_linear(open,2)')
-    print expression.evaluate({'close': dfy, 'open': dfx})
+    print parser.evaluate({'close': dfy, 'open': dfx})
 
 
 def test_decay_exp():
     expression = parser.parse('Decay_exp(open, 0.5, 2)')
-    print expression.evaluate({'close': dfy, 'open': dfx})
+    print parser.evaluate({'close': dfy, 'open': dfx})
 
 
 def test_sgined_power():
     expression = parser.parse('SignedPower(close-open, 2)')
     print dfx - dfy
     
-    print expression.evaluate({'close': dfx, 'open': dfy})
+    print parser.evaluate({'close': dfx, 'open': dfy})
 
 
 @pytest.fixture(autouse=True)

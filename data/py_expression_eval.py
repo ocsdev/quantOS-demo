@@ -394,10 +394,11 @@ class Parser:
     
     def align_df1(self, df1):
         if isinstance(df1, pd.DataFrame):
-            len1 = len(df1.index)
-            len2 = len(self.trade_dts)
-            if len1 != len2:
-                return align(df1,self.ann_dts, self.trade_dts)
+            if (self.ann_dts is not None ) and (self.trade_dts is not None ):
+                len1 = len(df1.index)
+                len2 = len(self.trade_dts)
+                if len1 != len2:
+                    return align(df1,self.ann_dts, self.trade_dts)
         return df1
         
     def add(self, a, b):
@@ -708,6 +709,19 @@ class Parser:
         self.functions[name] = func
         
     def parse(self, expr):
+        """
+        Parse a string expression.
+        
+        Parameters
+        ----------
+        expr : str
+            Format of expr should follow our document.
+
+        Returns
+        -------
+        Expression
+
+        """
         self.errormsg = ''
         self.success = True
         operstack = []
@@ -824,6 +838,23 @@ class Parser:
 #         return self.parse(expr).evaluate(variables)
     
     def evaluate(self, values, ann_dts=None, trade_dts=None):
+        """
+        Evaluate the value of expression using. Data of different frequency will be automatically expanded.
+        
+        Parameters
+        ----------
+        values : dict
+            Key is variable name, value is pd.DataFrame (index is date, column is security)
+        ann_dts : pd.DataFrame
+            Announcement dates of financial statements of securities.
+        trade_dts : np.ndarray
+            The date index of result.
+
+        Returns
+        -------
+        pd.DataFrame
+
+        """
         self.ann_dts = ann_dts
         self.trade_dts = trade_dts
         values = values or {}
