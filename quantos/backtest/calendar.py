@@ -9,7 +9,7 @@ from pandas.tseries import offsets
 from quantos.data.dbmanager import *
 
 
-class JzCalendar(object):
+class Calendar(object):
     """
     A calendar for manage trade date.
 
@@ -47,7 +47,7 @@ class JzCalendar(object):
         nxt : int
 
         """
-        current_dt = JzCalendar.convert_int_to_datetime(current)
+        current_dt = Calendar.convert_int_to_datetime(current)
         if period == 'day':
             offset = offsets.BDay()  # move to next business day
         elif period == 'week':
@@ -60,7 +60,7 @@ class JzCalendar(object):
         next_dt = current_dt + offset
         if n:
             next_dt = next_dt + n * offsets.BDay()
-        nxt = JzCalendar.convert_datetime_to_int(next_dt)
+        nxt = Calendar.convert_datetime_to_int(next_dt)
         return nxt
     
     def get_trade_date_range(self, begin, end):
@@ -112,10 +112,10 @@ class JzCalendar(object):
         
         is_int = isinstance(date, (int, np.integer))
         if is_int:
-            dt = JzCalendar.convert_int_to_datetime(date)
+            dt = Calendar.convert_int_to_datetime(date)
         else:
             dt = date
         res = dt + delta
         if is_int:
-            res = JzCalendar.convert_datetime_to_int(res)
+            res = Calendar.convert_datetime_to_int(res)
         return res

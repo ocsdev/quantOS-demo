@@ -2,11 +2,9 @@
 
 from abc import abstractmethod
 
-from backtest.basic.order import *
-from backtest.basic.trade import Trade
-
-from backtest import common
+from quantos.data.basic.order import *
 from quantos.data.basic.position import Position
+from quantos.data.basic.trade import Trade
 from quantos.util.sequence import SequenceGenerator
 
 
@@ -142,9 +140,9 @@ class PortfolioManager(TradeCallback):
 
     Attributes
     ----------
-    orders : list of backtest.basic.Order objects
-    trades : list of backtest.basic.Trade objects
-    positions : dict of {security + trade_date : backtest.basic.Position}
+    orders : list of quantos.data.basic.Order objects
+    trades : list of quantos.data.basic.Trade objects
+    positions : dict of {security + trade_date : quantos.data.basic.Position}
     strategy : Strategy
     holding_securities : set of securities
 

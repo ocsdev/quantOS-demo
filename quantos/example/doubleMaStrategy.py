@@ -1,19 +1,13 @@
 import numpy as np
 
-from quantos.backtest import EventDrivenStrategy
-from quantos.backtest import Order
 from quantos.backtest import common
+from quantos.backtest.strategy import EventDrivenStrategy
+from quantos.data.basic.order import Order
 
 
 class DoubleMaStrategy(EventDrivenStrategy):
-    '''
-    classdocs
-    '''
-    
+    """"""
     def __init__(self):
-        '''
-        Constructor
-        '''
         EventDrivenStrategy.__init__(self)
         self.security = ''
         self.fastN = 14

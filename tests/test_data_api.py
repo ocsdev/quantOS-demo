@@ -1,6 +1,6 @@
 # encoding: UTF-8
 
-from quantos.data import DataApi
+from quantos.data.dataapi import DataApi
 
 
 def test_data_api():

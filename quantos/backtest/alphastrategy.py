@@ -4,9 +4,9 @@ from abc import abstractmethod
 from collections import defaultdict
 
 import numpy as np
-from backtest.basic.order import *
-from backtest.gateway import PortfolioManager
 
+from quantos.backtest.gateway import PortfolioManager
+from quantos.data.basic.order import *
 from quantos.data.basic.position import GoalPosition
 from quantos.util.sequence import SequenceGenerator
 

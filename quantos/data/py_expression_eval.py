@@ -14,7 +14,7 @@
 # modified by symbol from quantOS, http://www.quantos.org/ 
 
 from __future__ import division
-from align import align
+from quantos.data.align import align
 import math
 import numpy as np
 import random

@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pytest
-from data.dataserver import JzDataServer
+from quantos.data.dataserver import JzDataServer
 
 from quantos.data.py_expression_eval import Parser
 

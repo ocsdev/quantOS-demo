@@ -11,10 +11,10 @@ import os
 
 import numpy as np
 import pandas as pd
-from backtest.calendar import JzCalendar
-from data.align import align
 
 import quantos.util.fileio
+from quantos.backtest.calendar import Calendar
+from quantos.data.align import align
 from quantos.data.py_expression_eval import Parser
 
 
@@ -52,7 +52,8 @@ class BaseDataView(object):
         self.fields = []
         self.freq = 1
 
-        self.meta_data_list = ['start_date', 'end_date', 'freq', 'fields', 'security', 'universe']
+        self.meta_data_list = ['start_date', 'end_date', 'freq', 'fields', 'security', 'universe',
+                               'custom_daily_fields', 'custom_quarterly_fields']
         self.data_d = None
         self.data_q = None
         
@@ -175,6 +176,8 @@ class BaseDataView(object):
              "spe_bal_cash_outflows_fnc", "tot_bal_cash_outflows_fnc", "tot_bal_netcash_outflows_fnc",
              "spe_bal_netcash_inc", "tot_bal_netcash_inc", "spe_bal_netcash_equ_undir", "tot_bal_netcash_equ_undir",
              "spe_bal_netcash_inc_undir", "tot_bal_netcash_inc_undir"}
+        self.custom_daily_fields = []
+        self.custom_quarterly_fields = []
         # const
         self.ANN_DATE_FIELD_NAME = 'ann_date'
         self.REPORT_DATE_FIELD_NAME = 'report_date'
@@ -214,9 +217,11 @@ class BaseDataView(object):
         elif field_type == 'cash_flow':
             pool = self.fin_stat_cash_flow
         elif field_type == 'daily':
-            pool = set.union(self.market_daily_fields, self.reference_daily_fields)
+            pool = set.union(self.market_daily_fields, self.reference_daily_fields,
+                             self.custom_daily_fields)
         elif field_type == 'quarterly':
-            pool = set.union(self.fin_stat_income, self.fin_stat_balance_sheet, self.fin_stat_cash_flow)
+            pool = set.union(self.fin_stat_income, self.fin_stat_balance_sheet, self.fin_stat_cash_flow,
+                             self.custom_quarterly_fields)
         else:
             raise NotImplementedError("field_type = {:s}".format(field_type))
         
@@ -526,16 +531,21 @@ class BaseDataView(object):
     
         return merge
 
-    def _validate_fields(self):
-        """Check whether field_names in fields can be recognized."""
-        for field_name in self.fields:
-            flag = (field_name in self.market_daily_fields
-                    or field_name in self.reference_daily_fields
-                    or field_name in self.fin_stat_income
-                    or field_name in self.fin_stat_balance_sheet
-                    or field_name in self.fin_stat_cash_flow)
-            if not flag:
-                print "Field name {:s} not valid, ignore.".format(field_name)
+    def _is_predefined_field(self, field_name):
+        """
+        Check whether a field name can be recognized.
+        field_name must be pre-defined or already added.
+        
+        Parameters
+        ----------
+        field_name : str
+
+        Returns
+        -------
+        bool
+
+        """
+        return self._is_quarter_field(field_name) or self._is_daily_field(field_name)
     
     def _prepare_data(self, fields):
         # query data
@@ -582,9 +592,15 @@ class BaseDataView(object):
         
         # initialize parameters
         self.start_date = props['start_date']
-        self.extended_start_date = JzCalendar.shift(self.start_date, n_weeks=-52)
+        self.extended_start_date = Calendar.shift(self.start_date, n_weeks=-52)
         self.end_date = props['end_date']
-        self.fields = props['fields'].split(sep)
+        
+        fields = props['fields'].split(sep)
+        self.fields = [field for field in fields if self._is_predefined_field(field)]
+        if len(self.fields) < fields:
+            print "Field name {} not valid, ignore.".format(set.difference(set(fields),
+                                                                           set(self.fields)))
+            
         self.freq = props['freq']
         self.universe = props.get('universe', "")
         if self.universe:
@@ -592,42 +608,21 @@ class BaseDataView(object):
         else:
             self.security = props['security'].split(sep)
         
-        # check validity of fields
-        self._validate_fields()
-        
         self.data_d, self.data_q = self._prepare_data(self.fields)
         
         print "Data has been successfully prepared."
 
-    def add_field_OLD(self, data_api, field_name):
-        """
-        Query and append new field.
-        
-        Parameters
-        ----------
-        data_api : BaseDataServer
-        field_name : str
-
-        """
+    def _add_field(self, field_name, is_quarterly):
         self.fields.append(field_name)
-        self.data_api = data_api
-
-        dic_market_daily, dic_ref_daily, dic_ref_quarterly = self._query_data(self.security, [field_name])
-        if field_name in self.market_daily_fields:
-            df_multi = self._preprocess_market_daily(dic_market_daily)
-        elif field_name in self.reference_daily_fields:
-            df_multi = self._preprocess_ref_daily(dic_ref_daily, [field_name])
-        elif field_name in self.fin_stat_income:
-            df_multi = self._preprocess_ref_quarterly(dic_ref_quarterly, self.fields)
-        else:
-            raise ValueError("field_name = {:s}".format(field_name))
-        
-        df_multi = df_multi.loc[:, pd.IndexSlice[:, field_name]]
-        self.append_df(df_multi, field_name)  # whether contain only trade days is decided by existing data.
-
+        if not self._is_predefined_field(field_name):
+            if is_quarterly:
+                self.custom_quarterly_fields.append(field_name)
+            else:
+                self.custom_daily_fields.append(field_name)
+    
     def add_field(self, field_name, data_api=None):
         """
-        Query and append new field.
+        Query and append new field to DataView.
         
         Parameters
         ----------
@@ -636,20 +631,28 @@ class BaseDataView(object):
             Must be a known field name (which is given in documents).
 
         """
-        self.fields.append(field_name)
         if data_api is None:
             if self.data_api is None:
                 print "Add field failed. No data_api available. Please specify one in parameter."
         else:
             self.data_api = data_api
-    
+            
+        if field_name in self.fields:
+            print "Add formula failed: field name [{:s}] exist. Try another name.".format(field_name)
+            return
+
         merge_d, merge_q = self._prepare_data([field_name])
     
-        merge = merge_d if merge_d is not None else merge_q
+        is_quarterly = merge_q is not None
+        if is_quarterly:
+            merge = merge_q
+        else:
+            merge = merge_d
+            
         merge = merge.loc[:, pd.IndexSlice[:, field_name]]
-        self.append_df(merge, field_name)  # whether contain only trade days is decided by existing data.
-
-    def add_formula(self, field_name, formula):
+        self.append_df(merge, field_name, is_quarterly=is_quarterly)  # whether contain only trade days is decided by existing data.
+    
+    def add_formula(self, field_name, formula, freq='D'):
         """
         Add a new field, which is calculated using existing fields.
         
@@ -659,6 +662,8 @@ class BaseDataView(object):
             A formula contains operations and function calls.
         field_name : str
             A custom name for the new field.
+        freq : {'D', 'Q'}
+            Frequency of evaluation result of the formula.
 
         """
         if field_name in self.fields:
@@ -684,7 +689,7 @@ class BaseDataView(object):
         
         # TODO: send ann_date into expr.evaluate. We assume that ann_date of all fields of a security is the same
         df_eval = parser.evaluate(var_df_dic, df_ann, self.dates)
-        
+
         self.append_df(df_eval, field_name)
             
     @staticmethod
@@ -728,7 +733,7 @@ class BaseDataView(object):
     @property
     def dates(self):
         """
-        Get date array of the underlying data.
+        Get daily date array of the underlying data.
         
         Returns
         -------
@@ -783,13 +788,13 @@ class BaseDataView(object):
         if not end_date:
             end_date = self.end_date
         
-        fields_others = self._get_fields('daily', fields)
-        fields_ref_quarterly = self._get_fields('quarterly', fields)
+        fields_daily = self._get_fields('daily', fields)
+        fields_quarterly = self._get_fields('quarterly', fields)
         
         df_ref_expanded = None
-        if fields_ref_quarterly:
+        if fields_quarterly:
             df_ref_quarterly = self.data_q.loc[:,
-                                               pd.IndexSlice[security, fields_ref_quarterly]]
+                                               pd.IndexSlice[security, fields_quarterly]]
             df_ref_ann = self.data_q.loc[:,
                                          pd.IndexSlice[security, self.ANN_DATE_FIELD_NAME]]
             df_ref_ann.columns = df_ref_ann.columns.droplevel(level='field')
@@ -805,7 +810,7 @@ class BaseDataView(object):
             # df_ref_expanded = df_ref_expanded.swaplevel(axis=1)
         
         df_others = self.data_d.loc[pd.IndexSlice[start_date: end_date],
-                                    pd.IndexSlice[security, fields_others]]
+                                    pd.IndexSlice[security, fields_daily]]
         
         df_merge = self._merge_data([df_others, df_ref_expanded], index_name=self.TRADE_DATE_FIELD_NAME)
         return df_merge
@@ -942,9 +947,9 @@ class BaseDataView(object):
             h5[key] = value
         h5.close()
     
-    def append_df(self, df, field_name):
+    def append_df(self, df, field_name, is_quarterly=False):
         """
-        Append DataFrame to existing multi-index DataFrame.
+        Append DataFrame to existing multi-index DataFrame and add corresponding field name.
         
         Parameters
         ----------
@@ -959,7 +964,6 @@ class BaseDataView(object):
         else:
             raise ValueError("Data to be appended must be pandas format. But we have {}".format(type(df)))
         
-        is_quarterly = self._is_quarter_field(field_name)
         if is_quarterly:
             the_data = self.data_q
         else:
@@ -975,9 +979,43 @@ class BaseDataView(object):
             self.data_q = merge
         else:
             self.data_d = merge
+        self._add_field(field_name, is_quarterly)
     
     def _is_quarter_field(self, field_name):
+        """
+        Check whether a field name is quarterly frequency.
+        field_name must be pre-defined or already added.
+        
+        Parameters
+        ----------
+        field_name : str
+
+        Returns
+        -------
+        bool
+
+        """
         res = (field_name in self.fin_stat_balance_sheet
                or field_name in self.fin_stat_cash_flow
-               or field_name in self.fin_stat_income)
+               or field_name in self.fin_stat_income
+               or field_name in self.custom_quarterly_fields)
         return res
+    
+    def _is_daily_field(self, field_name):
+        """
+        Check whether a field name is daily frequency.
+        field_name must be pre-defined or already added.
+        
+        Parameters
+        ----------
+        field_name : str
+
+        Returns
+        -------
+        bool
+
+        """
+        flag = (field_name in self.market_daily_fields
+                or field_name in self.reference_daily_fields
+                or field_name in self.custom_daily_fields)
+        return flag

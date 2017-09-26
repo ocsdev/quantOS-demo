@@ -32,6 +32,9 @@
 
 -[] when should we add trade_date, ann_date, report_date fields
 
+# DataView
+-[] when fetching data, cache fetched data. So if fail, we do not need to fetch all data again.
+
 # Code Improvement of DataView
 -[] improve get, get_quarter_ts methods.
 

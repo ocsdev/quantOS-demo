@@ -2,11 +2,11 @@
 
 import datetime
 
-from quantos.backtest.calendar import JzCalendar
+from quantos.backtest.calendar import Calendar
 
 
 def test_jzcalendar():
-    calendar = JzCalendar()
+    calendar = Calendar()
     date = 20170808
     # print calendar.get_last_trade_date(date)
     # print calendar.get_next_trade_date(date)

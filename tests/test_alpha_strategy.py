@@ -18,14 +18,15 @@ suspensions and limit reachers:
 3. subtract market value and re-normalize weights (positions) after (daily) market open, before sending orders
 """
 import time
+import os
 
 import numpy as np
 from data.dataserver import JzDataServer
 from example.demoalphastrategy import DemoAlphaStrategy
 
 import quantos.util.fileio
-from quantos.backtest import AlphaBacktestInstance
-from quantos.backtest import DailyStockSimGateway
+from quantos.backtest.backtest import AlphaBacktestInstance
+from quantos.backtest.gateway import DailyStockSimGateway
 from quantos.backtest import model
 
 
@@ -64,7 +65,12 @@ def test_alpha_strategy():
     gateway = DailyStockSimGateway()
     jz_data_server = JzDataServer()
 
-    prop_file_path = r"../etc/alpha.json"
+    prop_file_path = os.path.join(
+                            os.path.dirname(__file__),
+                            '../quantos/etc',
+                            'alpha.json'
+                           )
+    # prop_file_path = r"etc/alpha.json"
     props = read_props(prop_file_path)
     """
     props = {

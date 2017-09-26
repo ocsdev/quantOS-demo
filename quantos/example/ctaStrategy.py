@@ -1,11 +1,10 @@
 # encoding: UTF-8
 
-from quantos.backtest import EventDrivenStrategy
-from quantos.backtest import Order
 from quantos.backtest import common
+from quantos.backtest.strategy import EventDrivenStrategy
+from quantos.data.basic.order import Order
 
 
-########################################################################
 class CtaStrategy(EventDrivenStrategy):
     # ----------------------------------------------------------------------
     def __init__(self):

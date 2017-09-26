@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from IPython.display import display
 
-from quantos.backtest.calendar import JzCalendar
+from quantos.backtest.calendar import Calendar
 
 
 class NonMatchingTimezoneError(Exception):
@@ -321,9 +321,10 @@ def get_clean_factor_and_forward_returns(factor,
         we do not calculate return for those suspended on T+d.
     mask_sus: if 1, the security cannot be traded due to suspension or other reasons.
     """
-    factor.index = JzCalendar.convert_int_to_datetime(factor.index)
-    prices.index = JzCalendar.convert_int_to_datetime(prices.index)
-    mask_sus.index = JzCalendar.convert_int_to_datetime(mask_sus.index)
+    # convert index to datetime index
+    factor.index = Calendar.convert_int_to_datetime(factor.index)
+    prices.index = Calendar.convert_int_to_datetime(prices.index)
+    mask_sus.index = Calendar.convert_int_to_datetime(mask_sus.index)
 
     mask_return = pd.DataFrame(index=mask_sus.index, columns=mask_sus.columns, data=False)
     for period in periods:

@@ -1,6 +1,6 @@
 # encoding: utf-8
 import pandas as pd
-from data.dataserver import JzDataServer
+from quantos.data.dataserver import JzDataServer
 
 from quantos.data.py_expression_eval import Parser
 

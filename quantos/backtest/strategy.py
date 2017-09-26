@@ -2,45 +2,13 @@
 
 from abc import abstractmethod
 
-from backtest.gateway import PortfolioManager
+from quantos.backtest.gateway import PortfolioManager
 
 from backtest import common
 from event import EventEngine
 from pubsub import Subscriber
 from quantos.backtest.event import eventType
-
-
-class StrategyContext(object):
-    """
-    Used to store relevant context of the strategy.
-
-    Attributes
-    ----------
-    data_server : backtest.DataServer object
-        Data provider for the strategy.
-    gateway : gateway.Gateway object
-        Broker of the strategy.
-    universe : list of str
-        Securities that the strategy cares about.
-    calendar : backtest.Calendar object
-        A certain calendar that the strategy refers to.
-
-    Methods
-    -------
-    add_universe(univ)
-        Add new securities.
-
-    """
-    
-    def __init__(self):
-        self.dataserver = None
-        self.gateway = None
-        self.universe = []
-        self.calendar = None
-    
-    def add_universe(self, univ):
-        """univ could be single security or securities separated by ,"""
-        self.universe += univ.split(',')
+from quantos.backtest.alphastrategy import StrategyContext
 
 
 class Strategy(object):
@@ -77,9 +45,7 @@ class Strategy(object):
         self.context.gateway.cancelOrder(order)
 
 
-########################################################################
 class EventDrivenStrategy(Strategy, Subscriber):
-    # ----------------------------------------------------------------------
     def __init__(self):
         
         Strategy.__init__(self)

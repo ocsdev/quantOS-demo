@@ -2,8 +2,8 @@
 
 import json
 
-from data.dataserver import JzEventServer
-from example.doubleMaStrategy import DoubleMaStrategy
+from quantos.data.dataserver import JzEventServer
+from quantos.example.doubleMaStrategy import DoubleMaStrategy
 
 from quantos.backtest import *
 

@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-from quantos.data import BaseDataView
+from quantos.data.dataview import BaseDataView
 
 
 def test_xarray():
@@ -11,7 +11,7 @@ def test_xarray():
     
     
 def test_dv_write():
-    from quantos.data import JzDataServer
+    from quantos.data.dataserver import JzDataServer
     
     ds = JzDataServer()
     dv = BaseDataView()
@@ -35,7 +35,7 @@ def test_dv_write():
 
 
 def test_dv_quarterly():
-    from quantos.data import JzDataServer
+    from quantos.data.dataserver import JzDataServer
     
     ds = JzDataServer()
     dv = BaseDataView()
@@ -58,7 +58,7 @@ def test_add_field_quarterly():
     nrows, ncols = dv.data_q.shape
     n_securities = len(dv.data_d.columns.levels[0])
     
-    from quantos.data import JzDataServer
+    from quantos.data.dataserver import JzDataServer
     ds = JzDataServer()
     dv.add_field('net_inc_other_ops', ds)
     """
@@ -113,7 +113,7 @@ def test_add_field():
     nrows, ncols = dv.data_d.shape
     n_securities = len(dv.data_d.columns.levels[0])
     
-    from quantos.data import JzDataServer
+    from quantos.data.dataserver import JzDataServer
     ds = JzDataServer()
     dv.add_field('share_amount', ds)
     assert dv.data_d.shape == (nrows, ncols + 1 * n_securities)

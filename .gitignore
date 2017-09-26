@@ -1,14 +1,8 @@
 # alphalens
-alphalens/example
-
-# Python Virtual Environment
-venv/
+research/alphalens/example
 
 # cProfile results
 *.prof
-
-# Archived
-old_archive/
 
 # Prepared DataView
 data/prepared

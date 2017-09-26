@@ -3,8 +3,9 @@
 import numpy as np
 import pandas as pd
 
-from quantos.data import BaseDataView
-from quantos.data import JzDataServer
+from quantos.data.dataview import BaseDataView
+from quantos.data.dataserver import JzDataServer
+from quantos.research import alphalens
 
 
 def save_dataview_new():
@@ -33,26 +34,29 @@ def save_dataview_new():
 def main():
     dv = BaseDataView()
     # dv.load_dataview(folder='../output/prepared/20140609_20160609_freq=1D')
-    dv.load_dataview(folder='../output/prepared/20160609_20170601_freq=1D')
+    import os
+    fullpath = os.path.abspath('../../output/prepared/20160609_20170601_freq=1D')
+    print fullpath
+    dv.load_dataview(folder=fullpath)
     print dv.fields
 
-    vwap_formula = 'turnover / volume'
-    factor_name = 'myvwap'
-    dv.add_formula(factor_name, vwap_formula)
+    # vwap_formula = 'turnover / volume'
+    # factor_name = 'myvwap'
+    # dv.add_formula(factor_name, vwap_formula)
     
-    factor_formula = '-1 * Rank(Ts_Max(Delta(myvwap, 7), 11))'  # GTJA
-    # factor_formula = '-Delta(close, 5) / close'#  / pb'  # revert
+    # factor_formula = '-1 * Rank(Ts_Max(Delta(myvwap, 7), 11))'  # GTJA
+    factor_formula = '-Delta(close, 5) / close'#  / pb'  # revert
     # factor_formula = 'Delta(tot_profit, 1) / Delay(tot_profit, 1)' # pct change
     factor_name = 'factor1'
     dv.add_formula(factor_name, factor_formula)
     
     factor = dv.get_ts(factor_name)
     trade_status = dv.get_ts('trade_status')
-    close = dv.get_ts('vwap')
+    close = dv.get_ts('close')
     
     mask_sus = trade_status != u'交易'.encode('utf-8')
 
-    factor_data = research.alphalens.utils.get_clean_factor_and_forward_returns(factor, close, mask_sus=mask_sus, periods=[5, 10])
+    factor_data = alphalens.utils.get_clean_factor_and_forward_returns(factor, close, mask_sus=mask_sus, periods=[5, 10])
     """
     For check validity of data (avoid look ahead bias).
     import pandas as pd
@@ -61,14 +65,14 @@ def main():
     end = np.datetime64(datetime.date(2016, 7, 30))
     df_tmp = factor_data.loc[pd.IndexSlice[start: end, '600000.SH'], :]
     """
-    research.alphalens.tears.create_full_tear_sheet(factor_data, output_format='pdf')
+    alphalens.tears.create_full_tear_sheet(factor_data, output_format='pdf')
 
 
 def _test_align():
     # u'停牌'   method 2: use turnover == 0
     # trade_status.apply(lambda s: s.decode('utf-8'), inplace=True)
     # n_days, n_securities = trade_status.shape
-    from quantos.data import JzDataServer
+    from quantos.data.dataserver import JzDataServer
     
     ds = JzDataServer()
     dv = BaseDataView()
@@ -128,9 +132,9 @@ def _test_append_custom_data():
 
     mask_sus = trade_status != u'交易'.encode('utf-8')
 
-    factor_data = research.alphalens.utils.get_clean_factor_and_forward_returns(factor, close, mask_sus=mask_sus, periods=[5])
+    factor_data = alphalens.utils.get_clean_factor_and_forward_returns(factor, close, mask_sus=mask_sus, periods=[5])
 
-    research.alphalens.tears.create_full_tear_sheet(factor_data, output_format='pdf')
+    alphalens.tears.create_full_tear_sheet(factor_data, output_format='pdf')
     
     
 if __name__ == "__main__":

@@ -1,8 +1,6 @@
 # encoding: utf-8
 import numpy as np
 import pandas as pd
-# from data.py_expression_eval import Parser
-# from data.dataserver import JzDataServer
 
 
 def get_neareast(df_ann, df_value, date):

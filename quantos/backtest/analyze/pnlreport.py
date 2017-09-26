@@ -1,11 +1,11 @@
 import datetime as dt
 
 import matplotlib.pyplot as plt
-from data.basic.trade import Trade
 
-from backtest import common
-from instrument import *
+from quantos.backtest.backtest import common
 from quantos.backtest.calendar import *
+from quantos.backtest.instrument import *
+from quantos.data.basic.trade import Trade
 
 
 # %matplotlib inline
@@ -62,7 +62,7 @@ class DailyPnlReport(object):
 
 class PnlManager(object):
     def __init__(self):
-        self.calendar = JzCalendar()
+        self.calendar = Calendar()
         self.instmgr = InstManager()
         self.jzquant_api = None
         self.strategy = None

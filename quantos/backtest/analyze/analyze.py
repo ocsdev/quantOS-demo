@@ -1,8 +1,6 @@
 # encoding: utf-8
 
 import json
-import os
-import sys
 from collections import OrderedDict
 
 import matplotlib.pyplot as plt
@@ -10,10 +8,11 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import Formatter
 
-from report import Report
+from quantos.backtest.analyze.report import Report
+from quantos.data.dataserver import JzDataServer
 
-sys.path.append(os.path.abspath(".."))
-from quantos.data import JzDataServer
+
+# sys.path.append(os.path.abspath(".."))
 
 
 class MyFormatter(Formatter):

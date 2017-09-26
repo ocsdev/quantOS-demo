@@ -1,6 +1,6 @@
 # encoding: UTF-8
 
-from quantos.data import JzDataServer
+from quantos.data.dataserver import JzDataServer
 
 
 def test_jz_data_server_daily():
