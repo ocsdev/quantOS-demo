@@ -3,6 +3,7 @@
 from abc import abstractmethod
 from datetime import datetime
 
+import pandas as pd
 from framework import common
 from jzdataapi.data_api import DataApi
 from framework.pubsub import Publisher
@@ -124,7 +125,23 @@ class BaseDataServer(Publisher):
             self.add_subscriber(func, target)
     
     @abstractmethod
-    def quote(self, security, field):
+    def quote(self, security, fields=""):
+        """
+        Query latest market data in DataFrame.
+        
+        Parameters
+        ----------
+        security : str
+        fields : str, optional
+            default ""
+
+        Returns
+        -------
+        df : pd.DataFrame
+        msg : str
+            error code and error message joined by comma
+
+        """
         pass
     
     @abstractmethod
@@ -138,20 +155,24 @@ class BaseDataServer(Publisher):
         ----------
         security : str
             support multiple securities, separated by comma.
-        begin_date : int (YYYMMDD) or str ('YYYY-MM-DD')
-        end_date : int (YYYMMDD) or str ('YYYY-MM-DD')
-        fields : separated by comma ','
-            Default is all fields included.
-        adjust_mode : str or None
+        begin_date : int or str
+            YYYMMDD or 'YYYY-MM-DD'
+        end_date : int or str
+            YYYMMDD or 'YYYY-MM-DD'
+        fields : str, optional
+            separated by comma ',', default "" (all fields included).
+        adjust_mode : str or None, optional
             None for no adjust;
             'pre' for forward adjust;
             'post' for backward adjust.
 
         Returns
         -------
-        df : dict of {security: pd.DataFrame}
+        df : pd.DataFrame
             columns:
                 security, code, trade_date, open, high, low, close, volume, turnover, vwap, oi, suspended
+        msg : str
+            error code and error message joined by comma
 
         Examples
         --------
@@ -162,7 +183,7 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def bar(self, security, begin_time=200000, end_time=160000, trade_date=None, fields="", cycle='1m'):
+    def bar(self, security, begin_time=200000, end_time=160000, trade_date=None, cycle='1m', fields=""):
         """
         Query minute bars of various type, return DataFrame.
 
@@ -176,16 +197,18 @@ class BaseDataServer(Publisher):
             Default is market close time.
         trade_date : int (YYYMMDD) or str ('YYYY-MM-DD')
             Default is current trade_date.
-        fields : separated by comma ','
-            Default is all fields included.
-        cycle : framework.common.MINBAR_TYPE {'1m', '5m', '15m'}
-            Minute bar type, default is '1m'
+        fields : str, optional
+            separated by comma ',', default "" (all fields included).
+        cycle : framework.common.MINBAR_TYPE, optional
+            {'1m', '5m', '15m'}, Minute bar type, default is '1m'
 
         Returns
         -------
-        df : dict of {security: pd.DataFrame}
+        df : pd.DataFrame
             columns:
                 security, code, date, time, trade_date, cycle, open, high, low, close, volume, turnover, vwap, oi
+        msg : str
+            error code and error message joined by comma
 
         Examples
         --------
@@ -197,11 +220,33 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def tick(self, security, begin_time=None, end_time=None, trade_date=None, fields=""):
+    def tick(self, security, begin_time=200000, end_time=160000, trade_date=None, fields=""):
+        """
+        Query tick data in DataFrame.
+        
+        Parameters
+        ----------
+        security : str
+        begin_time : int (HHMMSS) or str ('HH:MM:SS')
+            Default is market open time.
+        end_time : int (HHMMSS) or str ('HH:MM:SS')
+            Default is market close time.
+        trade_date : int (YYYMMDD) or str ('YYYY-MM-DD')
+            Default is current trade_date.
+        fields : str, optional
+            separated by comma ',', default "" (all fields included).
+
+        Returns
+        -------
+        df : pd.DataFrame
+        err_msg : str
+            error code and error message joined by comma
+            
+        """
         pass
     
     @abstractmethod
-    def query(self, view, fields, filter):
+    def query(self, view, filter, fields):
         """
         Query reference data.
         Input query type and parameters, return DataFrame.
@@ -210,15 +255,16 @@ class BaseDataServer(Publisher):
         ----------
         view : str
             Type of reference data. See doc for details.
-        fields : str
-            Fields to return, separated by ','.
         filter : str
             Query conditions, separated by '&'.
+        fields : str
+            Fields to return, separated by ','.
 
         Returns
         -------
         df : pd.DataFrame
         err_msg : str
+            error code and error message joined by comma
 
         """
         pass
@@ -247,20 +293,20 @@ class JzDataServer(BaseDataServer):
     
     def daily(self, security, fields="",
               begin_date=0, end_date=0,
-              adjust_mode=None, data_format=""):
+              adjust_mode=None):
         df, err_msg = self.api.daily(security=security, begin_date=begin_date, end_date=end_date,
-                                     fields=fields, adjust_mode=adjust_mode, data_format=data_format)
+                                     fields=fields, adjust_mode=adjust_mode, data_format="")
         return df, err_msg
 
     def bar(self, security, fields="",
             begin_time=200000, end_time=160000, trade_date=0,
-            cycle="1m", data_format=""):
+            cycle="1m"):
         df, msg = self.api.bar(security=security, fields=fields,
                                begin_time=begin_time, end_time=end_time, trade_date=trade_date,
-                               cycle='1m', data_format=data_format)
+                               cycle='1m', data_format="")
         return df, msg
     
-    def query(self, view, fields="", filter="", data_format="pandas", **kwargs):
+    def query(self, view, filter="", fields="", **kwargs):
         """
         Get various reference data.
         
@@ -272,8 +318,6 @@ class JzDataServer(BaseDataServer):
             Separated by ','
         filter : str
             filter expressions.
-        data_format : str
-            default is "pandas"
         kwargs
 
         Returns
@@ -291,7 +335,7 @@ class JzDataServer(BaseDataServer):
             view does not change. fileds can be any field predefined in reference data api.
 
         """
-        df, msg = self.api.query(view, fields=fields, filter=filter, data_format=data_format, **kwargs)
+        df, msg = self.api.query(view, fields=fields, filter=filter, data_format="", **kwargs)
         return df, msg
     
     def get_suspensions(self):
@@ -461,7 +505,7 @@ def test_jz_data_server():
     # test daily
     res, msg = ds.daily('rb1710.SHF,600662.SH', fields="",
                         begin_date=20170828, end_date=20170831,
-                        adjust_mode=None, data_format="")
+                        adjust_mode=None)
     rb = res.loc[res.loc[:, 'security'] == 'rb1710.SHF', :]
     stk = res.loc[res.loc[:, 'security'] == '600662.SH', :]
     assert msg == '0,'
@@ -470,7 +514,7 @@ def test_jz_data_server():
     assert stk.loc[:, 'volume'].values[0] == 7174813
     
     # test bar
-    res2, msg2 = ds.bar('rb1710.SHF,600662.SH', "", 200000, 160000, 20170831)
+    res2, msg2 = ds.bar('rb1710.SHF,600662.SH', begin_time=200000, end_time=160000, trade_date=20170831, fields="")
     rb2 = res2.loc[res2.loc[:, 'security'] == 'rb1710.SHF', :]
     stk2 = res2.loc[res2.loc[:, 'security'] == '600662.SH', :]
     assert msg2 == '0,'
@@ -481,8 +525,7 @@ def test_jz_data_server():
     # test wd.secDailyIndicator
     res3, msg3 = ds.query("wd.secDailyIndicator", fields="pb,pe,share_float_free,net_assets,limit_status",
                           filter="security=600030.SH&start_date=20170907&end_date=20170907",
-                          orderby="trade_date",
-                          data_format='pandas')
+                          orderby="trade_date")
     assert msg3 == '0,'
     assert abs(res3.loc[0, 'pb'] - 1.5135) < 1e-4
     assert abs(res3.loc[0, 'share_float_free'] - 781496.5954) < 1e-4
