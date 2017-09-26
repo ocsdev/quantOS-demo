@@ -547,7 +547,7 @@ class JshHistoryBarDataServer(DataServer):
         return None
 
 
-def test_jz_data_server():
+def test_jz_data_server_daily():
     ds = JzDataServer()
     
     # test daily
@@ -560,6 +560,10 @@ def test_jz_data_server():
     assert rb.shape == (4, 13)
     assert rb.loc[:, 'volume'].values[0] == 189616
     assert stk.loc[:, 'volume'].values[0] == 7174813
+
+
+def test_jz_data_server_bar():
+    ds = JzDataServer()
     
     # test bar
     res2, msg2 = ds.bar('rb1710.SHF,600662.SH', start_time=200000, end_time=160000, trade_date=20170831, fields="")
@@ -569,7 +573,11 @@ def test_jz_data_server():
     assert rb2.shape == (345, 14)
     assert stk2.shape == (240, 14)
     assert rb2.loc[:, 'volume'].values[344] == 3366
-
+    
+    
+def test_jz_data_server_wd():
+    ds = JzDataServer()
+    
     # test wd.secDailyIndicator
     res3, msg3 = ds.query("wd.secDailyIndicator", fields="pb,pe,share_float_free,net_assets,limit_status",
                           filter="security=600030.SH&start_date=20170907&end_date=20170907",
@@ -580,6 +588,13 @@ def test_jz_data_server():
     assert abs(res3.loc[0, 'net_assets'] - 1.437e11) < 1e8
     assert res3.loc[0, 'limit_status'] == 0
     
+    res4, msg4 = ds.query("wd.income", fields="",
+                          filter="security=600000.SH&start_date=20150101&end_date=20170101&statement_type=408002000",
+                          order_by="ann_date")
+    assert msg4 == '0,'
+    assert res4.shape == (7, 10)
+    assert res4.loc[4, 'oper_rev'] == 42191000000
 
+    
 if __name__ == '__main__':
-    test_jz_data_server()
+    pass
