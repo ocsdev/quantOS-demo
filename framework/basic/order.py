@@ -79,7 +79,15 @@ class Order(object):
     
     def __cmp__(self, other):
         return cmp(self.entrust_no, other.entrust_no)
-    
+
+    def __repr__(self):
+        return "{0.entrust_date:8d}({0.entrust_time:8d}) " \
+               "{0.entrust_action:6s} {0.entrust_size:5d} of " \
+               "{0.security:10s}@{0.entrust_price:.3f}".format(self)
+
+    def __str__(self):
+        return self.__repr__()
+
     def copy(self, order):
         self.task_id = order.task_id
         self.entrust_no = order.entrust_no

@@ -63,12 +63,9 @@ class Trade(object):
         self.fill_no = no
     
     def __repr__(self):
-        return "{}-{}:  {:6s} {:5d} {:10s}@{:.3f}".format(self.fill_date,
-                                                          self.fill_time,
-                                                          self.entrust_action,
-                                                          self.fill_size,
-                                                          self.security,
-                                                          self.fill_price)
+        return "{0.fill_date:8d}({0.fill_time:8d}) " \
+               "{0.entrust_action:6s} {0.fill_size:5d} of " \
+               "{0.security:10s}@{0.fill_price:.3f}".format(self)
     
     def __str__(self):
         return self.__repr__()

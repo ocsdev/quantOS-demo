@@ -57,6 +57,12 @@ class Position(object):
         self.curr_size = 0
         self.init_size = 0
 
+    def __repr__(self):
+        return "{0.side:7s} {0.curr_size:5d} of {0.security:10s}".format(self)
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class GoalPosition(object):
     """
