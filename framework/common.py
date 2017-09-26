@@ -15,6 +15,10 @@ class ReprEnum(Enum):
     def full_name(self):
         return str(self)
 
+    @classmethod
+    def to_enum(cls, key):
+        return cls.__members__[key]
+
 
 class ReprIntEnum(int, ReprEnum):
     """Enum where members are also (and must be) ints"""
