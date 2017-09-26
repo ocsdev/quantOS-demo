@@ -20,12 +20,16 @@
 -[x] provide a simple API to analyze formula
 -[] relative return to benchmark
 -[] return array of data
--[]
 
 - modification of financial statement data
     for 1 security, 1 report_date, multiple ann_date exist because of modification.
     This can be separated by their statement type.
     For each modification, we modify the raw field value, then calculate formula again, finally modify results after new ann_date.
+
+    After modification, original entry will be deleted, then, two new entries with different report_type will be added,
+    one is the same with the original, the other is new.
+
+-[] when should we add trade_date, ann_date, report_date fields
 
 # Code Improvement of DataView
 -[] improve get, get_quarter_ts methods.
