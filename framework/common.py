@@ -17,7 +17,7 @@ class ReprEnum(Enum):
 
     @classmethod
     def to_enum(cls, key):
-        return cls.__members__[key]
+        return cls.__members__.get(key.upper(), None)
 
 
 class ReprIntEnum(int, ReprEnum):
