@@ -14,7 +14,7 @@
 # modified by symbol from quantOS, http://www.quantos.org/ 
 
 from __future__ import division
-
+from align import align
 import math
 import numpy as np
 import random
@@ -203,9 +203,10 @@ class Expression():
         vars = []
         for i in range(0, len(self.tokens)):
             item = self.tokens[i]
-            if item.type_ == TVAR and not item.index_ in vars:
+            if item.type_ == TVAR and \
+                not item.index_ in vars and \
+                not self.functions.has_key(item.index_):
                 vars.append(item.index_)
-        vars = [var for var in vars if var not in self.functions]
         return vars
 
 
@@ -219,6 +220,8 @@ class Parser:
             self.ops1 = ops1
             self.ops2 = ops2
             self.functions = functions
+            self.ann_dts = None
+            self.trade_dts = None
 
         def simplify(self, values):
             values = values or {}
@@ -277,7 +280,9 @@ class Parser:
             ret = Expression(newexpression, self.ops1, self.ops2, self.functions)
             return ret
 
-        def evaluate(self, values):
+        def evaluate(self, values, ann_dts = None, trade_dts = None):
+            self.ann_dts = ann_dts
+            self.trade_dts = trade_dts
             values = values or {}
             nstack = []
             L = len(self.tokens)
@@ -357,7 +362,9 @@ class Parser:
             vars = []
             for i in range(0, len(self.tokens)):
                 item = self.tokens[i]
-                if item.type_ == TVAR and not item.index_ in vars:
+                if item.type_ == TVAR and \
+                    not item.index_ in vars and \
+                    not self.functions.has_key(item.index_):
                     vars.append(item.index_)
             return vars
 
@@ -370,24 +377,51 @@ class Parser:
     SIGN         = 64
     CALL         = 128
     NULLARY_CALL = 256
-
+    
+    def align_df2(self, df1, df2, force_align = False):
+        if isinstance(df1, pd.DataFrame) and isinstance(df2, pd.DataFrame):
+            len1 = len(df1.index)
+            len2 = len(df2.index)
+            if (self.ann_dts is not None ) and (self.trade_dts is not None ):
+                if len1 > len2:
+                    df2 = align(df2,self.ann_dts, self.trade_dts)
+                elif len1 < len2 :
+                    df1 = align(df1,self.ann_dts, self.trade_dts)
+                elif force_align:
+                    df1 = align(df1,self.ann_dts, self.trade_dts)
+                    df2 = align(df2,self.ann_dts, self.trade_dts)
+        return (df1, df2)
+    
+    def align_df1(self, df1):
+        if isinstance(df1, pd.DataFrame):
+            len1 = len(df1.index)
+            len2 = len(self.trade_dts)
+            if len1 != len2:
+                return align(df1,self.ann_dts, self.trade_dts)
+        return df1
+        
     def add(self, a, b):
+        (a,b) = self.align_df2(a,b)
         return a + b
 
     def sub(self, a, b):
+        (a,b) = self.align_df2(a,b)
         return a - b
 
     def mul(self, a, b):
+        (a,b) = self.align_df2(a,b)
         return a * b
 
     def div(self, a, b):
+        (a,b) = self.align_df2(a,b)
         return a / b
 
     def mod(self, a, b):
+        (a,b) = self.align_df2(a,b)
         return a % b
 
     def pow(self, a, b):
-        return np.power(a,b)
+        return np.power(a, b)
     
     def concat(self, a, b,*args):
         result=u'{0}{1}'.format(a, b)
@@ -396,27 +430,35 @@ class Parser:
         return result
 
     def equal (self, a, b ):
+        (a,b) = self.align_df2(a,b)
         return a == b
 
     def notEqual (self, a, b ):
+        (a,b) = self.align_df2(a,b)
         return a != b
 
     def greaterThan (self, a, b ):
+        (a,b) = self.align_df2(a,b)
         return a > b
 
     def lessThan (self, a, b ):
+        (a,b) = self.align_df2(a,b)
         return a < b
 
     def greaterThanEqual (self, a, b ):
+        (a,b) = self.align_df2(a,b)
         return a >= b
 
     def lessThanEqual (self, a, b ):
+        (a,b) = self.align_df2(a,b)
         return a <= b
 
     def andOperator (self, a, b ):
+        (a,b) = self.align_df2(a,b)
         return ( a & b )
 
     def orOperator (self, a, b ):
+        (a,b) = self.align_df2(a,b)
         return  ( a | b )
 
     def neg(self, a):
@@ -429,16 +471,17 @@ class Parser:
         return np.math.factorial(a)
 
     def pyt(self, a, b):
+        (a,b) = self.align_df2(a,b)
         return np.sqrt(a * a + b * b)
     
-    def ifFunction(self,cond,b,c):
+    def ifFunction(self, cond, b, c):
         data = np.where(cond, b, c)
-        df = pd.DataFrame(data,columns=b.columns,index = b.index)      
+        df = pd.DataFrame(data, columns = b.columns, index = b.index)      
         return df
     
     def tail(self, x, lower, upper, neweval):
-        data = np.where((x > lower) & (x < upper), neweval, x)
-        df = pd.DataFrame(data,columns=x.columns,index = x.index)      
+        data = np.where((x >= lower) & (x <= upper), neweval, x)
+        df = pd.DataFrame(data, columns = x.columns, index = x.index)      
         return df
 
     def append(self, a, b):
@@ -448,16 +491,21 @@ class Parser:
         return a
     
     def corr(self, x, y, n):
-        return pd.rolling_corr(x,y,n)
+        (x, y) = self.align_df2(x, y)
+        return pd.rolling_corr(x, y, n)
     
     def cov(self, x, y, n):
-        return pd.rolling_cov(x,y,n)
+        (x, y) = self.align_df2(x, y)       
+        return pd.rolling_cov(x, y, n)
     
-    def std_dev(self, x, n):
-        return pd.rolling_std(x,n)
+    def std_dev(self, x, n):        
+        return pd.rolling_std(x, n)
     
     def sum(self, x, n):
-        return pd.rolling_sum(x,n)
+        return pd.rolling_sum(x, n)
+    
+    def count_nans(self, x, n):  
+        return n - pd.rolling_count(x, n)
     
     def delay(self, x, n):
         return x.shift(n)
@@ -466,52 +514,73 @@ class Parser:
         return x.diff(n)
     
     def rank(self,x):
-        return x.rank()
+        x = self.align_df1(x)
+        return x.rank(axis=1)
+    
+    def ts_mean(self, x, n):
+        return pd.rolling_mean(x, n)
     
     def ts_min(self, x, n):
-        return pd.rolling_min(x,n)
+        return pd.rolling_min(x, n)
     
     def ts_max(self, x, n):
-        return pd.rolling_max(x,n)
+        return pd.rolling_max(x, n)
     
     def ts_kurt(self, x, n):
-        return pd.rolling_kurt(x,n)
+        return pd.rolling_kurt(x, n)
     
     def ts_skew(self, x, n):
-        return pd.rolling_skew(x,n)
+        return pd.rolling_skew(x, n)
     
     def product(self, x, n):
         return pd.rolling_apply(x, n, np.product)
     
     def step(self, x, n):
         st = x.copy()
-        n = int(n)+1
-        begin = n-len(x.index)
-        for col in st:
-            st.loc[:, col] = range(begin,n,1)
-        return st
+        n = n + 1
+        begin = n - len(x.index)
+        for col in st.columns:
+            st.loc[:,col] = range(begin, n, 1)  
+        return st 
     
     def decay_exp_array(self, x, f):
         n = len(x)
-        step = range(0,n)
+        step = range(0, n)
         step = step[::-1]
-        fs = np.power(f,step)   
-        return np.dot(x,fs) /np.sum(fs)
+        fs = np.power(f, step)   
+        return np.dot(x, fs) / np.sum(fs)
     
     def decay_linear_array(self, x):
         n = len(x)+1
-        step = range(1,n)    
-        return np.dot(x,step) /np.sum(step)  
+        step = range(1, n)    
+        return np.dot(x, step) / np.sum(step)  
     
     def decay_linear(self, x, n):
         return pd.rolling_apply(x, n, self.decay_linear_array)
     
     def decay_exp(self, x, f, n):
-        return pd.rolling_apply(x, n, self.decay_exp_array,args=[f])
+        return pd.rolling_apply(x, n, self.decay_exp_array, args=[f])
     
     def signed_power(self, x, e):
         signs = np.sign(x)
-        return signs * np.power(np.abs(x), e)        
+        return signs * np.power(np.abs(x), e) 
+    
+    def cond_rank(self, x, group):
+        x = self.align_df1(x)
+        g_rank = x[group]
+        return g_rank.rank(axis = 1)
+    
+    def group_rank(self, x, group):
+        x = self.align_df1(x)
+        vals = pd.Series(group.values.ravel()).unique()
+        df = None
+        for val in vals:
+            rank = x[group==val].rank(axis=1)
+            if df is None:
+                df = rank
+            else :
+                df.fillna(rank, inplace=True) 
+        return df         
             
     def __init__(self):
         self.success = False
@@ -532,7 +601,7 @@ class Parser:
 #             'asin': np.asin,
 #             'acos': np.acos,
 #             'atan': np.atan,
-            'Mean':         np.mean,
+#            'Mean':         np.mean,
             'Sqrt':         np.sqrt,
             'Log':          np.log,
             'Abs':          np.abs,
@@ -566,33 +635,36 @@ class Parser:
         }
 
         self.functions = {
-            'random':       random,
-            'fac':          self.fac,
-            'Min':          np.minimum,
-            'Max':          np.maximum,            
-            'pyt':          self.pyt,
-            'Pow':          np.power,
-            'atan2':        math.atan2,
-            'concat':       self.concat,
-            'If':           self.ifFunction,
-            'Correlation':  self.corr,
-            'StdDev':       self.std_dev,
-            'Sum':          self.sum,
-            'Covariance':   self.cov,
-            'Product':      self.product,
-            'Rank':         self.rank,
-#             'CountNans':    self.count_na,
-            'Delay':        self.delay,
-            'Delta':        self.delta,
-            'Ts_Min':       self.ts_min,
-            'Ts_Max':       self.ts_max,
-            'Ts_Skewness':  self.ts_skew,
-            'Ts_Kurtosis':  self.ts_kurt,
-            'Tail':         self.tail,
-            'Step':         self.step,
-            'Decay_linear': self.decay_linear,
-            'Decay_exp':    self.decay_exp,
-            'SignedPower':  self.signed_power       
+            'random':          random,
+            'fac':             self.fac,
+            'Min':             np.minimum,
+            'Max':             np.maximum,            
+            'pyt':             self.pyt,
+            'Pow':             np.power,
+            'atan2':           math.atan2,
+            'concat':          self.concat,
+            'If':              self.ifFunction,
+            'Correlation':     self.corr,
+            'StdDev':          self.std_dev,
+            'Sum':             self.sum,
+            'Covariance':      self.cov,
+            'Product':         self.product,
+            'Rank':            self.rank,
+            'CountNans':       self.count_nans,
+            'Delay':           self.delay,
+            'Delta':           self.delta,
+            'Ts_Mean':         self.ts_mean,
+            'Ts_Min':          self.ts_min,
+            'Ts_Max':          self.ts_max,
+            'Ts_Skewness':     self.ts_skew,
+            'Ts_Kurtosis':     self.ts_kurt,
+            'Tail':            self.tail,
+            'Step':            self.step,
+            'Decay_linear':    self.decay_linear,
+            'Decay_exp':       self.decay_exp,
+            'SignedPower':     self.signed_power,
+            'GroupRank':       self.group_rank,
+            'ConditionRank':   self.cond_rank  
         }
 
         self.consts = {
@@ -601,15 +673,15 @@ class Parser:
         }
 
         self.values = {
-            'sin': math.sin,
-            'cos': math.cos,
-            'tan': math.tan,
+            'sin':  math.sin,
+            'cos':  math.cos,
+            'tan':  math.tan,
             'asin': math.asin,
             'acos': math.acos,
             'atan': math.atan,
             'sqrt': math.sqrt,
-            'log': math.log,
-            'abs': abs,
+            'log':  math.log,
+            'abs':  abs,
             'ceil': math.ceil,
             'floor': math.floor,
             'round': round,
@@ -714,7 +786,8 @@ class Parser:
                 expected = self.LPAREN
             elif self.isVar():
                 if (expected & self.PRIMARY) == 0:
-                    self.error_parsing(self.pos, 'unexpected variable')
+                    self.error_parsing(self.pos, 'unexpected variable')              
+               
                 vartoken = Token(TVAR, self.tokenindex, 0, 0)
                 tokenstack.append(vartoken)
                 expected = \
@@ -734,11 +807,55 @@ class Parser:
             tokenstack.append(tmp)
         if (noperators + 1) != len(tokenstack):
             self.error_parsing(self.pos, 'parity')
-
+        self.tokens = tokenstack
         return Expression(tokenstack, self.ops1, self.ops2, self.functions)
 
-    def evaluate(self, expr, variables):
-        return self.parse(expr).evaluate(variables)
+#     def evaluate(self, expr, variables):
+#         return self.parse(expr).evaluate(variables)
+    
+    def evaluate(self, values, ann_dts=None, trade_dts=None):
+        self.ann_dts = ann_dts
+        self.trade_dts = trade_dts
+        values = values or {}
+        nstack = []
+        L = len(self.tokens)
+        for i in range(0, L):
+            item = self.tokens[i]
+            type_ = item.type_
+            if type_ == TNUMBER:
+                nstack.append(item.number_)
+            elif type_ == TOP2:
+                n2 = nstack.pop()
+                n1 = nstack.pop()
+                f = self.ops2[item.index_]
+                nstack.append(f(n1, n2))
+            elif type_ == TVAR:
+                if item.index_ in values:
+                    nstack.append(values[item.index_])
+                elif item.index_ in self.functions:
+                    nstack.append(self.functions[item.index_])
+                else:
+                    raise Exception('undefined variable: ' + item.index_)
+            elif type_ == TOP1:
+                n1 = nstack.pop()
+                f = self.ops1[item.index_]
+                nstack.append(f(n1))
+            elif type_ == TFUNCALL:
+                n1 = nstack.pop()
+                f = nstack.pop()
+                if callable(f):
+                    if type(n1) is list:
+                        nstack.append(f(*n1))
+                    else:
+                        nstack.append(f(n1)) #call(f, n1)
+                else:
+                    raise Exception(f + ' is not a function')
+            else:
+                raise Exception('invalid Expression')
+        if len(nstack) > 1:
+            raise Exception('invalid Expression (parity)')
+        return nstack[0]
+    
 
     def error_parsing(self, column, msg):
         self.success = False

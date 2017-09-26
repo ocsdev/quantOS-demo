@@ -39,9 +39,9 @@ def main():
     factor_name = 'myvwap'
     dv.add_formula(vwap_formula, factor_name)
     
-    # factor_formula = '-1 * Rank(Ts_Max(Delta(myvwap, 7), 11))'  # GTJA
+    factor_formula = '-1 * Rank(Ts_Max(Delta(myvwap, 7), 11))'  # GTJA
     # factor_formula = '-Delta(close, 5) / close'#  / pb'  # revert
-    factor_formula = 'Delta(total_oper_rev, 1) / Delay(total_oper_rev, 1)' # pct change
+    # factor_formula = 'Delta(tot_profit, 1) / Delay(tot_profit, 1)' # pct change
     factor_name = 'factor1'
     dv.add_formula(factor_formula, factor_name)
     
@@ -60,7 +60,7 @@ def main():
     end = np.datetime64(datetime.date(2016, 7, 30))
     df_tmp = factor_data.loc[pd.IndexSlice[start: end, '600000.SH'], :]
     """
-    alphalens.tears.create_full_tear_sheet(factor_data, output_format='plot')
+    alphalens.tears.create_full_tear_sheet(factor_data, output_format='pdf')
 
 
 def test_align():
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     
     import alphalens
     timer.tick('import alphalens')
-    save_dataview_new()
-    # main()
+    # save_dataview_new()
+    main()
     
     timer.tick('end')
