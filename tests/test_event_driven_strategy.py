@@ -3,6 +3,7 @@
 import json
 
 from framework import *
+from data.dataserver import JzEventServer
 from app.doubleMaStrategy import DoubleMaStrategy
 
 if __name__ == "__main__":
@@ -18,14 +19,14 @@ if __name__ == "__main__":
     # strategy   = CtaStrategy()
     strategy = DoubleMaStrategy()
     gateway = BarSimulatorGateway()
-    data_server = JshHistoryBarDataServer()
+    data_server = JzEventServer()
     
-    backtest = BacktestInstance()
-    backtest.initFromConfig(props, data_server, gateway, strategy)
+    backtest = EventBacktestInstance()
+    backtest.init_from_config(props, data_server, gateway, strategy)
     
     # backtest.run()
     backtest.run2()
-    report = backtest.generateReport()
+    report = backtest.generate_report()
     # print report.trades[:100]
     # for pnl in report.daily_pnls:
     #     print pnl.date, pnl.trade_pnl, pnl.hold_pnl,pnl.total_pnl, pnl.positions.get('600030.SH')
