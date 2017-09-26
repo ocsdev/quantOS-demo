@@ -484,7 +484,7 @@ class BaseDataView(object):
         
     def add_formula(self, formula, field_name):
         if field_name in self.fields:
-            print "Add formula failed: field name [{:s}] exist. Try another name."
+            print "Add formula failed: field name [{:s}] exist. Try another name.".format(field_name)
             return
         self.fields.append(field_name)
         
