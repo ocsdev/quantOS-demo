@@ -289,18 +289,17 @@ class JzDataServer(BaseDataServer):
         
         address = 'tcp://10.1.0.210:8910'
         self.api = DataApi(address, use_jrpc=False)
-        self.api.login("usr", "123")
-    
-    def daily(self, security, fields="",
-              begin_date=0, end_date=0,
-              adjust_mode=None):
+        self.api.login("test", "123")
+
+    def daily(self, security, begin_date, end_date,
+              fields="", adjust_mode=None):
         df, err_msg = self.api.daily(security=security, begin_date=begin_date, end_date=end_date,
                                      fields=fields, adjust_mode=adjust_mode, data_format="")
         return df, err_msg
 
-    def bar(self, security, fields="",
-            begin_time=200000, end_time=160000, trade_date=0,
-            cycle="1m"):
+    def bar(self, security,
+            begin_time=200000, end_time=160000,trade_date=None,
+            cycle='1m', fields=""):
         df, msg = self.api.bar(security=security, fields=fields,
                                begin_time=begin_time, end_time=end_time, trade_date=trade_date,
                                cycle='1m', data_format="")

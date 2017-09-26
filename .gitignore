@@ -4,6 +4,9 @@ venv/
 # Archived
 old_archive/
 
+# Prepared DataView
+data/prepared
+
 # Personal Configs
 etc/*.json
 
