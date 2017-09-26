@@ -635,14 +635,9 @@ class Parser:
         }
 
         self.functions = {
-            'random':          random,
-            'fac':             self.fac,
             'Min':             np.minimum,
             'Max':             np.maximum,            
-            'pyt':             self.pyt,
             'Pow':             np.power,
-            'atan2':           math.atan2,
-            'concat':          self.concat,
             'If':              self.ifFunction,
             'Correlation':     self.corr,
             'StdDev':          self.std_dev,
@@ -696,7 +691,22 @@ class Parser:
             'E': math.e,
             'PI': math.pi
         }
-
+        
+    def register_function(self, name, func):
+        """Register a new function to function map.
+        
+        Parameters
+        ----------
+        name : str
+        func : callable
+        
+        """
+        if name in self.functions:
+            print "Register function failed: name [{:s}] already exist. Try another name.".format(name)
+            return
+        
+        self.functions[name] = func
+        
     def parse(self, expr):
         self.errormsg = ''
         self.success = True
