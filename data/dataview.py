@@ -441,6 +441,8 @@ class BaseDataView(object):
         self.data.index.name = 'trade_date'
         
         self.data_q = multi_ref_quarterly
+        
+        print "Data has been prepared."
 
     def add_field(self, data_api, field_name):
         """
@@ -553,6 +555,8 @@ class BaseDataView(object):
         self.data = dic['data']
         self.data_q = dic['data_q']
         self.__dict__.update(meta_data)  # Series to dict
+        
+        print "Dataview loaded successfully."
 
     @property
     def dates(self):
@@ -718,6 +722,10 @@ class BaseDataView(object):
         sub_folder = "{:d}_{:d}_freq={:d}D".format(self.start_date, self.end_date, self.freq)
         
         folder = os.path.join(folder, sub_folder)
+        abs_folder = os.path.abspath(folder)
+        print ("Dataview has been successfully saved to:\n"
+               + abs_folder + "\n"
+               + "You can load it with load_dataview('{:s}')".format(abs_folder))
         meta_path = os.path.join(folder, 'meta_data.json')
         data_path = os.path.join(folder, 'data.hd5')
     

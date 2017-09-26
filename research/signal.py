@@ -19,7 +19,7 @@ def save_dataview_new():
                         + 'total_oper_rev,total_oper_exp,total_profit,int_income'),
              'freq': 1}
     """
-    props = {'start_date': 20160109, 'end_date': 20170909, 'universe': '000300.SH',
+    props = {'start_date': 20170109, 'end_date': 20170909, 'universe': '000300.SH',
              'fields': ('open,high,low,close,vwap,volume,turnover,'
                         # + 'pb,net_assets,'
                         + 'total_oper_rev,oper_exp,tot_profit,int_income'),
