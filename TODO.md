@@ -38,3 +38,8 @@
 # Code Improvement of DataView
 -[] improve get, get_quarter_ts methods.
 
+# Latest Plan
+1. single factor pre-process: extreme, standardize, neutral
+2. study alphalens (IC distribution on time series and securities) and factor -> weights -> portfolio return
+3. multi-factor combination
+4. backtest analysis: portfolio return attribution -- at each time, contribution of each return.
