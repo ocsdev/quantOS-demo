@@ -59,8 +59,9 @@ def main():
     df_tmp = factor_data.loc[pd.IndexSlice[start: end, '600000.SH'], :]
     """
     # alphalens.tears.create_returns_tear_sheet(factor_data, False, False, set_context=False, output_format='pdf')
-    alphalens.tears.create_full_tear_sheet(factor_data, long_short=True,
-                                           output_format='pdf')
+    res = alphalens.tears.create_full_tear_sheet(factor_data, long_short=True,
+                                                 output_format='pdf', verbose=True)
+    print res
 
 
 def _test_append_custom_data():

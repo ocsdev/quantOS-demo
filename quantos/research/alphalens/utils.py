@@ -428,7 +428,7 @@ def get_clean_factor_and_forward_returns(factor,
                                                      quantiles,
                                                      bins,
                                                      by_group)
-    print merged_data.isnull().sum(axis=0)
+    # print merged_data.isnull().sum(axis=0)
 
     return merged_data
 
