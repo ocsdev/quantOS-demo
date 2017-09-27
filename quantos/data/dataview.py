@@ -54,8 +54,11 @@ class BaseDataView(object):
 
         self.meta_data_list = ['start_date', 'end_date', 'freq', 'fields', 'security', 'universe',
                                'custom_daily_fields', 'custom_quarterly_fields']
+        self.adjust_mode = 'post'
+        
         self.data_d = None
         self.data_q = None
+        self.data_benchmark = None
         
         common_list = {'security', 'start_date', 'end_date'}
         market_bar_list = {'open', 'high', 'low', 'close', 'volume', 'turnover', 'vwap', 'oi'}
@@ -276,9 +279,9 @@ class BaseDataView(object):
             
             fields_market_daily = self._get_fields('market_daily', fields, append=True)  # TODO: not each time we want append = True
             if fields_market_daily:
-                # TODO adjust mode
+                print "NOTE: adjust mode of price is [{:s} adjust]".format(self.adjust_mode)
                 df_daily, msg1 = self.data_api.daily(security_str, start_date=self.start_date, end_date=self.end_date,
-                                                     adjust_mode='post', fields=sep.join(fields_market_daily))
+                                                     adjust_mode=self.adjust_mode, fields=sep.join(fields_market_daily))
                 if msg1 != '0,':
                     print msg1
                 dic_market_daily = self._group_df_to_dict(df_daily, 'security')
@@ -598,7 +601,7 @@ class BaseDataView(object):
         
         fields = props['fields'].split(sep)
         self.fields = [field for field in fields if self._is_predefined_field(field)]
-        if len(self.fields) < fields:
+        if len(self.fields) < len(fields):
             print "Field name {} not valid, ignore.".format(set.difference(set(fields),
                                                                            set(self.fields)))
             
@@ -611,8 +614,19 @@ class BaseDataView(object):
         
         self.data_d, self.data_q = self._prepare_data(self.fields)
         
+        self.data_benchmark = self._prepare_benchmark()
+        
         print "Data has been successfully prepared."
 
+    def _prepare_benchmark(self):
+        df_bench, msg = self.data_api.daily(self.universe, start_date=self.start_date, end_date=self.end_date,
+                                            adjust_mode=self.adjust_mode, fields='close')
+        if msg != '0,':
+            raise ValueError("msg = {:s}".format(msg))
+        
+        df_bench = self._process_index(df_bench, self.TRADE_DATE_FIELD_NAME)
+        return df_bench
+    
     def _add_field(self, field_name, is_quarterly):
         self.fields.append(field_name)
         if not self._is_predefined_field(field_name):
@@ -727,6 +741,7 @@ class BaseDataView(object):
         dic = self._load_h5(os.path.join(folder, 'data.hd5'))
         self.data_d = dic.get('/data_d', None)
         self.data_q = dic.get('/data_q', None)
+        self.data_benchmark = dic.get('/data_benchmark', None)
         self.__dict__.update(meta_data)
         
         print "Dataview loaded successfully."
@@ -918,7 +933,7 @@ class BaseDataView(object):
         meta_path = os.path.join(folder_path, 'meta_data.json')
         data_path = os.path.join(folder_path, 'data.hd5')
         
-        data_to_store = {'data_d': self.data_d, 'data_q': self.data_q}
+        data_to_store = {'data_d': self.data_d, 'data_q': self.data_q, 'data_benchmark': self.data_benchmark}
         data_to_store = {k: v for k, v in data_to_store.items() if v is not None}
         meta_data_to_store = {key: self.__dict__[key] for key in self.meta_data_list}
 
