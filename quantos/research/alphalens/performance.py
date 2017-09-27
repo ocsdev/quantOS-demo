@@ -157,6 +157,7 @@ def factor_returns(factor_data, long_short=True, group_neutral=False):
             demeaned_vals = group - group.mean()
             return demeaned_vals / demeaned_vals.abs().sum()
         else:
+            group.loc[:] = 1. / len(group)
             return group / group.abs().sum()
 
     grouper = [factor_data.index.get_level_values('date')]
@@ -173,6 +174,7 @@ def factor_returns(factor_data, long_short=True, group_neutral=False):
         factor_data[utils.get_forward_returns_columns(factor_data.columns)] \
         .multiply(weights, axis=0)
 
+    # dump debug
     returns = weighted_returns.groupby(level='date').sum()
 
     return returns

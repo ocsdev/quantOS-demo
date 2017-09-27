@@ -140,7 +140,7 @@ def plot_returns_table(alpha_beta,
     returns_table.loc["Mean Period Wise Spread (bps)"] = \
         mean_ret_spread_quantile.mean() * DECIMAL_TO_BPS
 
-    print("Returns Analysis")
+    print("\nReturns Analysis")
     utils.print_table(returns_table.apply(lambda x: x.round(3)))
 
 
@@ -183,7 +183,7 @@ def plot_quantile_statistics_table(factor_data):
     quantile_stats['count %'] = quantile_stats['count'] \
         / quantile_stats['count'].sum() * 100.
 
-    print("Quantiles Statistics")
+    print("\n\nValue of Factors of Different Quantiles Statistics")
     utils.print_table(quantile_stats)
 
 
@@ -382,7 +382,7 @@ def plot_quantile_returns_bar(mean_ret_by_q,
                 .multiply(DECIMAL_TO_BPS)
                 .plot(kind='bar', title=sc, ax=a))
 
-            a.set(xlabel='', ylabel='Mean Return (bps)',
+            a.set(xlabel='Quantile', ylabel='Mean Return (bps)',
                   ylim=(ymin, ymax))
 
         if num_group < len(ax):
@@ -396,8 +396,8 @@ def plot_quantile_returns_bar(mean_ret_by_q,
 
         (mean_ret_by_q.multiply(DECIMAL_TO_BPS)
             .plot(kind='bar',
-                  title="Mean Return By Factor Quantile", ax=ax))
-        ax.set(xlabel='', ylabel='Mean Return (bps)',
+                  title="Mean Return (on security, time) By Factor Quantile", ax=ax))
+        ax.set(xlabel='Quantile', ylabel='Mean Return (bps)',
                ylim=(ymin, ymax))
 
         return ax
@@ -736,7 +736,7 @@ def plot_cumulative_returns(factor_returns, period=1, ax=None):
     factor_returns.add(1).cumprod().plot(
         ax=ax, lw=3, color='forestgreen', alpha=0.6)
     ax.set(ylabel='Cumulative Returns',
-           title='''Factor Weighted Long/Short Portfolio Cumulative Return
+           title='''Factor Weighted Portfolio Cumulative Return
                     ({} Fwd Period)'''.format(period),
            xlabel='')
     ax.axhline(1.0, linestyle='-', color='black', lw=1)
@@ -784,7 +784,7 @@ def plot_cumulative_returns_by_quantile(quantile_returns, period=1, ax=None):
     ax.legend()
     ymin, ymax = cum_ret.min().min(), cum_ret.max().max()
     ax.set(ylabel='Log Cumulative Returns',
-           title='''Cumulative Return by Quantile
+           title='''Cum. Return by Quantile - Equal Weight in Quantile
                     ({} Period Forward Return)'''.format(period),
            xlabel='',
            yscale='symlog',
