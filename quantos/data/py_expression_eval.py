@@ -706,6 +706,29 @@ class Parser:
             'PI': math.pi
         }
         
+    def set_capital(self, style='upper'):
+        def lower_dic(dic):
+            """
+            
+            Parameters
+            ----------
+            dic : dict
+
+            Returns
+            -------
+            dict
+
+            """
+            return {k.lower(): v for k, v in dic.viewitems()}
+        
+        if style == 'upper':
+            pass
+        elif style == 'lower':
+            self.functions = lower_dic(self.functions)
+            self.ops1 = lower_dic(self.ops1)
+        else:
+            raise NotImplementedError("style = {}".format(style))
+    
     def register_function(self, name, func):
         """Register a new function to function map.
         

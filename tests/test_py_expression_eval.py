@@ -8,7 +8,8 @@ from quantos.data.py_expression_eval import Parser
 
 
 def test_skew():
-    expression = parser.parse('Ts_Skewness(open,4)')
+    parser.set_capital('lower')
+    expression = parser.parse('ts_skewness(open,4)')
     print parser.evaluate({'close': dfy, 'open': dfx})
 
 
@@ -18,7 +19,8 @@ def test_variables():
     
     
 def test_product():
-    expression = parser.parse('Product(open,2)')
+    parser.set_capital('lower')
+    expression = parser.parse('product(open,2)')
     print parser.evaluate({'close': dfy, 'open': dfx})
 
 
