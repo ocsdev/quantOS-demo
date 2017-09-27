@@ -401,6 +401,18 @@ class Parser:
                     return align(df1,self.ann_dts, self.trade_dts)
         return df1
         
+    def my_process(self, x):
+        axis = 1
+        mid = np.median(x, axis=axis)
+        diff = x - mid
+        diff_abs = np.abs(diff)
+        mad = 3 * diff_abs.mean()
+        mask = diff_abs > mad
+        x[mask] = mad * np.sign(diff) + mid
+    
+    def industry_netural(self, x, group):
+        pass
+        
     def add(self, a, b):
         (a,b) = self.align_df2(a,b)
         return a + b
@@ -571,6 +583,7 @@ class Parser:
         g_rank = x[group]
         return g_rank.rank(axis = 1)
     
+    #TODO: all cross-section operations support in-group modification: neutral, extreme values, standardize.
     def group_rank(self, x, group):
         x = self.align_df1(x)
         vals = pd.Series(group.values.ravel()).unique()
