@@ -158,34 +158,34 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False, outp
     """
 
     # daily factor return for different periods
-    factor_returns = perf.factor_returns(factor_data, long_short)
+    factor_returns = perf.factor_returns(factor_data, long_short=long_short)
 
+    # mean quantile return
     mean_ret_quantile, std_quantile = \
-        perf.mean_return_by_quantile(factor_data,
-                                     by_group=False,
-                                     demeaned=long_short)
+        perf.mean_return_by_quantile(factor_data, by_group=False, demeaned=long_short)
+    
+    mean_compret_quantile = mean_ret_quantile.apply(utils.rate_of_return, axis=0)
 
-    mean_compret_quantile = mean_ret_quantile.apply(utils.rate_of_return,
-                                                    axis=0)
-
+    # daily quantile return
     mean_ret_quant_daily, std_quant_daily = \
-        perf.mean_return_by_quantile(factor_data,
-                                     by_date=True,
-                                     by_group=False,
-                                     demeaned=long_short)
+        perf.mean_return_by_quantile(factor_data, by_date=True, by_group=False, demeaned=long_short)
 
-    mean_compret_quant_daily = mean_ret_quant_daily.apply(utils.rate_of_return,
-                                                          axis=0)
+    mean_compret_quant_daily = mean_ret_quant_daily.apply(utils.rate_of_return, axis=0)
     compstd_quant_daily = std_quant_daily.apply(utils.std_conversion, axis=0)
 
+    # alpha beta
     alpha_beta = perf.factor_alpha_beta(factor_data, long_short)
 
+    # quantile return spread
     mean_ret_spread_quant, std_spread_quant = \
         perf.compute_mean_returns_spread(mean_compret_quant_daily,
                                          factor_data['factor_quantile'].max(),
                                          factor_data['factor_quantile'].min(),
                                          std_err=compstd_quant_daily)
 
+    # start plotting
+    print "\n\nFactor Returns Tear Sheet (long short = {}): ".format(long_short)
+    
     fr_cols = len(factor_returns.columns)
     vertical_sections = 2 + fr_cols * 3
     gf = GridFigure(rows=vertical_sections, cols=1)
@@ -245,7 +245,8 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False, outp
                                            ax=ax_quantile_returns_bar_by_group)
     
     if output_format == 'plot':
-        gf.fig.show()
+        plt.show()
+        # gf.fig.show()
     elif output_format == 'pdf':
         from quantos import SOURCE_ROOT_DIR
         from os.path import join
@@ -308,7 +309,8 @@ def create_information_tear_sheet(factor_data,
         plotting.plot_ic_by_group(mean_group_ic, ax=gf.next_row())
 
     if output_format == 'plot':
-        gf.fig.show()
+        plt.show()
+        # gf.fig.show()
     elif output_format == 'pdf':
         from quantos import SOURCE_ROOT_DIR
         from os.path import join
@@ -361,7 +363,8 @@ def create_turnover_tear_sheet(factor_data, output_format='plot'):
                                                    ax=gf.next_row())
 
     if output_format == 'plot':
-        gf.fig.show()
+        plt.show()
+        # gf.fig.show()
     elif output_format == 'pdf':
         from quantos import SOURCE_ROOT_DIR
         from os.path import join

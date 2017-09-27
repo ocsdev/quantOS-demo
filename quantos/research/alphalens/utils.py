@@ -98,7 +98,7 @@ def quantize_factor(factor_data, quantiles=5, bins=None, by_group=False):
     return factor_quantile.dropna()
 
 
-def compute_forward_returns(prices, periods=(1, 5, 10), filter_zscore=None):
+def compute_forward_returns(prices, periods=(1, 5, 10), filter_zscore=None, benchmark_price=None):
     """
     Finds the N period forward returns (as percent change) for each asset
     provided.
@@ -130,6 +130,11 @@ def compute_forward_returns(prices, periods=(1, 5, 10), filter_zscore=None):
     for period in periods:
         delta = prices.pct_change(period).shift(-period)
 
+        # TODO minus benchmark return
+        if benchmark_price is not None:
+            delta_benchmark = benchmark_price.pct_change(period).shift(-period)
+            delta = delta.sub(delta_benchmark, axis=0)
+        
         if filter_zscore is not None:
             mask = abs(delta - delta.mean()) > (filter_zscore * delta.std())
             delta[mask] = np.nan
@@ -232,7 +237,8 @@ def get_clean_factor_and_forward_returns(factor,
                                          periods=(1, 5, 10),
                                          filter_zscore=20,
                                          groupby_labels=None,
-                                         mask_sus=None):
+                                         mask_sus=None,
+                                         benchmark_price=None):
     """
     Formats the factor data, pricing data, and group mappings
     into a DataFrame that contains aligned MultiIndex
@@ -326,6 +332,21 @@ def get_clean_factor_and_forward_returns(factor,
     prices.index = Calendar.convert_int_to_datetime(prices.index)
     mask_sus.index = Calendar.convert_int_to_datetime(mask_sus.index)
 
+    # convert benchmark_price to pd.Series
+    if benchmark_price is None:
+        pass
+    else:
+        if isinstance(benchmark_price, pd.DataFrame):
+            if benchmark_price.shape[1] > 1:
+                raise ValueError("Benchmark price should have only 1 column.")
+            benchmark_price = benchmark_price.iloc[:, 0]
+        elif isinstance(benchmark_price, pd.Series):
+            pass
+        else:
+            raise ValueError("Benchmark price should be DataFrame or Series.")
+        benchmark_price.index = Calendar.convert_int_to_datetime(benchmark_price.index)
+
+    # get masks
     mask_return = pd.DataFrame(index=mask_sus.index, columns=mask_sus.columns, data=False)
     for period in periods:
         mask_return_period = mask_sus.shift(-period)
@@ -336,11 +357,13 @@ def get_clean_factor_and_forward_returns(factor,
     mask = np.logical_or(mask_sus, mask_return)  # MultiIndex Series
     mask_factor = factor.isnull()
     mask = np.logical_or(mask, mask_factor)
+    """
     print "The number of sus: {}\n" \
           "The number of sus return: {}\n" \
           "The number of sus factor: {}".format(mask_sus.values.sum(),
                                                 mask_return.values.sum(),
                                                 mask_factor.values.sum())
+    """
     
     mask = my_stack(mask)
     factor = my_stack(factor)
@@ -352,16 +375,12 @@ def get_clean_factor_and_forward_returns(factor,
                                        "tz_convert.")
 
     # merged_data are processed forward returns
-    merged_data = compute_forward_returns(prices, periods, filter_zscore)
+    merged_data = compute_forward_returns(prices, periods, filter_zscore, benchmark_price=benchmark_price)
 
     factor = factor.copy()
     factor.index = factor.index.rename(['date', 'asset'])
     
     # concat factor value
-    print merged_data.shape
-    print mask.shape
-    print merged_data.isnull().sum(axis=0)
-    print factor.shape
     merged_data['factor'] = factor
 
     if groupby is not None:
@@ -391,15 +410,18 @@ def get_clean_factor_and_forward_returns(factor,
 
         merged_data['group'] = groupby.astype('category')
 
+    """
     print merged_data.shape
     print mask.shape
     print merged_data.isnull().sum(axis=0)
-    # merged_data = merged_data.dropna()
+    """
     merged_data = merged_data.loc[np.logical_not(mask)]
     
+    """
     print merged_data.shape
     print mask.shape
-    print merged_data.isnull().sum(axis=0)
+    """
+    print "Nan Data Count (should be zero) = {}".format(merged_data.isnull().sum(axis=0).sum())
 
     # label quantile
     merged_data['factor_quantile'] = quantize_factor(merged_data,
