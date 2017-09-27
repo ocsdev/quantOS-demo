@@ -667,7 +667,7 @@ class BaseDataView(object):
         merge = merge.loc[:, pd.IndexSlice[:, field_name]]
         self.append_df(merge, field_name, is_quarterly=is_quarterly)  # whether contain only trade days is decided by existing data.
     
-    def add_formula(self, field_name, formula, freq='D'):
+    def add_formula(self, field_name, formula, freq='D', formula_func_name_style='upper'):
         """
         Add a new field, which is calculated using existing fields.
         
@@ -679,7 +679,8 @@ class BaseDataView(object):
             A custom name for the new field.
         freq : {'D', 'Q'}
             Frequency of evaluation result of the formula.
-
+        formula_func_name_style : {'upper', 'lower'}
+        
         """
         if field_name in self.fields:
             print "Add formula failed: field name [{:s}] exist. Try another name.".format(field_name)
@@ -688,6 +689,8 @@ class BaseDataView(object):
         self.fields.append(field_name)
         
         parser = Parser()
+        parser.set_capital(formula_func_name_style)
+        
         expr = parser.parse(formula)
         
         var_df_dic = dict()
