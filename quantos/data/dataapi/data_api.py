@@ -1,9 +1,7 @@
-import time
-
 import jrpc_py
-# import jrpc
+#import jrpc
 import utils
-
+import time
 
 #def set_log_dir(log_dir):
 #    if log_dir:
@@ -216,7 +214,7 @@ class DataApi:
         r, msg = self._call_rpc("jsq.query",
                                 self._get_format(data_format, ""),
                                 "Quote",
-                                symbol = str(symbol),
+                                security = str(symbol),
                                 fields   = fields,
                                 **kwargs)
         return (r, msg)    
@@ -229,7 +227,7 @@ class DataApi:
         codes.sort()
         
         # XXX subscribe with default fields!
-        rpc_params = {"symbol" : ",".join(codes),
+        rpc_params = {"security" : ",".join(codes),
                       "fields"   : "" }
 
         cr = self._remote.call("jsq.subscribe", rpc_params)
@@ -259,7 +257,7 @@ class DataApi:
         if func:
             self._on_jsq_callback = func
         
-        rpc_params = {"symbol" : symbol,
+        rpc_params = {"security" : symbol,
                       "fields"   : fields }
 
         cr = self._remote.call("jsq.subscribe", rpc_params)
@@ -277,7 +275,7 @@ class DataApi:
         return (rsp['securities'], msg)
         
 
-    def unsubscribe(self, symbol):
+    def unsubscribe(self, security):
         """Unsubscribe securities.
 
         Unscribe codes and return list of subscribed code.
@@ -285,7 +283,7 @@ class DataApi:
         assert False, "NOT IMPLEMENTED"
 
 
-    def bar(self, symbol, start_time=200000, end_time=160000,
+    def bar(self, symbol, start_time=200000, end_time=160000, 
         trade_date=0, cycle="1m", fields="", data_format="", **kwargs ) :
         
         begin_time = utils.to_time_int(start_time)
@@ -301,7 +299,7 @@ class DataApi:
         return self._call_rpc("jsi.query",
                               self._get_format(data_format, "pandas"),
                               "Bar",
-                              symbol   = str(symbol),
+                              security   = str(symbol),
                               fields     = fields,
                               cycle      = cycle,
                               trade_date = trade_date,
@@ -309,7 +307,7 @@ class DataApi:
                               end_time   = end_time,
                               **kwargs)
 
-    def bar_view(self, symbol, start_time=200000, end_time=160000,
+    def bar_view(self, symbol, start_time=200000, end_time=160000, 
         trade_date=0, cycle="1m", fields="", data_format="", **kwargs ) :
 
         begin_time = utils.to_time_int(start_time)
@@ -325,7 +323,7 @@ class DataApi:
         return self._call_rpc("jsi.bar_view",
                               self._get_format(data_format, "pandas"),
                               "Bar",
-                              symbol   = str(symbol),
+                              security   = str(symbol),
                               fields     = fields,
                               cycle      = cycle,
                               trade_date = trade_date,
@@ -334,7 +332,7 @@ class DataApi:
                               **kwargs)    
 
 
-    def daily(self, symbol, start_date, end_date,
+    def daily(self, symbol, start_date, end_date, 
         adjust_mode = None, fields="",
         data_format="", **kwargs ) :
 
@@ -351,7 +349,7 @@ class DataApi:
         return self._call_rpc("jsd.query",
                               self._get_format(data_format, "pandas"),
                               "Daily",
-                              symbol       = str(symbol),
+                              security       = str(symbol),
                               fields         = fields,
                               begin_date     = begin_date,
                               end_date       = end_date,
