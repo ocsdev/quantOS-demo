@@ -120,7 +120,7 @@ class AlphaBacktestInstance(BacktestInstance):
         type_map = {'task_id': str,
                     'entrust_no': str,
                     'entrust_action': str,
-                    'security': str,
+                    'symbol': str,
                     'fill_price': float,
                     'fill_size': int,
                     'fill_date': int,

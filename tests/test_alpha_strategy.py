@@ -40,24 +40,24 @@ def read_props(fp):
     return props
 
 
-def my_selector(security, trade_date, dataview):
-    df = dataview.get_snapshot(trade_date, security, 'close,pb')
-    close = df.loc[security, 'close']
-    pb = df.loc[security, 'pb']
+def my_selector(symbol, trade_date, dataview):
+    df = dataview.get_snapshot(trade_date, symbol, 'close,pb')
+    close = df.loc[symbol, 'close']
+    pb = df.loc[symbol, 'pb']
     
     return close * pb > 123
     
     
-def pb_factor(security, context=None, user_options=None):
+def pb_factor(symbol, context=None, user_options=None):
     coef = user_options['coef']
     data_api = context.data_api
-    # pb = data_api.get(security, field='pb', start_date=20170303, end_date=20170305)
+    # pb = data_api.get(symbol, field='pb', start_date=20170303, end_date=20170305)
     pb = 1.
     res = np.power(1. / pb, coef)
     return res
 
 
-def my_commission(security, turnover, context=None, user_options=None):
+def my_commission(symbol, turnover, context=None, user_options=None):
     return turnover * user_options['myrate']
 
 
@@ -174,8 +174,6 @@ if __name__ == "__main__":
     t_start = time.time()
 
     test_alpha_strategy()
-    # test_prepare()
-    # test_read()
     
     t3 = time.time() - t_start
     print "\n\n\nTime lapsed in total: {:.1f}".format(t3)

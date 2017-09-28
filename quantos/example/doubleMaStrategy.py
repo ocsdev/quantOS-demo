@@ -9,7 +9,7 @@ class DoubleMaStrategy(EventDrivenStrategy):
     """"""
     def __init__(self):
         EventDrivenStrategy.__init__(self)
-        self.security = ''
+        self.symbol = ''
         self.fastN = 14
         self.slowN = 45
         self.bar = None
@@ -21,17 +21,17 @@ class DoubleMaStrategy(EventDrivenStrategy):
         self.pos = 0
     
     def init_from_config(self, props):
-        self.security = props.get('security')
+        self.symbol = props.get('symbol')
         self.initbalance = props.get('init_balance')
     
     def initialize(self, runmode):
-        self.initUniverse(self.security)
+        self.initUniverse(self.symbol)
     
     def onCycle(self):
         pass
     
     def createOrder(self, quote, price, size):
-        order = Order.new_order(quote.security, "", price, size, quote.getDate(), quote.time)
+        order = Order.new_order(quote.symbol, "", price, size, quote.getDate(), quote.time)
         order.order_type = common.ORDER_TYPE.LIMIT
         return order
     
@@ -60,7 +60,7 @@ class DoubleMaStrategy(EventDrivenStrategy):
     
     def onQuote(self, quote):
         quote_date = quote.getDate()
-        p = self.pm.get_position(quote.security, quote_date)
+        p = self.pm.get_position(quote.symbol, quote_date)
         if p is None:
             self.pos = 0
         else:

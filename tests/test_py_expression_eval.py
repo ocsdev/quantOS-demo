@@ -86,7 +86,7 @@ def my_globals(request):
                        fields="open,high,low,close,vwap,preclose")
     ds.api.close()
     
-    multi_index_names = ['trade_date', 'security']
+    multi_index_names = ['trade_date', 'symbol']
     df_multi = df.set_index(multi_index_names, drop=False)
     df_multi.sort_index(axis=0, level=multi_index_names, inplace=True)
     

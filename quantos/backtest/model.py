@@ -98,11 +98,11 @@ class FactorRevenueModel(BaseRevenueModel):
         res = (np.asarray(order_arr, dtype=float) - mean) / std
         return res
     
-    def forecast_individual(self, security):
+    def forecast_individual(self, symbol):
         forecasts = dict()
         for factor in self.active_funcs:
             rf = self.func_table[factor]
-            forecasts[factor] = rf.func(security, context=self.context, user_options=rf.options)
+            forecasts[factor] = rf.func(symbol, context=self.context, user_options=rf.options)
         return forecasts
     
     def combine_using_corr(self, forecasts):
@@ -164,12 +164,12 @@ class BaseCostModel(BaseModel):
         super(BaseCostModel, self).__init__()
         pass
     
-    def calc_cost(self, security, size):
+    def calc_cost(self, symbol, size):
         pass
 
 
 class SimpleCostModel(BaseRevenueModel):
-    def calc_individual_cost(self, security, turnover):
+    def calc_individual_cost(self, symbol, turnover):
         # following data are fetched from the data server
         avg_bid_ask_spread = 1.0
         avg_daily_volume = 1e7
@@ -189,7 +189,7 @@ class SimpleCostModel(BaseRevenueModel):
         cost_user_dic = dict()
         for cost_name in self.active_funcs:
             rf = self.func_table[cost_name]
-            cost_user_dic[cost_name] = rf.func(security, trading_volume * price,
+            cost_user_dic[cost_name] = rf.func(symbol, trading_volume * price,
                                                context=self.context, user_options=rf.options)
         cost_user = sum(cost_user_dic.values())
         
@@ -207,7 +207,7 @@ class SimpleCostModel(BaseRevenueModel):
         rate : float
             Rate of commission.
         price : float
-            Current price of the security.
+            Current price of the symbol.
         avg_ba : float
             Average bid-ask spread.
         adv : float
@@ -313,8 +313,8 @@ class FactorRiskModel(BaseRiskModel):
 
 
 def test_models():
-    weight_last = {'security1': 0.2, 'securityB': 0.8}
-    weight_now = {'security1': 0.3, 'securityB': 0.7}
+    weight_last = {'symbol1': 0.2, 'symbolB': 0.8}
+    weight_now = {'symbol1': 0.3, 'symbolB': 0.7}
     
     portfolio = 1e7
     weight_last = {k: v * portfolio for k, v in weight_last.items()}
