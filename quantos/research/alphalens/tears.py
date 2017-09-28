@@ -136,7 +136,8 @@ def create_summary_tear_sheet(factor_data, long_short=True):
 
 
 @plotting.customize
-def create_returns_tear_sheet(factor_data, long_short=True, by_group=False, output_format='plot'):
+def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
+                              output_format='plot', verbose=False):
     """
     Creates a tear sheet for returns analysis of a factor.
 
@@ -155,6 +156,8 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False, outp
     by_group : bool
         If True, perform calcuations, and display graphs separately for
         each group.
+    verbose : bool
+        Whether return data.
     """
 
     # daily factor return for different periods
@@ -251,13 +254,17 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False, outp
         from quantos import SOURCE_ROOT_DIR
         from os.path import join
         gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'returns_tear_sheet.pdf'))
+        
+    if verbose:
+        mean_ret_quant_daily_mod = mean_ret_quant_daily.unstack(level=0)
+        mean_ret_quant_daily_mod.columns = mean_ret_quant_daily_mod.columns.droplevel(level=0)
+        res = dict(mean_ret_quant_daily_mod.iteritems())
+        return {'mean_quantile_return_daily': res}
 
 
 @plotting.customize
-def create_information_tear_sheet(factor_data,
-                                  group_adjust=False,
-                                  by_group=False,
-                                  output_format='plot'):
+def create_information_tear_sheet(factor_data, group_adjust=False, by_group=False,
+                                  output_format='plot', verbose=False):
     """
     Creates a tear sheet for information analysis of a factor.
 
@@ -273,6 +280,8 @@ def create_information_tear_sheet(factor_data,
     by_group : bool
         If True, perform calcuations, and display graphs separately for
         each group.
+    verbose : bool
+        Whether return data.
     """
 
     ic = perf.factor_information_coefficient(factor_data, group_adjust)
@@ -315,6 +324,9 @@ def create_information_tear_sheet(factor_data,
         from quantos import SOURCE_ROOT_DIR
         from os.path import join
         gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'infomation_tear_sheet.pdf'))
+    
+    if verbose:
+        return {'daily_ic': ic}
 
 
 @plotting.customize
@@ -372,11 +384,8 @@ def create_turnover_tear_sheet(factor_data, output_format='plot'):
 
 
 @plotting.customize
-def create_full_tear_sheet(factor_data,
-                           long_short=True,
-                           group_adjust=False,
-                           by_group=False,
-                           output_format='plot'):
+def create_full_tear_sheet(factor_data, long_short=True, group_adjust=False, by_group=False,
+                           output_format='plot', verbose=False):
     """
     Creates a full tear sheet for analysis and evaluating single
     return predicting (alpha) factor.
@@ -397,24 +406,26 @@ def create_full_tear_sheet(factor_data,
         Should this computation happen on a long short portfolio? if so, then
         factor values will be demeaned across the factor universe when factor
         weighting the portfolio. Additionally, mean quantile returns will be
-        demeaned across the factor universe.
+    verbose : bool
+        Whether return data.
     """
 
+    
     plotting.plot_quantile_statistics_table(factor_data)
-    create_returns_tear_sheet(factor_data,
-                              long_short,
-                              by_group,
+    res_return = create_returns_tear_sheet(factor_data, long_short, by_group,
                               set_context=False,
-                              output_format=output_format)
-    create_information_tear_sheet(factor_data,
-                                  group_adjust,
-                                  by_group,
+                              output_format=output_format, verbose=verbose)
+    res_ic = create_information_tear_sheet(factor_data, group_adjust, by_group,
                                   set_context=False,
-                                  output_format=output_format)
-    """
-    """
+                                  output_format=output_format, verbose=verbose)
     create_turnover_tear_sheet(factor_data, set_context=False,
                                output_format=output_format)
+    
+    if verbose:
+        res = dict()
+        res.update(res_return)
+        res.update(res_ic)
+        return res
 
 
 @plotting.customize

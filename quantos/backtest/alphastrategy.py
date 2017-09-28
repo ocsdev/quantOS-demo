@@ -40,7 +40,7 @@ class StrategyContext(object):
         self.calendar = None
     
     def add_universe(self, univ):
-        """univ could be single security or securities separated by ,"""
+        """univ could be single symbol or securities separated by ,"""
         self.universe += univ.split(',')
 
 
@@ -104,15 +104,15 @@ class BaseStrategy(object):
     def _get_next_num(self, key):
         return str(self.trade_date * 10000 + self.seq_gen.get_next(key))
     
-    def place_order(self, security, action, price, size, algo="", algo_param=None):
+    def place_order(self, symbol, action, price, size, algo="", algo_param=None):
         """
         Send a request with an order to the system. Execution algorithm will be automatically chosen.
         Returns task_id which can be used to query execution and orders of this task.
 
         Parameters
         ----------
-        security : str
-            the security of security to be ordered, eg. "000001.SZ".
+        symbol : str
+            the symbol of symbol to be ordered, eg. "000001.SZ".
         action : str
         price : float.
             The price to be ordered at.
@@ -133,7 +133,7 @@ class BaseStrategy(object):
         if algo:
             raise NotImplementedError("algo {}".format(algo))
         
-        order = Order.new_order(security, action, price, size, self.trade_date, 0)
+        order = Order.new_order(symbol, action, price, size, self.trade_date, 0)
         order.task_id = self._get_next_num('task_id')
         order.entrust_no = self._get_next_num('entrust_no')
         
@@ -228,7 +228,7 @@ class BaseStrategy(object):
     def goal_portfolio(self, goals):
         """
         Let the system automatically generate orders according to portfolio positions goal.
-        If there are uncome orders of any security in the strategy universe, this order will be rejected. #TODO not impl
+        If there are uncome orders of any symbol in the strategy universe, this order will be rejected. #TODO not impl
 
         Parameters
         -----------
@@ -247,7 +247,7 @@ class BaseStrategy(object):
         
         orders = []
         for goal in goals:
-            sec, goal_size = goal.security, goal.size
+            sec, goal_size = goal.symbol, goal.size
             if sec in self.pm.holding_securities:
                 curr_size = self.pm.get_position(sec, self.trade_date).curr_size
             else:
@@ -336,7 +336,7 @@ class AlphaStrategy(BaseStrategy):
         n'th business day after next period.
     weights : np.array with the same shape with self.context.universe
     benchmark : str
-        The benchmark security.
+        The benchmark symbol.
     risk_model : model.RiskModel
     revenue_model : model.ReturnModel
     cost_model : model.CostModel
@@ -383,7 +383,7 @@ class AlphaStrategy(BaseStrategy):
     
     def _get_weights_last(self):
         current_positions = self.query_portfolio()
-        univ_pos_dic = {p.security: p.curr_size for p in current_positions}
+        univ_pos_dic = {p.symbol: p.curr_size for p in current_positions}
         for sec in self.context.universe:
             if sec not in univ_pos_dic:
                 univ_pos_dic[sec] = 0
@@ -405,23 +405,14 @@ class AlphaStrategy(BaseStrategy):
     
     def portfolio_construction(self):
         """
-        Calculate target weights of each security in the strategy universe.
+        Calculate target weights of each symbol in the strategy universe.
 
         Returns
         -------
         self.weights : weights / GoalPosition (without rounding)
-            Weights of each security.
+            Weights of each symbol.
 
         """
-        """
-        w_initial = 1.0 / len(self.context.universe)
-        weights_initial = {sec: w_initial for sec in self.context.universe}
-    
-        res, msg = self.optimize_mc(self.util_net_revenue, None, weights_initial)
-    
-        self.weights = res
-        """
-        
         func, options = self.pc_methods[self.active_pc_method]
 
         func(**options)
@@ -483,7 +474,7 @@ class AlphaStrategy(BaseStrategy):
             None if no suspension.
 
         """
-        # TODO this can be refine: consider whether we increase or decrease shares on a suspended security.
+        # TODO this can be refine: consider whether we increase or decrease shares on a suspended symbol.
         if suspensions is None:
             return
         
@@ -554,12 +545,12 @@ class AlphaStrategy(BaseStrategy):
 
         Parameters
         ----------
-        weights_dic : dict of {security: weight}
-            Weight of each security.
+        weights_dic : dict of {symbol: weight}
+            Weight of each symbol.
         turnover : float
             Total turnover goal of all securities.
         prices : dict of {str: float}
-            {security: price}
+            {symbol: price}
         algo : str
             {'close', 'open', 'vwap', etc.}
 
@@ -577,13 +568,13 @@ class AlphaStrategy(BaseStrategy):
         if algo == 'close' or 'vwap':  # order a certain amount of shares according to current close price
             for sec, w in weights_dic.items():
                 goal_pos = GoalPosition()
-                goal_pos.security = sec
+                goal_pos.symbol = sec
                 
                 # if algo == 'close':
                 # order.price_target = 'close'
                 # else:
                 # order = VwapOrder()
-                # order.security = sec
+                # order.symbol = sec
                 
                 if w == 0.0:
                     # order.entrust_size = 0

@@ -68,10 +68,10 @@ def demo_usage():
     # input and pre-process demo data
     fp = '../output/test_align.csv'
     raw = pd.read_csv(fp)
-    raw.columns = [u'security', u'ann_date', u'report_period', u'oper_rev', u'oper_cost']
+    raw.columns = [u'symbol', u'ann_date', u'report_period', u'oper_rev', u'oper_cost']
     raw.drop(['oper_cost'], axis=1, inplace=True)
     
-    idx_list = ['report_period', 'security']
+    idx_list = ['report_period', 'symbol']
     raw_idx = raw.set_index(idx_list)
     raw_idx.sort_index(axis=0, level=idx_list, inplace=True)
 

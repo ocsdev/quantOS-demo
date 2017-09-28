@@ -12,7 +12,7 @@ class Trade(object):
     entrust_no : str
         ID of the order.
     entrust_action : str
-    security : str
+    symbol : str
     fill_price : float
     fill_size : int
     fill_date : int
@@ -32,7 +32,7 @@ class Trade(object):
         
         self.entrust_action = ""
         
-        self.security = ""
+        self.symbol = ""
         
         self.fill_price = 0.0
         self.fill_size = 0
@@ -52,7 +52,7 @@ class Trade(object):
     def init_from_order(self, order):
         self.task_id = order.task_id
         self.entrust_no = order.entrust_no
-        self.security = order.security
+        self.symbol = order.symbol
         self.entrust_action = order.entrust_action
     
     def send_fill_info(self, price, size, date, time, no):
@@ -65,7 +65,7 @@ class Trade(object):
     def __repr__(self):
         return "{0.fill_date:8d}({0.fill_time:8d}) " \
                "{0.entrust_action:6s} {0.fill_size:5d} of " \
-               "{0.security:10s}@{0.fill_price:.3f}".format(self)
+               "{0.symbol:10s}@{0.fill_price:.3f}".format(self)
     
     def __str__(self):
         return self.__repr__()

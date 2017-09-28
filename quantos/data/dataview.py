@@ -1,7 +1,7 @@
 # encoding: utf-8
 """
 How to add custom (alternative) data:
-    1. Build a DataFrame of your data, whose index is dv.dates, column is dv.security.
+    1. Build a DataFrame of your data, whose index is dv.dates, column is dv.symbol.
     2. Use dv.append_df to add your DataFrame to the DataView object.
     
 If you will use this data frequently, you can add define a new method of DataServer, then get data from your DataServer.
@@ -26,7 +26,7 @@ class BaseDataView(object):
     Attributes
     ----------
     data_api : JzDataServer
-    security : list
+    symbol : list
     start_date : int
     end_date : int
     fields : list
@@ -34,10 +34,10 @@ class BaseDataView(object):
     market_daily_fields, reference_daily_fields : list
     data_d : pd.DataFrame
         All daily frequency data will be merged and stored here.
-        index is date, columns is security-field MultiIndex
+        index is date, columns is symbol-field MultiIndex
     data_q : pd.DataFrame
         All quarterly frequency data will be merged and stored here.
-        index is date, columns is security-field MultiIndex
+        index is date, columns is symbol-field MultiIndex
     
     """
     # TODO only support stocks!
@@ -45,22 +45,22 @@ class BaseDataView(object):
         self.data_api = None
         
         self.universe = ""
-        self.security = []
+        self.symbol = []
         self.start_date = 0
         self.extended_start_date = 0
         self.end_date = 0
         self.fields = []
         self.freq = 1
 
-        self.meta_data_list = ['start_date', 'end_date', 'freq', 'fields', 'security', 'universe',
+        self.meta_data_list = ['start_date', 'end_date', 'freq', 'fields', 'symbol', 'universe',
                                'custom_daily_fields', 'custom_quarterly_fields']
         self.adjust_mode = 'post'
         
         self.data_d = None
         self.data_q = None
-        self.data_benchmark = None
+        self._data_benchmark = None
         
-        common_list = {'security', 'start_date', 'end_date'}
+        common_list = {'symbol', 'start_date', 'end_date'}
         market_bar_list = {'open', 'high', 'low', 'close', 'volume', 'turnover', 'vwap', 'oi'}
         market_tick_list = {'volume', 'oi',
                             'askprice1', 'askprice2', 'askprice3', 'askprice4', 'askprice5',
@@ -80,7 +80,7 @@ class BaseDataView(object):
              'share_float_free', 'nppc_ttm', 'nppc_lyr', 'net_assets',
              'ncfoa_ttm', 'ncfoa_lyr', 'rev_ttm', 'rev_lyr', 'nicce_ttm'}
         self.fin_stat_income = \
-            {"security", "ann_date", "start_date", "end_date",
+            {"symbol", "ann_date", "start_date", "end_date",
              "comp_type_code", "comp_type_code", "act_ann_date", "start_actdate",
              "end_actdate", "report_date", "start_reportdate", "start_reportdate",
              "report_type", "report_type", "currency", "total_oper_rev", "oper_rev",
@@ -181,11 +181,22 @@ class BaseDataView(object):
              "spe_bal_netcash_inc_undir", "tot_bal_netcash_inc_undir"}
         self.custom_daily_fields = []
         self.custom_quarterly_fields = []
+        
         # const
         self.ANN_DATE_FIELD_NAME = 'ann_date'
         self.REPORT_DATE_FIELD_NAME = 'report_date'
         self.TRADE_STATUS_FIELD_NAME = 'trade_status'
         self.TRADE_DATE_FIELD_NAME = 'trade_date'
+    
+    @property
+    def data_benchmark(self):
+        return self._data_benchmark
+    
+    @data_benchmark.setter
+    def data_benchmark(self, df_new):
+        if self._data_benchmark.shape[0] != df_new.shape[0]:
+            raise ValueError("You must provide a DataFrame with the same shape of data_benchmark.")
+        self._data_benchmark = df_new
     
     @staticmethod
     def _group_df_to_dict(df, by):
@@ -244,7 +255,7 @@ class BaseDataView(object):
         l = list(s)
         return l
     
-    def _query_data(self, security, fields):
+    def _query_data(self, symbol, fields):
         """
         Query data using different APIs, then store them in dict.
         period, start_date and end_date are fixed.
@@ -252,7 +263,7 @@ class BaseDataView(object):
         
         Parameters
         ----------
-        security : list of str
+        symbol : list of str
         fields : list of str
 
         Returns
@@ -266,7 +277,7 @@ class BaseDataView(object):
 
         """
         sep = ','
-        security_str = sep.join(security)
+        symbol_str = sep.join(symbol)
         
         dic_ref_daily = None
         dic_market_daily = None
@@ -280,43 +291,43 @@ class BaseDataView(object):
             fields_market_daily = self._get_fields('market_daily', fields, append=True)  # TODO: not each time we want append = True
             if fields_market_daily:
                 print "NOTE: adjust mode of price is [{:s} adjust]".format(self.adjust_mode)
-                df_daily, msg1 = self.data_api.daily(security_str, start_date=self.start_date, end_date=self.end_date,
+                df_daily, msg1 = self.data_api.daily(symbol_str, start_date=self.start_date, end_date=self.end_date,
                                                      adjust_mode=self.adjust_mode, fields=sep.join(fields_market_daily))
                 if msg1 != '0,':
                     print msg1
-                dic_market_daily = self._group_df_to_dict(df_daily, 'security')
+                dic_market_daily = self._group_df_to_dict(df_daily, 'symbol')
 
             fields_ref_daily = self._get_fields('ref_daily', fields)
             if fields_ref_daily:
-                df_ref_daily, msg2 = self.data_api.query_wd_dailyindicator(security_str, self.start_date, self.end_date,
+                df_ref_daily, msg2 = self.data_api.query_wd_dailyindicator(symbol_str, self.start_date, self.end_date,
                                                                            sep.join(fields_ref_daily))
                 if msg2 != '0,':
                     print msg2
-                dic_ref_daily = self._group_df_to_dict(df_ref_daily, 'security')
+                dic_ref_daily = self._group_df_to_dict(df_ref_daily, 'symbol')
 
             fields_income = self._get_fields('income', fields, append=True)
             if fields_income:
-                df_income, msg3 = self.data_api.query_wd_fin_stat('income', security_str, self.extended_start_date, self.end_date,
+                df_income, msg3 = self.data_api.query_wd_fin_stat('income', symbol_str, self.extended_start_date, self.end_date,
                                                                   sep.join(fields_income))
                 if msg3 != '0,':
                     print msg3
-                dic_income = self._group_df_to_dict(df_income, 'security')
+                dic_income = self._group_df_to_dict(df_income, 'symbol')
 
             fields_balance = self._get_fields('balance_sheet', fields, append=True)
             if fields_balance:
-                df_balance, msg3 = self.data_api.query_wd_fin_stat('balance_sheet', security_str, self.extended_start_date, self.end_date,
+                df_balance, msg3 = self.data_api.query_wd_fin_stat('balance_sheet', symbol_str, self.extended_start_date, self.end_date,
                                                                    sep.join(fields_balance))
                 if msg3 != '0,':
                     print msg3
-                dic_balance = self._group_df_to_dict(df_balance, 'security')
+                dic_balance = self._group_df_to_dict(df_balance, 'symbol')
 
             fields_cf = self._get_fields('cash_flow', fields, append=True)
             if fields_cf:
-                df_cf, msg3 = self.data_api.query_wd_fin_stat('cash_flow', security_str, self.extended_start_date, self.end_date,
+                df_cf, msg3 = self.data_api.query_wd_fin_stat('cash_flow', symbol_str, self.extended_start_date, self.end_date,
                                                               sep.join(fields_cf))
                 if msg3 != '0,':
                     print msg3
-                dic_cf = self._group_df_to_dict(df_cf, 'security')
+                dic_cf = self._group_df_to_dict(df_cf, 'symbol')
         else:
             raise NotImplementedError("freq = {}".format(self.freq))
         
@@ -355,8 +366,8 @@ class BaseDataView(object):
         df = df.set_index(index_name)
         df = df.sort_index(axis=0)
 
-        if 'security' in df.columns:
-            df = df.drop(['security'], axis=1)
+        if 'symbol' in df.columns:
+            df = df.drop(['symbol'], axis=1)
         
         return df
     
@@ -371,7 +382,7 @@ class BaseDataView(object):
         Parameters
         ----------
         dic : dict
-            {security: DataFrame with index be datetime and columns be fields}.
+            {symbol: DataFrame with index be datetime and columns be fields}.
 
         Returns
         -------
@@ -380,7 +391,7 @@ class BaseDataView(object):
 
         """
         if levels is None:
-            levels = ['security', 'field']
+            levels = ['symbol', 'field']
         keys = dic.keys()
         values = dic.values()
         
@@ -415,7 +426,7 @@ class BaseDataView(object):
         for sec, df in dic.viewitems():
             dic[sec] = self._process_index(df, self.TRADE_DATE_FIELD_NAME)
             
-        res = self._dic_of_df_to_multi_index_df(dic, levels=['security', 'field'])
+        res = self._dic_of_df_to_multi_index_df(dic, levels=['symbol', 'field'])
         return res
         
     def _preprocess_ref_daily(self, dic, fields):
@@ -438,7 +449,7 @@ class BaseDataView(object):
             df_mod = df_mod.loc[:, self._get_fields('ref_daily', fields)]
             dic[sec] = df_mod
         
-        res = self._dic_of_df_to_multi_index_df(dic, levels=['security', 'field'])
+        res = self._dic_of_df_to_multi_index_df(dic, levels=['symbol', 'field'])
         return res
 
     def _preprocess_ref_quarterly(self, type_, dic, fields):
@@ -463,7 +474,7 @@ class BaseDataView(object):
             
             new_dic[sec] = df_mod
     
-        res = self._dic_of_df_to_multi_index_df(new_dic, levels=['security', 'field'])
+        res = self._dic_of_df_to_multi_index_df(new_dic, levels=['symbol', 'field'])
         return res
     
     @staticmethod
@@ -482,7 +493,7 @@ class BaseDataView(object):
         
         Notes
         -----
-        Align on date index, concatenate on columns (security and fields)
+        Align on date index, concatenate on columns (symbol and fields)
         
         """
         dfs = [df for df in dfs if df is not None]
@@ -494,7 +505,7 @@ class BaseDataView(object):
             Warning("nan in final merged data.")
             merge.fillna(method='ffill', inplace=True)
             
-        merge.sort_index(axis=1, level=['security', 'field'], inplace=True)
+        merge.sort_index(axis=1, level=['symbol', 'field'], inplace=True)
         merge.index.name = index_name
         
         return merge
@@ -512,18 +523,18 @@ class BaseDataView(object):
         merge : pd.DataFrame
         
         """
-        # align on date index, concatenate on columns (security and fields)
+        # align on date index, concatenate on columns (symbol and fields)
         dfs = [df for df in dfs if df is not None]
         
         fields = []
         for df in dfs:
             fields.extend(df.columns.get_level_values(level='field').unique())
-        col_multi = pd.MultiIndex.from_product([self.security, fields], names=['security', 'field'])
+        col_multi = pd.MultiIndex.from_product([self.symbol, fields], names=['symbol', 'field'])
         merge = pd.DataFrame(index=dfs[0].index, columns=col_multi, data=None)
         
         for df in dfs:
             fields_df = df.columns.get_level_values(level='field')
-            sec_df = df.columns.get_level_values(level='security')
+            sec_df = df.columns.get_level_values(level='symbol')
             idx = df.index
             merge.loc[idx, pd.IndexSlice[sec_df, fields_df]] = df
             
@@ -531,7 +542,7 @@ class BaseDataView(object):
             Warning("nan in final merged data.")
             merge.fillna(method='ffill', inplace=True)
     
-        merge.sort_index(axis=1, level=['security', 'field'], inplace=True)
+        merge.sort_index(axis=1, level=['symbol', 'field'], inplace=True)
     
         return merge
 
@@ -552,10 +563,26 @@ class BaseDataView(object):
         return self._is_quarter_field(field_name) or self._is_daily_field(field_name)
     
     def _prepare_data(self, fields):
+        """
+        Query and process data from data_api.
+        
+        Parameters
+        ----------
+        fields : list
+
+        Returns
+        -------
+        merge_d : pd.DataFrame or None
+        merge_q : pd.DataFrame or None
+
+        """
+        if not fields:
+            return None, None
+        
         # query data
         print "\nQuery data..."
         dic_market_daily, dic_ref_daily, dic_income, dic_balance_sheet, dic_cash_flow = \
-            self._query_data(self.security, fields)
+            self._query_data(self.symbol, fields)
     
         # pre-process data
         print "\nPreprocess data..."
@@ -586,7 +613,7 @@ class BaseDataView(object):
         Parameters
         ----------
         props : dict, optional
-            start_date, end_date, freq, security, fields
+            start_date, end_date, freq, symbol, fields
         data_api : BaseDataServer
         
         """
@@ -608,9 +635,10 @@ class BaseDataView(object):
         self.freq = props['freq']
         self.universe = props.get('universe', "")
         if self.universe:
-            self.security = data_api.get_index_comp(self.universe, self.start_date, self.end_date)
+            self.symbol = data_api.get_index_comp(self.universe, self.start_date, self.end_date)
+            self._data_benchmark = self._prepare_benchmark()
         else:
-            self.security = props['security'].split(sep)
+            self.symbol = props['symbol'].split(sep)
         
         self.data_d, self.data_q = self._prepare_data(self.fields)
         
@@ -627,9 +655,11 @@ class BaseDataView(object):
         df_bench = self._process_index(df_bench, self.TRADE_DATE_FIELD_NAME)
         return df_bench
     
-    def _add_field(self, field_name, is_quarterly):
+    def _add_field(self, field_name, is_quarterly=None):
         self.fields.append(field_name)
         if not self._is_predefined_field(field_name):
+            if is_quarterly is None:
+                raise ValueError("Field [{:s}] is not a predefined field, but no frequency information is provided.")
             if is_quarterly:
                 self.custom_quarterly_fields.append(field_name)
             else:
@@ -667,7 +697,7 @@ class BaseDataView(object):
         merge = merge.loc[:, pd.IndexSlice[:, field_name]]
         self.append_df(merge, field_name, is_quarterly=is_quarterly)  # whether contain only trade days is decided by existing data.
     
-    def add_formula(self, field_name, formula, freq='D'):
+    def add_formula(self, field_name, formula, freq='D', formula_func_name_style='upper', is_quarterly=False, data_api=None):
         """
         Add a new field, which is calculated using existing fields.
         
@@ -679,19 +709,29 @@ class BaseDataView(object):
             A custom name for the new field.
         freq : {'D', 'Q'}
             Frequency of evaluation result of the formula.
-
+        formula_func_name_style : {'upper', 'lower'}
+        data_api : BaseDataServer
+        
         """
+        if data_api is not None:
+            self.data_api = data_api
+            
         if field_name in self.fields:
             print "Add formula failed: field name [{:s}] exist. Try another name.".format(field_name)
             return
         
-        self.fields.append(field_name)
-        
         parser = Parser()
+        parser.set_capital(formula_func_name_style)
+        
         expr = parser.parse(formula)
         
         var_df_dic = dict()
         var_list = expr.variables()
+        
+        # TODO
+        for var in var_list:
+            if var not in self.fields:
+                self.add_field(var)
         
         df_ann = self.get_ann_df()
         for var in var_list:
@@ -702,11 +742,12 @@ class BaseDataView(object):
             
             var_df_dic[var] = df_var
         
-        # TODO: send ann_date into expr.evaluate. We assume that ann_date of all fields of a security is the same
+        # TODO: send ann_date into expr.evaluate. We assume that ann_date of all fields of a symbol is the same
         df_eval = parser.evaluate(var_df_dic, df_ann, self.dates)
+        
+        self.append_df(df_eval, field_name, is_quarterly=is_quarterly)
+        self._add_field(field_name, is_quarterly=is_quarterly)
 
-        self.append_df(df_eval, field_name)
-            
     @staticmethod
     def _load_h5(fp):
         """Load data and meta_data from hd5 file.
@@ -741,7 +782,7 @@ class BaseDataView(object):
         dic = self._load_h5(os.path.join(folder, 'data.hd5'))
         self.data_d = dic.get('/data_d', None)
         self.data_q = dic.get('/data_q', None)
-        self.data_benchmark = dic.get('/data_benchmark', None)
+        self._data_benchmark = dic.get('/data_benchmark', None)
         self.__dict__.update(meta_data)
         
         print "Dataview loaded successfully."
@@ -766,13 +807,13 @@ class BaseDataView(object):
             
         return res
 
-    def get(self, security="", start_date=0, end_date=0, fields=""):
+    def get(self, symbol="", start_date=0, end_date=0, fields=""):
         """
         Basic API to get arbitrary data.
         
         Parameters
         ----------
-        security : str, optional
+        symbol : str, optional
             Separated by ',' default "" (all securities).
         start_date : int, optional
             Default 0 (self.start_date).
@@ -784,7 +825,7 @@ class BaseDataView(object):
         Returns
         -------
         res : pd.DataFrame
-            index is datetimeindex, columns are (security, fields) MultiIndex
+            index is datetimeindex, columns are (symbol, fields) MultiIndex
 
         """
         sep = ','
@@ -794,10 +835,10 @@ class BaseDataView(object):
         else:
             fields = fields.split(sep)
         
-        if not security:
-            security = self.security
+        if not symbol:
+            symbol = self.symbol
         else:
-            security = security.split(sep)
+            symbol = symbol.split(sep)
         
         if not start_date:
             start_date = self.start_date
@@ -810,36 +851,36 @@ class BaseDataView(object):
         df_ref_expanded = None
         if fields_quarterly:
             df_ref_quarterly = self.data_q.loc[:,
-                                               pd.IndexSlice[security, fields_quarterly]]
+                                               pd.IndexSlice[symbol, fields_quarterly]]
             df_ref_ann = self.data_q.loc[:,
-                                         pd.IndexSlice[security, self.ANN_DATE_FIELD_NAME]]
+                                         pd.IndexSlice[symbol, self.ANN_DATE_FIELD_NAME]]
             df_ref_ann.columns = df_ref_ann.columns.droplevel(level='field')
             
             dic_expanded = dict()
             for field_name, df in df_ref_quarterly.groupby(level=1, axis=1):  # by column multiindex fields
                 df_expanded = align(df, df_ref_ann, self.dates)
                 dic_expanded[field_name] = df_expanded
-            # df_ref_expanded = self._dic_of_df_to_multi_index_df(dic_expanded, levels=['field', 'security'])
+            # df_ref_expanded = self._dic_of_df_to_multi_index_df(dic_expanded, levels=['field', 'symbol'])
             df_ref_expanded = pd.concat(dic_expanded.values(), axis=1)
             # df_ref_expanded.index = JzCalendar.convert_int_to_datetime(df_ref_expanded.index)
             df_ref_expanded.index.name = self.TRADE_DATE_FIELD_NAME
             # df_ref_expanded = df_ref_expanded.swaplevel(axis=1)
         
         df_others = self.data_d.loc[pd.IndexSlice[start_date: end_date],
-                                    pd.IndexSlice[security, fields_daily]]
+                                    pd.IndexSlice[symbol, fields_daily]]
         
         df_merge = self._merge_data([df_others, df_ref_expanded], index_name=self.TRADE_DATE_FIELD_NAME)
         return df_merge
     
-    def get_snapshot(self, snapshot_date, security="", fields=""):
+    def get_snapshot(self, snapshot_date, symbol="", fields=""):
         """
-        Get snapshot of given fields and security at snapshot_date.
+        Get snapshot of given fields and symbol at snapshot_date.
         
         Parameters
         ----------
         snapshot_date : int
             Date of snapshot.
-        security : str, optional
+        symbol : str, optional
             Separated by ',' default "" (all securities).
         fields : str, optional
             Separated by ',' default "" (all fields).
@@ -847,12 +888,12 @@ class BaseDataView(object):
         Returns
         -------
         res : pd.DataFrame
-            security as index, field as columns
+            symbol as index, field as columns
 
         """
-        res = self.get(security=security, start_date=snapshot_date, end_date=snapshot_date, fields=fields)
+        res = self.get(symbol=symbol, start_date=snapshot_date, end_date=snapshot_date, fields=fields)
         
-        res = res.stack(level='security', dropna=False)
+        res = res.stack(level='symbol', dropna=False)
         res.index = res.index.droplevel(level=self.TRADE_DATE_FIELD_NAME)
         
         return res
@@ -864,7 +905,7 @@ class BaseDataView(object):
         Returns
         -------
         df_ann : pd.DataFrame or None
-            Index is date, column is security.
+            Index is date, column is symbol.
             If no quarterly data available, return None.
         
         """
@@ -878,13 +919,13 @@ class BaseDataView(object):
     
         return df_ann
         
-    def get_ts_quarter(self, field, security="", start_date=0, end_date=0):
+    def get_ts_quarter(self, field, symbol="", start_date=0, end_date=0):
         # TODO
         sep = ','
-        if not security:
-            security = self.security
+        if not symbol:
+            symbol = self.symbol
         else:
-            security = security.split(sep)
+            symbol = symbol.split(sep)
     
         if not start_date:
             start_date = self.start_date
@@ -892,12 +933,12 @@ class BaseDataView(object):
             end_date = self.end_date
     
         df_ref_quarterly = self.data_q.loc[:,
-                                           pd.IndexSlice[security, field]]
+                                           pd.IndexSlice[symbol, field]]
         df_ref_quarterly.columns = df_ref_quarterly.columns.droplevel(level='field')
         
         return df_ref_quarterly
     
-    def get_ts(self, field, security="", start_date=0, end_date=0):
+    def get_ts(self, field, symbol="", start_date=0, end_date=0):
         """
         Get time series data of single field.
         
@@ -905,7 +946,7 @@ class BaseDataView(object):
         ----------
         field : str
             Single field.
-        security : str, optional
+        symbol : str, optional
             Separated by ',' default "" (all securities).
         start_date : int, optional
             Default 0 (self.start_date).
@@ -915,10 +956,10 @@ class BaseDataView(object):
         Returns
         -------
         res : pd.DataFrame
-            Index is int date, column is security.
+            Index is int date, column is symbol.
 
         """
-        res = self.get(security, start_date=start_date, end_date=end_date, fields=field)
+        res = self.get(symbol, start_date=start_date, end_date=end_date, fields=field)
         
         res.columns = res.columns.droplevel(level='field')
         
@@ -933,7 +974,7 @@ class BaseDataView(object):
         meta_path = os.path.join(folder_path, 'meta_data.json')
         data_path = os.path.join(folder_path, 'data.hd5')
         
-        data_to_store = {'data_d': self.data_d, 'data_q': self.data_q, 'data_benchmark': self.data_benchmark}
+        data_to_store = {'data_d': self.data_d, 'data_q': self.data_q, 'data_benchmark': self._data_benchmark}
         data_to_store = {k: v for k, v in data_to_store.items() if v is not None}
         meta_data_to_store = {key: self.__dict__[key] for key in self.meta_data_list}
 
@@ -989,7 +1030,7 @@ class BaseDataView(object):
         df.columns = multi_idx
         
         merge = the_data.join(df, how='left')  # left: keep index of existing data unchanged
-        merge.sort_index(axis=1, level=['security', 'field'], inplace=True)
+        merge.sort_index(axis=1, level=['symbol', 'field'], inplace=True)
 
         if is_quarterly:
             self.data_q = merge

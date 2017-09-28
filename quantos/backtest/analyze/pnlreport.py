@@ -14,7 +14,7 @@ from quantos.data.basic.trade import Trade
 class Pnl(object):
     def __init__(self):
         self.date = 0
-        self.security = ''
+        self.symbol = ''
         self.hold_pnl = 0.0
         self.trade_pnl = 0.0
 
@@ -79,7 +79,7 @@ class PnlManager(object):
     
     def tradeToDataframe(self, trades):
         
-        key_list = ['fill_no', 'entrust_no', 'security', 'entrust_action', 'fill_price', 'fill_size', 'fill_date',
+        key_list = ['fill_no', 'entrust_no', 'symbol', 'entrust_action', 'fill_price', 'fill_size', 'fill_date',
                     'fill_time']
         
         result = {}
@@ -176,7 +176,7 @@ class PnlManager(object):
         self.stk_commission = props.get('stock_commission_rate', 0.0)
         self.stk_tax = props.get('stock_tax_rate', 0.0)
         self.universe = []
-        universe_str = props.get('security')
+        universe_str = props.get('symbol')
         for code in universe_str.split(','):
             self.universe.append(code.strip())
         self.prepareData()
@@ -184,14 +184,14 @@ class PnlManager(object):
     def prepareData(self):
         begindate = self.calendar.get_last_trade_date(self.start_date)
         enddate = self.calendar.get_next_trade_date(self.end_date)
-        for security in self.universe:
-            df, msg = self.data_api.daily(security, begin_date=begindate, end_date=enddate, fields="")
+        for symbol in self.universe:
+            df, msg = self.data_api.daily(symbol, begin_date=begindate, end_date=enddate, fields="")
             for i in range(0, len(df.index)):
                 date = (df['trade_date'][i])
                 close = df['close'][i]
                 if self.close_prices.has_key(date) == False:
                     self.close_prices[date] = {}
-                self.close_prices[date][security] = close
+                self.close_prices[date][symbol] = close
     
     def isBuyAction(self, action):
         if (action == common.ORDER_ACTION.BUY
@@ -259,7 +259,7 @@ class PnlManager(object):
         trade_pnls = {}
         pnls = []
         for trade in all_trades:
-            code = trade.security
+            code = trade.symbol
             date = trade.fill_date
             if trades.has_key(date) == False:
                 trades[date] = {}
@@ -360,24 +360,24 @@ if __name__ == '__main__':
     props['future_commission_rate'] = 0.005
     props['stock_commission_rate'] = 0.005
     props['stock_tax_rate'] = 0.002
-    props['security'] = '600030.SH'
+    props['symbol'] = '600030.SH'
     pnlmgr = PnlManager()
     pnlmgr.initFromConfig(props)
     trades = []
     t1 = Trade()
-    t1.security = '600030.SH'
+    t1.symbol = '600030.SH'
     t1.action = common.ORDER_ACTION.BUY
     t1.fill_date = 20170704
     t1.fill_size = 100
     t1.fill_price = 16.72
     t2 = Trade()
-    t2.security = '600030.SH'
+    t2.symbol = '600030.SH'
     t2.action = common.ORDER_ACTION.SELL
     t2.fill_date = 20170706
     t2.fill_size = 50
     t2.fill_price = 16.69
     t3 = Trade()
-    t3.security = '600030.SH'
+    t3.symbol = '600030.SH'
     t3.action = common.ORDER_ACTION.SELL
     t3.fill_date = 20170707
     t3.fill_size = 50

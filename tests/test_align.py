@@ -12,7 +12,7 @@ def test_align():
     raw, msg = ds.query_wd_fin_stat('income', '600000.SH', 20151225, 20170501, 'oper_rev')
     assert msg == '0,'
     
-    idx_list = ['report_date', 'security']
+    idx_list = ['report_date', 'symbol']
     raw_idx = raw.set_index(idx_list)
     raw_idx.sort_index(axis=0, level=idx_list, inplace=True)
     

@@ -17,7 +17,8 @@ def save_dataview():
     props = {'start_date': 20140108, 'end_date': 20170108, 'universe': '000300.SH',
              'fields': ('open,high,low,close,vwap,volume,turnover,'
                         # + 'pb,net_assets,'
-                        + 'total_oper_rev,oper_exp,tot_profit,int_income'),
+                        # + 'total_oper_rev,oper_exp,tot_profit,int_income'
+                        ),
              'freq': 1}
     
     dv.prepare_data(props=props, data_api=ds)
@@ -42,7 +43,7 @@ def main():
     factor = dv.get_ts(factor_name).shift(1, axis=0)  # avoid look-ahead bias
     
     price = dv.get_ts('vwap')
-    price_bench = dv.data_benchmark
+    price_bench = dv._data_benchmark
     
     trade_status = dv.get_ts('trade_status')
     mask_sus = trade_status != u'交易'.encode('utf-8')
@@ -59,8 +60,9 @@ def main():
     df_tmp = factor_data.loc[pd.IndexSlice[start: end, '600000.SH'], :]
     """
     # alphalens.tears.create_returns_tear_sheet(factor_data, False, False, set_context=False, output_format='pdf')
-    alphalens.tears.create_full_tear_sheet(factor_data, long_short=True,
-                                           output_format='pdf')
+    res = alphalens.tears.create_full_tear_sheet(factor_data, long_short=True,
+                                                 output_format='pdf', verbose=True)
+    print res
 
 
 def _test_append_custom_data():
@@ -69,12 +71,12 @@ def _test_append_custom_data():
     ds = JzDataServer()
     # lb.blablabla
     df_raw, msg = ds.api.query("wd.secRestricted",
-                                  fields="security,list_date,lifted_shares,lifted_ratio",
+                                  fields="symbol,list_date,lifted_shares,lifted_ratio",
                                   filter="start_date=20170325&end_date=20170525",
                                   orderby="",
                                   data_format='pandas')
     assert msg == '0,'
-    gp = df_raw.groupby(by=['list_date', 'security'])
+    gp = df_raw.groupby(by=['list_date', 'symbol'])
     df_multi = gp.agg({'lifted_ratio': np.sum})
     
     df_value = df_multi.unstack(level=1)
@@ -88,8 +90,8 @@ def _test_append_custom_data():
     dv = BaseDataView()
     dv.load_dataview('../output/prepared/20160609_20170601_freq=1D')
     
-    df_value = df_value.loc[:, dv.security]
-    df_custom = pd.DataFrame(index=dv.dates, columns=dv.security, data=None)
+    df_value = df_value.loc[:, dv.symbol]
+    df_custom = pd.DataFrame(index=dv.dates, columns=dv.symbol, data=None)
     df_custom.loc[df_value.index, df_value.columns] = df_value
     df_custom.fillna(0.0, inplace=True)
     
@@ -117,8 +119,8 @@ if __name__ == "__main__":
     timer.tick('start')
 
     timer.tick('import alphalens')
-    # save_dataview()
-    main()
+    save_dataview()
+    # main()
     # test_append_custom_data()
     
     timer.tick('end')
