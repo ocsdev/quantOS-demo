@@ -21,7 +21,8 @@ def save_dataview():
                         ),
              'freq': 1}
     
-    dv.prepare_data(props=props, data_api=ds)
+    dv.init_from_config(props, ds)
+    dv.prepare_data()
     dv.save_dataview(folder_path='../../output/prepared')
 
 
@@ -43,7 +44,7 @@ def main():
     factor = dv.get_ts(factor_name).shift(1, axis=0)  # avoid look-ahead bias
     
     price = dv.get_ts('vwap')
-    price_bench = dv._data_benchmark
+    price_bench = dv.data_benchmark
     
     trade_status = dv.get_ts('trade_status')
     mask_sus = trade_status != u'交易'.encode('utf-8')
@@ -120,7 +121,7 @@ if __name__ == "__main__":
 
     timer.tick('import alphalens')
     save_dataview()
-    # main()
+    main()
     # test_append_custom_data()
     
     timer.tick('end')
