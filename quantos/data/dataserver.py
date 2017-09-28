@@ -420,7 +420,8 @@ class JzDataServer(BaseDataServer):
                               order_by=self.REPORT_DATE_FIELD_NAME)
         try:
             cols = list(set.intersection({'ann_date', 'report_date'}, set(res.columns)))
-            res.loc[:, cols] = res.loc[:, cols].values.astype(int)
+            dic_dtype = {col: int for col in cols}
+            res = res.astype(dtype=dic_dtype)
         except:
             pass
         
