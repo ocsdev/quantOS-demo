@@ -7,7 +7,7 @@ class Position(object):
 
     Attributes
     ----------
-    security : str
+    symbol : str
         List of securities.
     side : str
         ("Long", "Short"). Positions of different sides will not be merged.
@@ -38,7 +38,7 @@ class Position(object):
     """
     
     def __init__(self):
-        self.security = ""
+        self.symbol = ""
         
         self.side = ""
         self.cost_price = 0.0
@@ -58,7 +58,7 @@ class Position(object):
         self.init_size = 0
 
     def __repr__(self):
-        return "{0.side:7s} {0.curr_size:5d} of {0.security:10s}".format(self)
+        return "{0.side:7s} {0.curr_size:5d} of {0.symbol:10s}".format(self)
 
     def __str__(self):
         return self.__repr__()
@@ -70,7 +70,7 @@ class GoalPosition(object):
 
     Attributes
     ----------
-    security : str
+    symbol : str
     ref_price : float
         Reference price, used by risk management, not by order.
     size : int
@@ -81,7 +81,7 @@ class GoalPosition(object):
     """
     
     def __init__(self):
-        self.security = ""
+        self.symbol = ""
         self.ref_price = 0.0
         self.size = 0
         self.urgency = 0

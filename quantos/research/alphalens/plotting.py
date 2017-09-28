@@ -396,7 +396,7 @@ def plot_quantile_returns_bar(mean_ret_by_q,
 
         (mean_ret_by_q.multiply(DECIMAL_TO_BPS)
             .plot(kind='bar',
-                  title="Mean Return (on security, time) By Factor Quantile", ax=ax))
+                  title="Mean Return (on symbol, time) By Factor Quantile", ax=ax))
         ax.set(xlabel='Quantile', ylabel='Mean Return (bps)',
                ylim=(ymin, ymax))
 

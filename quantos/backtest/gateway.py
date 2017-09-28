@@ -12,7 +12,7 @@ class OrderDeprecated(object):
     def __init__(self):
         self.order_type = common.ORDER_TYPE.LIMIT
         self.entrust_no = ''
-        self.security = ''
+        self.symbol = ''
         self.entrust_action = ''
         self.entrust_price = 0.0
         self.entrust_size = 0
@@ -37,7 +37,7 @@ class OrderDeprecated(object):
     def copy(self, order):
         self.order_type = order.order_type
         self.entrust_no = order.entrust_no
-        self.security = order.security
+        self.symbol = order.symbol
         self.entrust_action = order.entrust_action
         self.entrust_price = order.entrust_price
         self.entrust_size = order.entrust_size
@@ -53,7 +53,7 @@ class OrderDeprecated(object):
 class TradeIndDeprecated(object):
     def __init__(self):
         self.entrust_no = ''
-        self.security = ''
+        self.symbol = ''
         self.entrust_action = ''
         
         self.fill_price = 0.0
@@ -73,7 +73,7 @@ class OrderStatusInd(object):
     def __init__(self):
         self.entrust_no = ''
         
-        self.security = ''
+        self.symbol = ''
         
         self.entrust_action = ''
         self.entrust_price = 0.0
@@ -89,7 +89,7 @@ class OrderStatusInd(object):
     def init_from_order(self, order):
         self.entrust_no = order.entrust_no
         
-        self.security = order.security
+        self.symbol = order.symbol
         
         self.entrust_action = order.entrust_action
         self.entrust_price = order.entrust_price
@@ -119,7 +119,7 @@ class TradeCallback(object):
 
 class TradeStat(object):
     def __init__(self):
-        self.security = ""
+        self.symbol = ""
         self.buy_filled_size = 0
         self.buy_want_size = 0
         self.sell_filled_size = 0
@@ -129,7 +129,7 @@ class TradeStat(object):
 class PositionDeprecated(object):
     def __init__(self):
         self.trade_date = 0
-        self.security = ''
+        self.symbol = ''
         self.init_size = 0
         self.curr_size = 0
 
@@ -142,7 +142,7 @@ class PortfolioManager(TradeCallback):
     ----------
     orders : list of quantos.data.basic.Order objects
     trades : list of quantos.data.basic.Trade objects
-    positions : dict of {security + trade_date : quantos.data.basic.Position}
+    positions : dict of {symbol + trade_date : quantos.data.basic.Position}
     strategy : Strategy
     holding_securities : set of securities
 
@@ -161,15 +161,15 @@ class PortfolioManager(TradeCallback):
         self.strategy = strategy
     
     @staticmethod
-    def _make_position_key(security, trade_date):
-        return '@'.join((security, str(trade_date)))
+    def _make_position_key(symbol, trade_date):
+        return '@'.join((symbol, str(trade_date)))
     
     def on_order_rsp(self, order, result, msg):
         if result:
             self.add_order(order)
     
-    def get_position(self, security, date):
-        key = self._make_position_key(security, date)
+    def get_position(self, symbol, date):
+        key = self._make_position_key(symbol, date)
         position = self.positions.get(key, None)
         return position
     
@@ -183,7 +183,7 @@ class PortfolioManager(TradeCallback):
                 new_position = Position()
                 new_position.curr_size = pre_position.curr_size
                 new_position.init_size = new_position.curr_size
-                new_position.security = pre_position.security
+                new_position.symbol = pre_position.symbol
                 new_position.trade_date = date
                 self.positions[new_key] = new_position
         
@@ -196,7 +196,7 @@ class PortfolioManager(TradeCallback):
                 new_position = Position()
                 new_position.curr_size = pre_position.curr_size
                 new_position.init_size = new_position.curr_size
-                new_position.security = pre_position.security
+                new_position.symbol = pre_position.symbol
                 new_position.trade_date = date
                 self.positions[new_key] = new_position
         """
@@ -218,18 +218,18 @@ class PortfolioManager(TradeCallback):
         new_order.copy(order)  # TODO why copy?
         self.orders[order.entrust_no] = new_order
         
-        position_key = self._make_position_key(order.security, self.strategy.trade_date)
+        position_key = self._make_position_key(order.symbol, self.strategy.trade_date)
         if position_key not in self.positions:
             position = Position()
-            position.security = order.security
+            position.symbol = order.symbol
             self.positions[position_key] = position
         
-        if order.security not in self.tradestat:
+        if order.symbol not in self.tradestat:
             tradestat = TradeStat()
-            tradestat.security = order.security
-            self.tradestat[order.security] = tradestat
+            tradestat.symbol = order.symbol
+            self.tradestat[order.symbol] = tradestat
         
-        tradestat = self.tradestat.get(order.security)
+        tradestat = self.tradestat.get(order.symbol)
         
         if order.entrust_action == common.ORDER_ACTION.BUY:
             tradestat.buy_want_size += order.entrust_size
@@ -246,7 +246,7 @@ class PortfolioManager(TradeCallback):
             if order is not None:
                 order.order_status = ind.order_status
                 
-                tradestat = self.tradestat.get(ind.security)
+                tradestat = self.tradestat.get(ind.symbol)
                 release_size = ind.entrust_size - ind.fill_size
                 
                 if ind.entrust_action == common.ORDER_ACTION.BUY:
@@ -273,9 +273,9 @@ class PortfolioManager(TradeCallback):
         else:
             order.order_status = common.ORDER_STATUS.ACCEPTED
         
-        position_key = self._make_position_key(ind.security, self.strategy.trade_date)
+        position_key = self._make_position_key(ind.symbol, self.strategy.trade_date)
         position = self.positions.get(position_key)
-        tradestat = self.tradestat.get(ind.security)
+        tradestat = self.tradestat.get(ind.symbol)
         
         if (ind.entrust_action == common.ORDER_ACTION.BUY
             or ind.entrust_action == common.ORDER_ACTION.COVER
@@ -298,9 +298,9 @@ class PortfolioManager(TradeCallback):
             position.curr_size -= ind.fill_size
         
         if position.curr_size != 0:
-            self.holding_securities.add(ind.security)
+            self.holding_securities.add(ind.symbol)
         else:
-            self.holding_securities.remove(ind.security)
+            self.holding_securities.remove(ind.symbol)
     
     def market_value(self, ref_date, ref_prices, suspensions=None):
         """
@@ -310,9 +310,9 @@ class PortfolioManager(TradeCallback):
         Parameters
         ----------
         ref_date : int
-            The date we refer to to get security position.
-        ref_prices : dict of {security: price}
-            The prices we refer to to get security price.
+            The date we refer to to get symbol position.
+        ref_prices : dict of {symbol: price}
+            The prices we refer to to get symbol price.
         suspensions : list of securities
             Securities that are suspended.
 
@@ -439,7 +439,7 @@ class BaseGateway(object):
     def goal_portfolio(self, goals):
         """
         Let the system automatically generate orders according to portfolio positions goal.
-        If there are want orders of any security in the strategy universe, this order will be rejected.
+        If there are want orders of any symbol in the strategy universe, this order will be rejected.
 
         Parameters
         -----------
@@ -599,8 +599,8 @@ class StockSimulatorDaily(object):
         
         results = []
         for order in self.__orders.values():  # TODO viewvalues()
-            security = order.security
-            df = price_dic[security]
+            symbol = order.symbol
+            df = price_dic[symbol]
             if 'vwap' not in df.columns:
                 df.loc[:, 'vwap'] = df.loc[:, 'TURNOVER'] / df.loc[:, 'VOLUME']
             
@@ -683,7 +683,7 @@ class OrderBook(object):
         # to be optimized
         for i in xrange(len(self.orders)):
             order = self.orders[i]
-            if (quote.security != order.security):
+            if (quote.symbol != order.symbol):
                 continue
             if (order.is_finished):
                 continue
@@ -693,7 +693,7 @@ class OrderBook(object):
                     trade = Trade()
                     trade.fill_no = self.nextTradeId()
                     trade.entrust_no = order.entrust_no
-                    trade.security = order.security
+                    trade.symbol = order.symbol
                     trade.entrust_action = order.entrust_action
                     trade.fill_size = order.entrust_size
                     trade.fill_price = order.entrust_price
@@ -712,7 +712,7 @@ class OrderBook(object):
                     trade = Trade()
                     trade.fill_no = self.nextTradeId()
                     trade.entrust_no = order.entrust_no
-                    trade.security = order.security
+                    trade.symbol = order.symbol
                     trade.entrust_action = order.entrust_action
                     trade.fill_size = order.entrust_size
                     trade.fill_price = order.entrust_price
@@ -732,7 +732,7 @@ class OrderBook(object):
                     trade = Trade()
                     trade.fill_no = self.nextTradeId()
                     trade.entrust_no = order.entrust_no
-                    trade.security = order.security
+                    trade.symbol = order.symbol
                     trade.entrust_action = order.entrust_action
                     trade.fill_size = order.entrust_size
                     trade.fill_price = order.entrust_price
@@ -750,7 +750,7 @@ class OrderBook(object):
                     trade = Trade()
                     trade.fill_no = self.nextTradeId()
                     trade.entrust_no = order.entrust_no
-                    trade.security = order.security
+                    trade.symbol = order.symbol
                     trade.entrust_action = order.entrust_action
                     trade.fill_size = order.entrust_size
                     trade.fill_price = order.entrust_price

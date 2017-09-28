@@ -16,8 +16,8 @@ class Quote(object):
     def __init__(self, type):
         self.type = type
         self.frequency = 0
-        self.security = ''
-        self.refsecurity = ''
+        self.symbol = ''
+        self.refsymbol = ''
         self.date = 0
         self.time = 0
         self.open = 0.0
@@ -52,7 +52,7 @@ class Quote(object):
         return self.time
     
     def show(self):
-        print self.type, self.time, self.security, self.open, self.high, self.low, self.close, self.volume, self.turnover
+        print self.type, self.time, self.symbol, self.open, self.high, self.low, self.close, self.volume, self.turnover
 
 
 class BaseDataServer(Publisher):
@@ -134,13 +134,13 @@ class BaseDataServer(Publisher):
             self.add_subscriber(func, target)
     
     @abstractmethod
-    def quote(self, security, fields=""):
+    def quote(self, symbol, fields=""):
         """
         Query latest market data in DataFrame.
         
         Parameters
         ----------
-        security : str
+        symbol : str
         fields : str, optional
             default ""
 
@@ -154,7 +154,7 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def daily(self, security, start_date, end_date, fields="", adjust_mode=None):
+    def daily(self, symbol, start_date, end_date, fields="", adjust_mode=None):
         """
         Query dar bar,
         support auto-fill suspended securities data,
@@ -162,7 +162,7 @@ class BaseDataServer(Publisher):
 
         Parameters
         ----------
-        security : str
+        symbol : str
             support multiple securities, separated by comma.
         start_date : int or str
             YYYMMDD or 'YYYY-MM-DD'
@@ -179,7 +179,7 @@ class BaseDataServer(Publisher):
         -------
         df : pd.DataFrame
             columns:
-                security, code, trade_date, open, high, low, close, volume, turnover, vwap, oi, suspended
+                symbol, code, trade_date, open, high, low, close, volume, turnover, vwap, oi, suspended
         msg : str
             error code and error message joined by comma
 
@@ -192,13 +192,13 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def bar(self, security, start_time=200000, end_time=160000, trade_date=None, cycle='1m', fields=""):
+    def bar(self, symbol, start_time=200000, end_time=160000, trade_date=None, cycle='1m', fields=""):
         """
         Query minute bars of various type, return DataFrame.
 
         Parameters
         ----------
-        security : str
+        symbol : str
             support multiple securities, separated by comma.
         start_time : int (HHMMSS) or str ('HH:MM:SS')
             Default is market open time.
@@ -215,7 +215,7 @@ class BaseDataServer(Publisher):
         -------
         df : pd.DataFrame
             columns:
-                security, code, date, time, trade_date, cycle, open, high, low, close, volume, turnover, vwap, oi
+                symbol, code, date, time, trade_date, cycle, open, high, low, close, volume, turnover, vwap, oi
         msg : str
             error code and error message joined by comma
 
@@ -229,13 +229,13 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def tick(self, security, start_time=200000, end_time=160000, trade_date=None, fields=""):
+    def tick(self, symbol, start_time=200000, end_time=160000, trade_date=None, fields=""):
         """
         Query tick data in DataFrame.
         
         Parameters
         ----------
-        security : str
+        symbol : str
         start_time : int (HHMMSS) or str ('HH:MM:SS')
             Default is market open time.
         end_time : int (HHMMSS) or str ('HH:MM:SS')
@@ -307,16 +307,16 @@ class JzDataServer(BaseDataServer):
         
         self.REPORT_DATE_FIELD_NAME = 'report_date'
 
-    def daily(self, security, start_date, end_date,
+    def daily(self, symbol, start_date, end_date,
               fields="", adjust_mode=None):
-        df, err_msg = self.api.daily(security=security, start_date=start_date, end_date=end_date,
+        df, err_msg = self.api.daily(symbol=symbol, start_date=start_date, end_date=end_date,
                                      fields=fields, adjust_mode=adjust_mode, data_format="")
         return df, err_msg
 
-    def bar(self, security,
+    def bar(self, symbol,
             start_time=200000, end_time=160000, trade_date=None,
             cycle='1m', fields=""):
-        df, msg = self.api.bar(security=security, fields=fields,
+        df, msg = self.api.bar(symbol=symbol, fields=fields,
                                start_time=start_time, end_time=end_time, trade_date=trade_date,
                                cycle='1m', data_format="")
         return df, msg
@@ -356,10 +356,10 @@ class JzDataServer(BaseDataServer):
     def get_suspensions(self):
         return None
     
-    def get_trade_date(self, start_date, end_date, security=None, is_datetime=False):
-        if security is None:
-            security = '000300.SH'
-        df, msg = self.daily(security, start_date, end_date, fields="close")
+    def get_trade_date(self, start_date, end_date, symbol=None, is_datetime=False):
+        if symbol is None:
+            symbol = '000300.SH'
+        df, msg = self.daily(symbol, start_date, end_date, fields="close")
         res = df.loc[:, 'trade_date'].values
         if is_datetime:
             res = Calendar.convert_int_to_datetime(res)
@@ -382,14 +382,14 @@ class JzDataServer(BaseDataServer):
         l = ['='.join([key, str(value)]) for key, value in d.items()]
         return '&'.join(l)
 
-    def query_wd_fin_stat(self, type_, security, start_date, end_date, fields=""):
+    def query_wd_fin_stat(self, type_, symbol, start_date, end_date, fields=""):
         """
         Helper function to call data_api.query with 'wd.income' more conveniently.
         
         Parameters
         ----------
         type_ : {'income', 'balance_sheet', 'cash_flow'}
-        security : str
+        symbol : str
             separated by ','
         start_date : int
             Annoucement date in results will be no earlier than start_date
@@ -410,7 +410,7 @@ class JzDataServer(BaseDataServer):
         if view_name is None:
             raise NotImplementedError("type_ = {:s}".format(type_))
         
-        filter_argument = self._dic2url({'security': security,
+        filter_argument = self._dic2url({'symbol': symbol,
                                          'start_date': start_date,
                                          'end_date': end_date,
                                          'report_type': '408002000',  # joint sheet
@@ -419,13 +419,13 @@ class JzDataServer(BaseDataServer):
         return self.query(view_name, fields=fields, filter=filter_argument,
                           order_by=self.REPORT_DATE_FIELD_NAME)
 
-    def query_wd_balance_sheet(self, security, start_date, end_date, fields="", extend=0):
+    def query_wd_balance_sheet(self, symbol, start_date, end_date, fields="", extend=0):
         """
         Helper function to call data_api.query with 'wd.income' more conveniently.
         
         Parameters
         ----------
-        security : str
+        symbol : str
             separated by ','
         start_date : int
             Annoucement date in results will be no earlier than start_date
@@ -449,7 +449,7 @@ class JzDataServer(BaseDataServer):
             start_dt = start_dt - pd.Timedelta(weeks=extend)
             start_date = Calendar.convert_datetime_to_int(start_dt)
     
-        filter_argument = self._dic2url({'security': security,
+        filter_argument = self._dic2url({'symbol': symbol,
                                          'start_date': start_date,
                                          'end_date': end_date,
                                          'report_type': '408002000'})
@@ -457,13 +457,13 @@ class JzDataServer(BaseDataServer):
         return self.query("wd.balanceSheet", fields=fields, filter=filter_argument,
                           order_by=self.REPORT_DATE_FIELD_NAME)
 
-    def query_wd_cash_flow(self, security, start_date, end_date, fields="", extend=0):
+    def query_wd_cash_flow(self, symbol, start_date, end_date, fields="", extend=0):
         """
         Helper function to call data_api.query with 'wd.income' more conveniently.
         
         Parameters
         ----------
-        security : str
+        symbol : str
             separated by ','
         start_date : int
             Annoucement date in results will be no earlier than start_date
@@ -487,7 +487,7 @@ class JzDataServer(BaseDataServer):
             start_dt = start_dt - pd.Timedelta(weeks=extend)
             start_date = Calendar.convert_datetime_to_int(start_dt)
     
-        filter_argument = self._dic2url({'security': security,
+        filter_argument = self._dic2url({'symbol': symbol,
                                          'start_date': start_date,
                                          'end_date': end_date,
                                          'report_type': '408002000'})
@@ -495,13 +495,13 @@ class JzDataServer(BaseDataServer):
         return self.query("wd.cashFlow", fields=fields, filter=filter_argument,
                           order_by=self.REPORT_DATE_FIELD_NAME)
     
-    def query_wd_dailyindicator(self, security, start_date, end_date, fields=""):
+    def query_wd_dailyindicator(self, symbol, start_date, end_date, fields=""):
         """
         Helper function to call data_api.query with 'wd.secDailyIndicator' more conveniently.
         
         Parameters
         ----------
-        security : str
+        symbol : str
             separated by ','
         start_date : int
         end_date : int
@@ -515,7 +515,7 @@ class JzDataServer(BaseDataServer):
         msg : str
         
         """
-        filter_argument = self._dic2url({'security': security,
+        filter_argument = self._dic2url({'symbol': symbol,
                                          'start_date': start_date,
                                          'end_date': end_date})
     
@@ -524,7 +524,7 @@ class JzDataServer(BaseDataServer):
                           filter=filter_argument,
                           orderby="trade_date")
 
-    def get_index_comp(self, index, start_date, end_date):
+    def _get_index_comp(self, index, start_date, end_date):
         """
         Return all securities that have been in index during start_date and end_date.
         
@@ -545,10 +545,29 @@ class JzDataServer(BaseDataServer):
                                          'end_date': end_date})
     
         df_io, msg = self.query("wd.indexCons", fields="",
-                                filter=filter_argument, orderby="security")
+                                filter=filter_argument, orderby="symbol")
+        return df_io, msg
+    
+    def get_index_comp(self, index, start_date, end_date):
+        """
+        Return all securities that have been in index during start_date and end_date.
+        
+        Parameters
+        ----------
+        index : str
+            separated by ','
+        start_date : int
+        end_date : int
+
+        Returns
+        -------
+        list
+
+        """
+        df_io, msg = self._get_index_comp(index, start_date, end_date)
         if msg != '0,':
             print msg
-        return list(np.unique(df_io.loc[:, 'security']))
+        return list(np.unique(df_io.loc[:, 'symbol']))
     
     def get_index_comp_df(self, index, start_date, end_date):
         """
@@ -569,12 +588,7 @@ class JzDataServer(BaseDataServer):
         msg : str
 
         """
-        filter_argument = self._dic2url({'index_code': index,
-                                         'start_date': start_date,
-                                         'end_date': end_date})
-    
-        df_io, msg = self.query("wd.indexCons", fields="",
-                             filter=filter_argument, orderby="security")
+        df_io, msg = self._get_index_comp(index, start_date, end_date)
         if msg != '0,':
             print msg
         
@@ -588,11 +602,11 @@ class JzDataServer(BaseDataServer):
         df_io.loc[:, 'in_date'] = df_io.loc[:, 'in_date'].apply(str2int)
         df_io.loc[:, 'out_date'] = df_io.loc[:, 'out_date'].apply(str2int)
         
-        # df_io.set_index('security', inplace=True)
-        dates = self.get_trade_date(start_date=start_date, end_date=end_date, security=index)
+        # df_io.set_index('symbol', inplace=True)
+        dates = self.get_trade_date(start_date=start_date, end_date=end_date, symbol=index)
 
         dic = dict()
-        gp = df_io.groupby(by='security')
+        gp = df_io.groupby(by='symbol')
         for sec, df in gp:
             mask = np.zeros_like(dates, dtype=int)
             for idx, row in df.iterrows():
@@ -603,6 +617,42 @@ class JzDataServer(BaseDataServer):
         res = pd.DataFrame(index=dates, data=dic)
         
         return res
+    
+    def get_industry(self, symbol, type_='SW'):
+        """
+        Get daily industry of securities from ShenWanHongYuan or ZhongZhengZhiShu.
+        
+        Parameters
+        ----------
+        symbol : str
+            separated by ','
+        type_ : {'SW', 'ZZ'}
+
+        Returns
+        -------
+        df : pd.DataFrame
+        msg : str
+
+        """
+        if type_ == 'SW':
+            src = u'申万研究所'.encode('utf-8')
+        elif type_ == 'ZZ':
+            src = u'中证指数有限公司'.encode('utf-8')
+        else:
+            raise ValueError("type_ must be one of SW of ZZ")
+    
+        filter_argument = self._dic2url({'symbol': symbol,
+                                         'industry_src': src})
+        fields_list = ['symbol', 'industry1_code', 'industry1_name']
+    
+        df_raw, msg = self.query("lb.secIndustry", fields=','.join(fields_list),
+                                 filter=filter_argument, orderby="symbol")
+        """
+            df_raw = df_raw.sort_values('in_date', axis=0)
+            df_unique = df_raw.drop_duplicates(subset='symbol', keep='last')  # latest
+            pd.DataFrame.drop_duplicates()
+        """
+        return df_raw, msg
 
 
 class JzEventServer(JzDataServer):
@@ -610,7 +660,7 @@ class JzEventServer(JzDataServer):
         super(JzEventServer, self).__init__()
         
         self.bar_type = common.QUOTE_TYPE.MIN
-        self.security = ''
+        self.symbol = ''
 
         self.daily_quotes_cache = None
 
@@ -642,7 +692,7 @@ class JzEventServer(JzDataServer):
                     key = keys[j]
                     bar = dict_bar.get(key)
                     quote = Quote(self.bar_type)
-                    quote.security = bar['security']
+                    quote.symbol = bar['symbol']
                     quote.open = bar['open']
                     quote.close = bar['close']
                     quote.high = bar['high']
@@ -701,7 +751,7 @@ class JshHistoryBarDataServer(DataServer):
         self.api = None
         self.addr = ''
         self.bar_type = common.QUOTE_TYPE.MIN
-        self.security = ''
+        self.symbol = ''
         
         self.daily_quotes_cache = None
         
@@ -710,7 +760,7 @@ class JshHistoryBarDataServer(DataServer):
     def init_from_config(self, props):
         self.addr = props.get('jsh.addr')
         self.bar_type = props.get('bar_type')
-        self.security = props.get('security')
+        self.symbol = props.get('symbol')
     
     def start(self):
         pass
@@ -780,7 +830,7 @@ class JshHistoryBarDataServer(DataServer):
                     key = keys[j]
                     bar = dict_bar.get(key)
                     quote = Quote(self.bar_type)
-                    quote.security = bar['SYMBOL']
+                    quote.symbol = bar['SYMBOL']
                     quote.open = bar['OPEN']
                     quote.close = bar['close']
                     quote.high = bar['HIGH']

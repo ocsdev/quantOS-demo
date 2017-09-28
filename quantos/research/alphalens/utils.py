@@ -171,7 +171,7 @@ def demean_forward_returns(factor_data, grouper=None):
     -------
     adjusted_forward_returns : pd.DataFrame - MultiIndex
         DataFrame of the same format as the input, but with each
-        security's returns normalized by group.
+        symbol's returns normalized by group.
     """
 
     factor_data = factor_data.copy()
@@ -222,8 +222,8 @@ def print_table(table, name=None, fmt=None):
 
 def my_stack(df):
     df = df.stack(dropna=False)  # do not dropna
-    df.index.names = ['trade_date', 'security']
-    df.sort_index(axis=0, level=['trade_date', 'security'], inplace=True)
+    df.index.names = ['trade_date', 'symbol']
+    df.sort_index(axis=0, level=['trade_date', 'symbol'], inplace=True)
     return df
 
 
@@ -325,7 +325,7 @@ def get_clean_factor_and_forward_returns(factor,
         If the period of calculating return is d (from T to T+d), then
         we do not use factor values of those suspended on T,
         we do not calculate return for those suspended on T+d.
-    mask_sus: if 1, the security cannot be traded due to suspension or other reasons.
+    mask_sus: if 1, the symbol cannot be traded due to suspension or other reasons.
     """
     # convert index to datetime index
     factor.index = Calendar.convert_int_to_datetime(factor.index)

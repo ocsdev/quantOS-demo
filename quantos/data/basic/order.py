@@ -13,7 +13,7 @@ class Order(object):
         id of the task.
     entrust_no : str
         ID of the order.
-    security : str
+    symbol : str
     entrust_action : str
         Action of the trade.
     entrust_price : double
@@ -48,7 +48,7 @@ class Order(object):
         self.task_id = ""
         self.entrust_no = ""
         
-        self.security = ""
+        self.symbol = ""
         
         self.entrust_action = ""
         self.entrust_price = 0.0
@@ -83,7 +83,7 @@ class Order(object):
     def __repr__(self):
         return "{0.entrust_date:8d}({0.entrust_time:8d}) " \
                "{0.entrust_action:6s} {0.entrust_size:5d} of " \
-               "{0.security:10s}@{0.entrust_price:.3f}".format(self)
+               "{0.symbol:10s}@{0.entrust_price:.3f}".format(self)
 
     def __str__(self):
         return self.__repr__()
@@ -92,7 +92,7 @@ class Order(object):
         self.task_id = order.task_id
         self.entrust_no = order.entrust_no
         
-        self.security = order.security
+        self.symbol = order.symbol
         
         self.entrust_action = order.entrust_action
         self.entrust_price = order.entrust_price
@@ -124,9 +124,9 @@ class Order(object):
                 or self.order_status == common.ORDER_STATUS.REJECTED)
     
     @classmethod
-    def new_order(cls, security, action, price, size, date, time):
+    def new_order(cls, symbol, action, price, size, date, time):
         o = cls()
-        o.security = security
+        o.symbol = symbol
         o.entrust_action = action
         o.entrust_price = price
         o.entrust_size = size

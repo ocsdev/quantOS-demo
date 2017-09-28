@@ -211,12 +211,12 @@ class DataApi:
         
         return utils.extract_result(cr, data_format=data_format, class_name=data_class)
 
-    def quote(self, security, fields="", data_format="", **kwargs):
+    def quote(self, symbol, fields="", data_format="", **kwargs):
         
         r, msg = self._call_rpc("jsq.query",
                                 self._get_format(data_format, ""),
                                 "Quote",
-                                security = str(security),
+                                symbol = str(symbol),
                                 fields   = fields,
                                 **kwargs)
         return (r, msg)    
@@ -229,7 +229,7 @@ class DataApi:
         codes.sort()
         
         # XXX subscribe with default fields!
-        rpc_params = {"security" : ",".join(codes),
+        rpc_params = {"symbol" : ",".join(codes),
                       "fields"   : "" }
 
         cr = self._remote.call("jsq.subscribe", rpc_params)
@@ -244,7 +244,7 @@ class DataApi:
         self._sub_hash      = rsp['sub_hash']
         #return (rsp.securities, msg)
 
-    def subscribe(self, security, func=None, fields="", data_format=""):
+    def subscribe(self, symbol, func=None, fields="", data_format=""):
         """Subscribe securites
         
         This function adds new securities to subscribed list on the server. If
@@ -259,7 +259,7 @@ class DataApi:
         if func:
             self._on_jsq_callback = func
         
-        rpc_params = {"security" : security,
+        rpc_params = {"symbol" : symbol,
                       "fields"   : fields }
 
         cr = self._remote.call("jsq.subscribe", rpc_params)
@@ -268,7 +268,7 @@ class DataApi:
         if not rsp:
             return (rsp, msg)
 
-        new_codes = [ x.strip() for x in security.split(',') if x ]
+        new_codes = [ x.strip() for x in symbol.split(',') if x ]
         
         self._subscribed_set = self._subscribed_set.union( set(new_codes) )
         self._schema_id     = rsp['schema_id']
@@ -277,7 +277,7 @@ class DataApi:
         return (rsp['securities'], msg)
         
 
-    def unsubscribe(self, security):
+    def unsubscribe(self, symbol):
         """Unsubscribe securities.
 
         Unscribe codes and return list of subscribed code.
@@ -285,7 +285,7 @@ class DataApi:
         assert False, "NOT IMPLEMENTED"
 
 
-    def bar(self, security, start_time=200000, end_time=160000, 
+    def bar(self, symbol, start_time=200000, end_time=160000,
         trade_date=0, cycle="1m", fields="", data_format="", **kwargs ) :
         
         begin_time = utils.to_time_int(start_time)
@@ -301,7 +301,7 @@ class DataApi:
         return self._call_rpc("jsi.query",
                               self._get_format(data_format, "pandas"),
                               "Bar",
-                              security   = str(security),
+                              symbol   = str(symbol),
                               fields     = fields,
                               cycle      = cycle,
                               trade_date = trade_date,
@@ -309,7 +309,7 @@ class DataApi:
                               end_time   = end_time,
                               **kwargs)
 
-    def bar_view(self, security, start_time=200000, end_time=160000, 
+    def bar_view(self, symbol, start_time=200000, end_time=160000,
         trade_date=0, cycle="1m", fields="", data_format="", **kwargs ) :
 
         begin_time = utils.to_time_int(start_time)
@@ -325,7 +325,7 @@ class DataApi:
         return self._call_rpc("jsi.bar_view",
                               self._get_format(data_format, "pandas"),
                               "Bar",
-                              security   = str(security),
+                              symbol   = str(symbol),
                               fields     = fields,
                               cycle      = cycle,
                               trade_date = trade_date,
@@ -334,7 +334,7 @@ class DataApi:
                               **kwargs)    
 
 
-    def daily(self, security, start_date, end_date, 
+    def daily(self, symbol, start_date, end_date,
         adjust_mode = None, fields="",
         data_format="", **kwargs ) :
 
@@ -351,7 +351,7 @@ class DataApi:
         return self._call_rpc("jsd.query",
                               self._get_format(data_format, "pandas"),
                               "Daily",
-                              security       = str(security),
+                              symbol       = str(symbol),
                               fields         = fields,
                               begin_date     = begin_date,
                               end_date       = end_date,

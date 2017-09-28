@@ -8,17 +8,36 @@ def test_xarray():
     import xarray as xr
     
     a = xr.DataArray(np.random.randn(2, 3))
-    
-    
-def test_dv_write():
+
+
+def test_add_formula_directly():
     from quantos.data.dataserver import JzDataServer
     
     ds = JzDataServer()
     dv = BaseDataView()
     
     secs = '600030.SH,000063.SZ,000001.SZ'
-    props = {'start_date': 20160601, 'end_date': 20170601, 'security': secs,
-             'fields': 'open,close,high,low,volume,pb,net_assets,ncf', 'freq': 1}
+    props = {'start_date': 20160601, 'end_date': 20170601, 'symbol': secs,
+             'freq': 1}
+    
+    dv.add_formula("myfactor", 'close / open', data_api=ds)
+    # dv.prepare_data(props=props, data_api=ds)
+    # assert dv.data_d.shape == (242, 27)
+    # assert dv.dates.shape == (242, )
+    folder_path = '../output/prepared'
+    # dv.save_dataview(folder_path=folder_path)
+    
+
+def test_write():
+    from quantos.data.dataserver import JzDataServer
+    
+    ds = JzDataServer()
+    dv = BaseDataView()
+    
+    secs = '600030.SH,000063.SZ,000001.SZ'
+    props = {'start_date': 20160601, 'end_date': 20170601, 'symbol': secs,
+             'fields': 'open,close,high,low,volume,pb,net_assets,ncf',
+             'freq': 1}
     
     dv.prepare_data(props=props, data_api=ds)
     assert dv.data_d.shape == (242, 27)
@@ -27,21 +46,21 @@ def test_dv_write():
     """
     PerformanceWarning:
     your performance may suffer as PyTables will pickle object types that it cannot
-    map directly to c-types [inferred_type->mixed,key->block1_values] [items->[('000001.SZ', 'int_income'), ('000001.SZ', 'less_handling_chrg_comm_exp'), ('000001.SZ', 'net_int_income'), ('000001.SZ', 'oper_exp'), ('000001.SZ', 'security'), ('000063.SZ', 'int_income'), ('000063.SZ', 'less_handling_chrg_comm_exp'), ('000063.SZ', 'net_int_income'), ('000063.SZ', 'oper_exp'), ('000063.SZ', 'security'), ('600030.SH', 'int_income'), ('600030.SH', 'less_handling_chrg_comm_exp'), ('600030.SH', 'net_int_income'), ('600030.SH', 'oper_exp'), ('600030.SH', 'security')]]
+    map directly to c-types [inferred_type->mixed,key->block1_values] [items->[('000001.SZ', 'int_income'), ('000001.SZ', 'less_handling_chrg_comm_exp'), ('000001.SZ', 'net_int_income'), ('000001.SZ', 'oper_exp'), ('000001.SZ', 'symbol'), ('000063.SZ', 'int_income'), ('000063.SZ', 'less_handling_chrg_comm_exp'), ('000063.SZ', 'net_int_income'), ('000063.SZ', 'oper_exp'), ('000063.SZ', 'symbol'), ('600030.SH', 'int_income'), ('600030.SH', 'less_handling_chrg_comm_exp'), ('600030.SH', 'net_int_income'), ('600030.SH', 'oper_exp'), ('600030.SH', 'symbol')]]
     """
     
     folder_path = '../output/prepared'
     dv.save_dataview(folder_path=folder_path)
 
 
-def test_dv_quarterly():
+def test_quarterly():
     from quantos.data.dataserver import JzDataServer
     
     ds = JzDataServer()
     dv = BaseDataView()
     
     secs = '600030.SH,000063.SZ,000001.SZ'
-    props = {'start_date': 20160609, 'end_date': 20170601, 'universe': '000300.SH', 'security': secs,
+    props = {'start_date': 20160609, 'end_date': 20170601, 'universe': '000300.SH', 'symbol': secs,
              'fields': 'open,close,pb,net_assets,total_oper_rev,oper_exp', 'freq': 1}
     
     dv.prepare_data(props=props, data_api=ds)
@@ -86,21 +105,21 @@ def test_add_formula_quarterly():
     assert df2.shape[0] == len(dv.dates)
 
 
-def test_dv_load():
+def test_load():
     dv = BaseDataView()
     folder_path = '../output/prepared/20160601_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
     
-    assert dv.start_date == 20160601 and set(dv.security) == set('000001.SZ,600030.SH,000063.SZ'.split(','))
+    assert dv.start_date == 20160601 and set(dv.symbol) == set('000001.SZ,600030.SH,000063.SZ'.split(','))
 
     # test get_snapshot
-    snap1 = dv.get_snapshot(20170504, security='600030.SH,000063.SZ', fields='close,pb')
+    snap1 = dv.get_snapshot(20170504, symbol='600030.SH,000063.SZ', fields='close,pb')
     assert snap1.shape == (2, 2)
     assert set(snap1.columns.values) == {'close', 'pb'}
     assert set(snap1.index.values) == {'600030.SH', '000063.SZ'}
     
     # test get_ts
-    ts1 = dv.get_ts('close', security='600030.SH,000063.SZ', start_date=20170101, end_date=20170302)
+    ts1 = dv.get_ts('close', symbol='600030.SH,000063.SZ', start_date=20170101, end_date=20170302)
     assert ts1.shape == (38, 2)
     assert set(ts1.columns.values) == {'600030.SH', '000063.SZ'}
     assert ts1.index.values[-1] == 20170302
@@ -136,11 +155,12 @@ def test_add_formula():
 
 
 if __name__ == "__main__":
-    # test_dv_write()
-    # test_dv_read()
+    # test_write()
+    # test_read()
     # test_xarray()
     # test_add_field()
     # test_add_formula()
-    test_dv_quarterly()
+    test_add_formula_directly()
+    # test_quarterly()
     # test_add_field_quarterly()
     # test_add_formula_quarterly()

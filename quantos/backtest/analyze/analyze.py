@@ -75,7 +75,7 @@ class BaseAnalyzer(object):
         type_map = {'task_id': str,
                     'entrust_no': str,
                     'entrust_action': str,
-                    'security': str,
+                    'symbol': str,
                     'fill_price': float,
                     'fill_size': int,
                     'fill_date': int,
@@ -83,10 +83,10 @@ class BaseAnalyzer(object):
                     'fill_no': str}
         trades = pd.read_csv(file_folder + 'trades.csv', ',', dtype=type_map)
         
-        self._init_universe(trades.loc[:, 'security'].values)
+        self._init_universe(trades.loc[:, 'symbol'].values)
         self._init_configs(file_folder)
         self._init_trades(trades)
-        self._init_security_price()
+        self._init_symbol_price()
     
     def _init_trades(self, df):
         """Add datetime column. """
@@ -94,18 +94,18 @@ class BaseAnalyzer(object):
         
         res = dict()
         for sec in self.universe:
-            res[sec] = df.loc[df.loc[:, 'security'] == sec, :]
+            res[sec] = df.loc[df.loc[:, 'symbol'] == sec, :]
         
         self._trades = res
     
-    def _init_security_price(self):
+    def _init_symbol_price(self):
         """Get close price of securities in the universe from data server."""
         close_dic = dict()
         for sec in self.universe:
             df, err_msg = self.data_api.daily(sec, self.configs['start_date'], self.configs['end_date'], fields="close")
             
             df.index = pd.to_datetime(df.loc[:, 'trade_date'], format="%Y%m%d")
-            df.drop(['trade_date', 'security'], axis=1, inplace=True)
+            df.drop(['trade_date', 'symbol'], axis=1, inplace=True)
             close_dic[sec] = df
         
         self._closes = close_dic
@@ -133,7 +133,7 @@ class AlphaAnalyzer(BaseAnalyzer):
     def _get_avg_pos_price(pos_arr, price_arr):
         """
         Calculate average cost price using position and fill price.
-        When position = 0, cost price = security price.
+        When position = 0, cost price = symbol price.
         """
         assert len(pos_arr) == len(price_arr)
         
@@ -231,9 +231,9 @@ class AlphaAnalyzer(BaseAnalyzer):
         account = OrderedDict()
         
         for date, df in gp:
-            df_mod = df.loc[:, ['security', 'entrust_action', 'fill_size', 'fill_price',
+            df_mod = df.loc[:, ['symbol', 'entrust_action', 'fill_size', 'fill_price',
                                 'position', 'AvgPosPrice']]
-            df_mod.columns = ['security', 'action', 'size', 'price',
+            df_mod.columns = ['symbol', 'action', 'size', 'price',
                               'position', 'cost price']
             
             res[str(date)] = df_mod
@@ -257,7 +257,7 @@ class AlphaAnalyzer(BaseAnalyzer):
                                                       fields='close')
         df_bench_value.index = pd.to_datetime(df_bench_value.loc[:, 'trade_date'], format="%Y%m%d")
         df_bench_value.index.name = 'index'
-        df_bench_value.drop(['trade_date', 'security'], axis=1, inplace=True)
+        df_bench_value.drop(['trade_date', 'symbol'], axis=1, inplace=True)
 
         pnl_return = pd.DataFrame(index=strategy_value.index, data=self._to_return(strategy_value.values))
         bench_return = pd.DataFrame(index=df_bench_value.index, data=self._to_return(df_bench_value.values))
@@ -313,7 +313,7 @@ class AlphaAnalyzer(BaseAnalyzer):
         r.output_pdf('report.pdf')
 
 
-def calc_uat_metrics(t1, security):
+def calc_uat_metrics(t1, symbol):
     cump1 = t1.loc[:, 'VirtualProfit'].values
     profit1 = cump1[-1]
     
@@ -324,7 +324,7 @@ def calc_uat_metrics(t1, security):
     
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(16, 8))
     ax1.plot(cump1, label='inst1')
-    ax1.set_title("{} PnL in price".format(security))
+    ax1.set_title("{} PnL in price".format(symbol))
     ax1.legend(loc='upper left')
     ax1.axhline(0, color='k', lw=1, ls='--')
     ax2.plot(t1.loc[:, 'position'].values)
@@ -335,7 +335,7 @@ def calc_uat_metrics(t1, security):
     return
 
 
-def plot_trades(df, security="", save_folder="."):
+def plot_trades(df, symbol="", save_folder="."):
     idx = range(len(df.index))
     price = df.loc[:, 'close']
     bv, sv = df.loc[:, 'BuyVolume'].values, df.loc[:, 'SellVolume'].values
@@ -367,9 +367,9 @@ def plot_trades(df, security="", save_folder="."):
     ax3.axhline(0, color='k', lw=1)
     
     
-    ax1.set_title(security)
+    ax1.set_title(symbol)
     
-    fig.savefig(save_folder + '/' + "{}.png".format(security))
+    fig.savefig(save_folder + '/' + "{}.png".format(symbol))
     plt.tight_layout()
     return
 

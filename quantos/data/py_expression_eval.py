@@ -573,9 +573,9 @@ class Parser(object):
             Single parameter
         df_arg : pd.DataFrame
             The single argument of func.
-            index is date, column is security.
+            index is date, column is symbol.
         df_group : pd.DataFrame or pd.Series
-            group tag of each security.
+            group tag of each symbol.
 
         Returns
         -------
@@ -583,7 +583,7 @@ class Parser(object):
 
         """
         def gp_apply(df_value, df_group):
-            """df has date index and security columns."""
+            """df has date index and symbol columns."""
             gp = df_value.groupby(by=df_group, axis=1)
             res_apply = gp.apply(func)
             return res_apply
@@ -861,7 +861,7 @@ class Parser(object):
         Parameters
         ----------
         values : dict
-            Key is variable name, value is pd.DataFrame (index is date, column is security)
+            Key is variable name, value is pd.DataFrame (index is date, column is symbol)
         ann_dts : pd.DataFrame
             Announcement dates of financial statements of securities.
         trade_dts : np.ndarray

@@ -69,7 +69,7 @@ class ORDER_TYPE(ReprStrEnum):
     """We recommend use limit order everywhere."""
     MARKET = "market"
     LIMIT = "limit"
-    STOP = "stop"  # convert to market order once security price meet certain conditions.
+    STOP = "stop"  # convert to market order once symbol price meet certain conditions.
 
 
 @unique

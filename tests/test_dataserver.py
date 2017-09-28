@@ -12,8 +12,8 @@ def test_jz_data_server_daily():
                         adjust_mode=None)
     assert msg == '0,'
     
-    rb = res.loc[res.loc[:, 'security'] == 'rb1710.SHF', :]
-    stk = res.loc[res.loc[:, 'security'] == '600662.SH', :]
+    rb = res.loc[res.loc[:, 'symbol'] == 'rb1710.SHF', :]
+    stk = res.loc[res.loc[:, 'symbol'] == '600662.SH', :]
     assert rb.shape == (4, 13)
     assert rb.loc[:, 'volume'].values[0] == 189616
     assert stk.loc[:, 'volume'].values[0] == 7174813
@@ -37,8 +37,8 @@ def test_jz_data_server_bar():
     res2, msg2 = ds.bar('rb1710.SHF,600662.SH', start_time=200000, end_time=160000, trade_date=20170831, fields="")
     assert msg2 == '0,'
     
-    rb2 = res2.loc[res2.loc[:, 'security'] == 'rb1710.SHF', :]
-    stk2 = res2.loc[res2.loc[:, 'security'] == '600662.SH', :]
+    rb2 = res2.loc[res2.loc[:, 'symbol'] == 'rb1710.SHF', :]
+    stk2 = res2.loc[res2.loc[:, 'symbol'] == '600662.SH', :]
     assert rb2.shape == (345, 14)
     assert stk2.shape == (240, 14)
     assert rb2.loc[:, 'volume'].values[344] == 3366
@@ -50,7 +50,7 @@ def test_jz_data_server_wd():
     # test wd.secDailyIndicator
     fields = "pb,pe,share_float_free,net_assets,limit_status"
     for res3, msg3 in [ds.query("wd.secDailyIndicator", fields=fields,
-                                filter="security=600030.SH&start_date=20170907&end_date=20170907",
+                                filter="symbol=600030.SH&start_date=20170907&end_date=20170907",
                                 orderby="trade_date"),
                        ds.query_wd_dailyindicator('600030.SH', 20170907, 20170907, fields)]:
         assert msg3 == '0,'
@@ -61,12 +61,11 @@ def test_jz_data_server_wd():
     
     # test wd.income
     for res4, msg4 in [ds.query("wd.income", fields="",
-                                filter="security=600000.SH&start_date=20150101&end_date=20170101&report_type=408002000",
+                                filter="symbol=600000.SH&start_date=20150101&end_date=20170101&report_type=408002000",
                                 order_by="report_date"),
                        ds.query_wd_fin_stat('income', '600000.SH', 20150101, 20170101, fields="")]:
         assert msg4 == '0,'
         assert res4.shape == (8, 12)
-        print res4.loc[4, 'oper_rev'] == 37918000000
         assert res4.loc[4, 'oper_rev'] == 37918000000
 
 
@@ -78,12 +77,10 @@ def test_jz_data_server_daily_ind_performance():
     
     fields = "pb,pe,share_float_free,net_assets,limit_status"
     res, msg = ds.query("wd.secDailyIndicator", fields=fields,
-                          filter=("security=" + hs300_str
+                          filter=("symbol=" + hs300_str
                                   + "&start_date=20160907&end_date=20170907"),
                           orderby="trade_date")
     assert msg == '0,'
-    
-    print
 
 
 def test_jz_data_server_components():
@@ -95,5 +92,14 @@ def test_jz_data_server_components():
     assert len(arr) == 430
 
 
+def test_jz_data_server_industry():
+    ds = JzDataServer()
+    arr = ds.get_index_comp(index='000300.SH', start_date=20140101, end_date=20170505)
+    df, msg = ds.get_industry(symbol=','.join(arr), type_='SW')
+    print df
+    print
+    
+    
 if __name__ == "__main__":
-    test_jz_data_server_daily_ind_performance()
+    test_jz_data_server_wd()
+    test_jz_data_server_industry()
