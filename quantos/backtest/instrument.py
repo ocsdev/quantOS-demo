@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from quantos.data.dbmanager import *
+from quantos.data.dbmanager import get_jzts_connection
 
 
 class Instrument(object):

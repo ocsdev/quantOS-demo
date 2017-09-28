@@ -3,8 +3,8 @@ import datetime as dt
 import matplotlib.pyplot as plt
 
 from quantos.backtest.backtest import common
-from quantos.backtest.calendar import *
-from quantos.backtest.instrument import *
+from quantos.backtest.calendar import Calendar
+from quantos.backtest.instrument import InstManager, Instrument
 from quantos.data.basic.trade import Trade
 
 
@@ -185,7 +185,7 @@ class PnlManager(object):
         begindate = self.calendar.get_last_trade_date(self.start_date)
         enddate = self.calendar.get_next_trade_date(self.end_date)
         for symbol in self.universe:
-            df, msg = self.data_api.daily(symbol, begin_date=begindate, end_date=enddate, fields="")
+            df, msg = self.data_api.daily(symbol, start_date=begindate, end_date=enddate, fields="")
             for i in range(0, len(df.index)):
                 date = (df['trade_date'][i])
                 close = df['close'][i]
@@ -362,7 +362,10 @@ if __name__ == '__main__':
     props['stock_tax_rate'] = 0.002
     props['symbol'] = '600030.SH'
     pnlmgr = PnlManager()
-    pnlmgr.initFromConfig(props)
+    
+    from quantos.data.dataserver import JzDataServer
+    ds = JzDataServer()
+    pnlmgr.initFromConfig(props, ds)
     trades = []
     t1 = Trade()
     t1.symbol = '600030.SH'

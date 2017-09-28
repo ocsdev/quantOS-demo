@@ -25,9 +25,10 @@ from data.dataserver import JzDataServer
 from example.demoalphastrategy import DemoAlphaStrategy
 
 import quantos.util.fileio
-from quantos.backtest.backtest import AlphaBacktestInstance
+from quantos.backtest.backtest import AlphaBacktestInstance, AlphaBacktestInstance2
 from quantos.backtest.gateway import DailyStockSimGateway
 from quantos.backtest import model
+from quantos.data.dataview import BaseDataView
 
 
 def read_props(fp):
@@ -65,12 +66,8 @@ def test_alpha_strategy():
     gateway = DailyStockSimGateway()
     jz_data_server = JzDataServer()
 
-    prop_file_path = os.path.join(
-                            os.path.dirname(__file__),
-                            '../quantos/etc',
-                            'alpha.json'
-                           )
-    # prop_file_path = r"etc/alpha.json"
+    prop_file_path = os.path.join(os.path.dirname(__file__),
+                                  '../quantos/etc', 'alpha.json')
     props = read_props(prop_file_path)
     """
     props = {
@@ -90,8 +87,14 @@ def test_alpha_strategy():
         }
 
     """
+
+    jz_data_server.init_from_config(props)
+    jz_data_server.initialize()
+    gateway.init_from_config(props)
+
     context = model.Context()
     context.register_data_api(jz_data_server)
+    context.register_gateway(gateway)
     context.register_trade_api(gateway)
     
     risk_model = model.FactorRiskModel()
@@ -113,67 +116,79 @@ def test_alpha_strategy():
     strategy.active_pc_method = 'mc'
     
     backtest = AlphaBacktestInstance()
-    backtest.init_from_config(props, jz_data_server, gateway, strategy)
+    backtest.init_from_config(props, strategy, context=context)
     
     backtest.run_alpha()
     
     backtest.save_results('../output/')
 
+
+def test_alpha_strategy_dataview():
+    dv = BaseDataView()
+    folder_path = '../output/prepared/20160601_20170601_freq=1D'
+    dv.load_dataview(folder=folder_path)
     
-"""
-def main_new():
-    import time
-    t_start = time.time()
+    gateway = DailyStockSimGateway()
+    jz_data_server = JzDataServer()
+
+    props = {
+        "benchmark": "000300.SH",
+        "symbol": dv.symbol,
+        "universe": dv.universe,  # no universe
     
-    prop_file_path = r"../etc/alpha.json"
-    props = read_props(prop_file_path)
+        "start_date": dv.start_date,
+        "end_date": dv.end_date,
     
-    data_server = JzDataServer()
+        "instanceid": "alpha001",
+        
+        "period": "month",
+        "days_delay": 1,
     
+        "init_balance": 1e7,
+        "position_ratio": 0.7,
+        }
+    
+    jz_data_server.init_from_config(props)
+    jz_data_server.initialize()
+    gateway.init_from_config(props)
+
     context = model.Context()
-    context.register_data_api(data_server)
-
-    revenue_model = model.FactorRevenueModel()
-    revenue_model.register_context(context)
-    revenue_model.register_func(pb_factor, 'pb_factor')
-    revenue_model.activate_func({'pb_factor': {'mykwarg': 3.27}})
+    context.register_data_api(jz_data_server)
+    context.register_gateway(gateway)
+    context.register_trade_api(gateway)
     
+    risk_model = model.FactorRiskModel()
+    signal_model = model.FactorRevenueModel()
     cost_model = model.SimpleCostModel()
+    
+    risk_model.register_context(context)
+    signal_model.register_context(context)
     cost_model.register_context(context)
-    cost_model.activate_func({'default_commission': {'rate': 1e-3}})
     
-    strategy = AlphaStrategy(None, None, cost_model)
+    signal_model.register_func(pb_factor, 'pb_factor')
+    signal_model.activate_func({'pb_factor': {'coef': 3.27}})
+    cost_model.register_func(my_commission, 'my_commission')
+    cost_model.activate_func({'my_commission': {'myrate': 1e-2}})
     
-    backtest = AlphaBacktestInstance()
-    backtest.init_from_config(props, data_server, strategy)
-
-    # strategy.register_selector(helper_function(conditions))
+    strategy = DemoAlphaStrategy(risk_model, signal_model, cost_model)
+    # strategy.register_context(context)
+    # strategy.active_pc_method = 'equal_weight'
+    strategy.active_pc_method = 'mc'
     
-    opt_options = {"method": "mc", "params": {} }
-    strategy.register_pc_method('optimizer', options)
-
-    # options contains weights
-    strategy.register_pc_method('self_defined_weight', options)
-    # total market value or float market value
-    strategy.register_pc_method('market_value_weight', options)
-    
-    strategy.register_pc_method('risk_parity', options)
-    
+    backtest = AlphaBacktestInstance2()
+    backtest.init_from_config(props, strategy, context=context,
+                              data_api=jz_data_server, gateway=gateway, dataview=None)
     
     backtest.run_alpha()
     
     backtest.save_results('../output/')
-    
-    t3 = time.time() - t_start
-    print "[backtest] time lapsed in total: {:.2f}".format(t3)
-
-"""
-
 
 if __name__ == "__main__":
     t_start = time.time()
 
     test_alpha_strategy()
+    # test_prepare()
+    # test_read()
     
     t3 = time.time() - t_start
     print "\n\n\nTime lapsed in total: {:.1f}".format(t3)

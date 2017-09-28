@@ -24,22 +24,21 @@ class BacktestInstance(Subscriber):
         self.calendar = Calendar()
         
         self.props = None
+        
+        self.context = None
     
-    def init_from_config(self, props, data_api, gateway, strategy):
+    def init_from_config(self, props, strategy, data_api=None, dataview=None, gateway=None, context=None):
         self.props = props
         self.instanceid = props.get("instanceid")
         
         self.start_date = props.get("start_date")
         self.end_date = props.get("end_date")
         
-        data_api.init_from_config(props)
-        data_api.initialize()
-        
-        gateway.init_from_config(props)
-        
-        strategy.context.data_api = data_api
-        strategy.context.gateway = gateway
-        strategy.context.calendar = self.calendar
+        self.context = context
+        strategy.context = self.context
+        # strategy.context.data_api = data_api
+        # strategy.context.gateway = gateway
+        # strategy.context.calendar = self.calendar
         
         strategy.init_from_config(props)
         strategy.initialize(common.RUN_MODE.BACKTEST)
@@ -53,10 +52,8 @@ class AlphaBacktestInstance(BacktestInstance):
     """
     Attributes
     ----------
-    strategy : AlphaStrategy
     
     """
-    
     def __init__(self):
         BacktestInstance.__init__(self)
         
@@ -69,7 +66,7 @@ class AlphaBacktestInstance(BacktestInstance):
         return date in self.trade_days
     
     def go_next_trade_date(self):
-        if self.strategy.context.gateway.match_finished:
+        if self.context.gateway.match_finished:
             self.current_date = self.calendar.get_next_period_day(self.current_date,
                                                                   self.strategy.period, self.strategy.days_delay)
             self.last_date = self.calendar.get_last_trade_date(self.current_date)
@@ -79,11 +76,11 @@ class AlphaBacktestInstance(BacktestInstance):
         
         while (self.current_date < self.end_date and
                    not self._is_trade_date(self.start_date, self.end_date, self.current_date,
-                                           self.strategy.context.data_api)):
+                                           self.context.data_api)):
             self.current_date = self.calendar.get_next_trade_date(self.current_date)
     
     def run_alpha(self):
-        gateway = self.strategy.context.gateway
+        gateway = self.context.gateway
         
         self.current_date = self.start_date
         while True:
@@ -100,7 +97,7 @@ class AlphaBacktestInstance(BacktestInstance):
             else:
                 self.on_new_day(self.current_date)
             
-            df_dic = self.strategy.get_univ_prices()
+            df_dic = self.strategy.get_univ_prices()  # access data
             trade_indications = gateway.match(df_dic, self.current_date)
             for trade_ind in trade_indications:
                 gateway.on_trade_ind(trade_ind)
@@ -110,7 +107,7 @@ class AlphaBacktestInstance(BacktestInstance):
     
     def on_new_day(self, date):
         self.strategy.on_new_day(date)
-        self.strategy.context.gateway.on_new_day(date)
+        self.context.gateway.on_new_day(date)
     
     def save_results(self, folder='../output/'):
         import pandas as pd
@@ -139,44 +136,75 @@ class AlphaBacktestInstance(BacktestInstance):
         quantos.util.fileio.save_json(self.props, folder + 'configs.json')
 
 
+class AlphaBacktestInstance2(AlphaBacktestInstance):
+    def run_alpha(self):
+        gateway = self.context.gateway
+        
+        self.current_date = self.start_date
+        while True:
+            self.go_next_trade_date()
+            if self.current_date > self.end_date:
+                break
+            
+            if gateway.match_finished:
+                self.on_new_day(self.last_date)
+                self.strategy.re_balance_plan()
+                
+                self.on_new_day(self.current_date)
+                self.strategy.send_bullets()
+            else:
+                self.on_new_day(self.current_date)
+            
+            df_dic = self.strategy.get_univ_prices()  # access data
+            trade_indications = gateway.match(df_dic, self.current_date)
+            for trade_ind in trade_indications:
+                gateway.on_trade_ind(trade_ind)
+        
+        print "Backtest done. {:d} days, {:.2e} trades in total.".format(len(self.trade_days),
+                                                                         len(self.strategy.pm.trades))
+
+
 class EventBacktestInstance(BacktestInstance):
     def __init__(self):
         super(EventBacktestInstance, self).__init__()
-        pass
+        
+        self.pnlmgr = None
 
-    def init_from_config(self, props, data_api, gateway, strategy):
+    def init_from_config(self, props, strategy, data_api=None, dataview=None, gateway=None, context=None):
         self.props = props
         self.instanceid = props.get("instanceid")
-        
+
         self.start_date = props.get("start_date")
         self.end_date = props.get("end_date")
-        
+
         data_api.init_from_config(props)
         data_api.initialize()
-        
+
         gateway.init_from_config(props)
-        
-        strategy.context.dataserver = data_api
-        strategy.context.gateway = gateway
-        strategy.context.calendar = self.calendar
-        
+
+        self.context = context
+        strategy.context = self.context
+        # strategy.context.dataserver = data_api
+        # strategy.context.gateway = gateway
+        # strategy.context.calendar = self.calendar
+
         gateway.register_callback(strategy.pm)
-        
+
         strategy.init_from_config(props)
         strategy.initialize(common.RUN_MODE.BACKTEST)
-        
+
         self.strategy = strategy
-        
+
         self.pnlmgr = PnlManager()
         self.pnlmgr.setStrategy(strategy)
         self.pnlmgr.initFromConfig(props, data_api)
-        
+
         return True
     
     def run(self):
         
-        data_server = self.strategy.context.dataserver
-        universe = self.strategy.context.universe
+        data_server = self.context.dataserver
+        universe = self.context.universe
         
         data_server.add_batch_subscribe(self, universe)
         
@@ -207,10 +235,10 @@ class EventBacktestInstance(BacktestInstance):
         return next_dt
     
     def run2(self):
-        data_server = self.strategy.context.dataserver
-        universe = self.strategy.context.universe
+        data_api = self.context.data_api
+        universe = self.context.universe
         
-        data_server.add_batch_subscribe(self, universe)
+        data_api.add_batch_subscribe(self, universe)
         
         self.current_date = self.start_date
         
@@ -226,7 +254,7 @@ class EventBacktestInstance(BacktestInstance):
         # ------------
         
         while self.current_date <= self.end_date:  # each loop is a new trading day
-            quotes = data_server.get_daily_quotes(self.current_date)
+            quotes = data_api.get_daily_quotes(self.current_date)
             if quotes is not None:
                 # gateway.oneNewDay()
                 e_newday = Event(EVENT.CALENDAR_NEW_TRADE_DATE)
@@ -263,7 +291,7 @@ class EventBacktestInstance(BacktestInstance):
             # self.strategy.onTradingEnd()
     
     def process_quote(self, quote):
-        result = self.strategy.context.gateway.process_quote(quote)
+        result = self.context.gateway.process_quote(quote)
         
         for (tradeInd, statusInd) in result:
             self.strategy.pm.on_trade_ind(tradeInd)
@@ -274,7 +302,7 @@ class EventBacktestInstance(BacktestInstance):
     # close one trade day, cancel all orders
     def close_day(self, trade_date):
         print 'close trade_date ' + str(trade_date)
-        result = self.strategy.context.gateway.close_day(trade_date)
+        result = self.context.gateway.close_day(trade_date)
         
         for statusInd in result:
             self.strategy.pm.on_order_status(statusInd)
