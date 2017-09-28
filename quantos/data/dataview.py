@@ -878,9 +878,13 @@ class BaseDataView(object):
             # df_ref_expanded.index = JzCalendar.convert_int_to_datetime(df_ref_expanded.index)
             df_ref_expanded.index.name = self.TRADE_DATE_FIELD_NAME
             # df_ref_expanded = df_ref_expanded.swaplevel(axis=1)
+            df_ref_expanded = df_ref_expanded.loc[start_date: end_date, :]
         
-        df_others = self.data_d.loc[pd.IndexSlice[start_date: end_date],
-                                    pd.IndexSlice[symbol, fields_daily]]
+        if fields_daily:
+            df_others = self.data_d.loc[pd.IndexSlice[start_date: end_date],
+                                        pd.IndexSlice[symbol, fields_daily]]
+        else:
+            df_others = None
         
         df_merge = self._merge_data([df_others, df_ref_expanded], index_name=self.TRADE_DATE_FIELD_NAME)
         return df_merge
