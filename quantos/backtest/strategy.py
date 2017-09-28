@@ -14,7 +14,7 @@ from quantos.backtest.alphastrategy import StrategyContext
 class Strategy(object):
     # ----------------------------------------------------------------------
     def __init__(self):
-        self.context = StrategyContext()
+        self.context = None  # StrategyContext()
         self.pm = PortfolioManager()
         self.pm.strategy = self
         self.instanceid = ""

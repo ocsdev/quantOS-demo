@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from pandas.tseries import offsets
 
-from quantos.data.dbmanager import *
+from quantos.data.dbmanager import get_jzts_connection
 
 
 class Calendar(object):
@@ -72,7 +72,7 @@ class Calendar(object):
     def convert_int_to_datetime(dt):
         """Convert int date (%Y%m%d) to datetime.datetime object."""
         if isinstance(dt, pd.Series):
-            dt = dt.values.astype(str)
+            dt = dt.astype(str)
         elif isinstance(dt, int):
             dt = str(dt)
         return pd.to_datetime(dt, format="%Y%m%d")

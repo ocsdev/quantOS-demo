@@ -66,7 +66,7 @@ class BaseStrategy(object):
     
     # TODO we need a better way to deal with err_msg
     def __init__(self):
-        self.context = StrategyContext()
+        self.context = None  # StrategyContext()
         self.run_mode = common.RUN_MODE.BACKTEST
         
         self.trade_date = 0

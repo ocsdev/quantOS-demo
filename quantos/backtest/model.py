@@ -14,10 +14,39 @@ class RegisteredFunction(object):
 
 
 class Context(object):
+    """
+    Used to store relevant context of the strategy.
+
+    Attributes
+    ----------
+    data_api : backtest.DataServer object
+        Data provider for the strategy.
+    gateway : gateway.Gateway object
+        Broker of the strategy.
+    universe : list of str
+        Securities that the strategy cares about.
+    calendar : backtest.Calendar object
+        A certain calendar that the strategy refers to.
+
+    Methods
+    -------
+    add_universe(univ)
+        Add new securities.
+
+    """
     def __init__(self):
+        self.calendar = None
+        
         self.pm = None
+        
         self.data_api = None
+        self.dataview = None
+        
+        self.gateway = None
+        
         self.trade_api = None
+        
+        self.universe = []
         
     def register_portfolio_manager(self, portfolio_manager):
         self.pm = portfolio_manager
@@ -27,6 +56,16 @@ class Context(object):
     
     def register_trade_api(self, trade_api):
         self.trade_api = trade_api
+        
+    def register_gateway(self, gateway):
+        self.gateway = gateway
+    
+    def register_dataview(self, dv):
+        self.dataview = dv
+        
+    def add_universe(self, univ):
+        """univ could be single symbol or securities separated by ,"""
+        self.universe += univ.split(',')
 
 
 class BaseModel(object):
