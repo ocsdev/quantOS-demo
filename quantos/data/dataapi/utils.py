@@ -1,7 +1,7 @@
-import pandas as pd
 from collections import namedtuple
-import datetime as dt
-import numpy as np
+import datetime  as dt
+import pandas    as pd
+import numpy     as np
 
 def _to_date(row):
     date = int(row['DATE'])

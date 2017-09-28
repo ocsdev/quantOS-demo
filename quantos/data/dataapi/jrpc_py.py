@@ -192,7 +192,11 @@ class JRpcClient :
                     self._connected = True
                     if self.on_connected :
                         self._async_call(self.on_connected)
-
+                
+                # Let user has a chance to check message in .sys.heartbeat
+                if msg.has_key('result') and self.on_rpc_callback :
+                    self._async_call( lambda: self.on_rpc_callback(msg['method'], msg['result']) )
+                
             elif msg.has_key('id') and msg['id'] :
 
                 # Call result
