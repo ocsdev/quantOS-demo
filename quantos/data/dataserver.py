@@ -416,8 +416,15 @@ class JzDataServer(BaseDataServer):
                                          'report_type': '408002000',  # joint sheet
                                          'update_flag': '0'})  # 0 means first time, not update
         
-        return self.query(view_name, fields=fields, filter=filter_argument,
-                          order_by=self.REPORT_DATE_FIELD_NAME)
+        res, msg = self.query(view_name, fields=fields, filter=filter_argument,
+                              order_by=self.REPORT_DATE_FIELD_NAME)
+        try:
+            cols = list(set.intersection({'ann_date', 'report_date'}, set(res.columns)))
+            res.loc[:, cols] = res.loc[:, cols].values.astype(int)
+        except:
+            pass
+        
+        return res, msg
 
     def query_wd_balance_sheet(self, symbol, start_date, end_date, fields="", extend=0):
         """
