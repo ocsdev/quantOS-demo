@@ -332,7 +332,7 @@ class BaseDataView(object):
             raise NotImplementedError("freq = {}".format(self.freq))
         
         return dic_market_daily, dic_ref_daily, dic_income, dic_balance, dic_cf
-        
+
     @staticmethod
     def _process_index(df, index_name='trade_date'):
         """
@@ -356,6 +356,8 @@ class BaseDataView(object):
 
         """
         # df.drop_duplicates(subset=index_name, inplace=True)  # TODO not a good solution
+        df = df.astype(dtype={index_name: int})  # fast data type conversion
+        
         dup = df.duplicated(subset=index_name)
         if np.sum(dup.values) > 0:
             # TODO
@@ -605,7 +607,16 @@ class BaseDataView(object):
         
         return merge_d, merge_q
     
-    def prepare_data(self, props, data_api):
+    def prepare_data(self):
+        """Prepare data for the FIRST time."""
+        if self.universe:
+            self._data_benchmark = self._prepare_benchmark()
+        
+        self.data_d, self.data_q = self._prepare_data(self.fields)
+        
+        print "Data has been successfully prepared."
+
+    def init_from_config(self, props, data_api):
         """
         Query various data from data_server and automatically merge them.
         This make research / backtest easier.
@@ -618,34 +629,31 @@ class BaseDataView(object):
         
         """
         self.data_api = data_api
-
+    
         sep = ','
-        
+    
         # initialize parameters
         self.start_date = props['start_date']
         self.extended_start_date = Calendar.shift(self.start_date, n_weeks=-52)
         self.end_date = props['end_date']
         
-        fields = props['fields'].split(sep)
-        self.fields = [field for field in fields if self._is_predefined_field(field)]
-        if len(self.fields) < len(fields):
-            print "Field name {} not valid, ignore.".format(set.difference(set(fields),
+        self.fields = props.get('fields', [])
+        if self.fields:
+            fields = props['fields'].split(sep)
+            self.fields = [field for field in fields if self._is_predefined_field(field)]
+            if len(self.fields) < len(fields):
+                print "Field name {} not valid, ignore.".format(set.difference(set(fields),
                                                                            set(self.fields)))
-            
+    
         self.freq = props['freq']
         self.universe = props.get('universe', "")
         if self.universe:
             self.symbol = data_api.get_index_comp(self.universe, self.start_date, self.end_date)
-            self._data_benchmark = self._prepare_benchmark()
         else:
             self.symbol = props['symbol'].split(sep)
+    
+        print "Initialize config success."
         
-        self.data_d, self.data_q = self._prepare_data(self.fields)
-        
-        self.data_benchmark = self._prepare_benchmark()
-        
-        print "Data has been successfully prepared."
-
     def _prepare_benchmark(self):
         df_bench, msg = self.data_api.daily(self.universe, start_date=self.start_date, end_date=self.end_date,
                                             adjust_mode=self.adjust_mode, fields='close')
@@ -729,9 +737,14 @@ class BaseDataView(object):
         var_list = expr.variables()
         
         # TODO
-        for var in var_list:
-            if var not in self.fields:
-                self.add_field(var)
+        # users do not need to prepare data before add_formula
+        if not self.fields:
+            self.fields.extend(var_list)
+            self.prepare_data()
+        else:
+            for var in var_list:
+                if var not in self.fields:
+                    self.add_field(var)
         
         df_ann = self.get_ann_df()
         for var in var_list:

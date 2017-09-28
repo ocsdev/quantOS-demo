@@ -1,5 +1,7 @@
 # encoding: utf-8
 
+import sys
+sys.path.append('/home/bliu/work/myproj/quantos/trunk')
 from quantos.data.dataview import BaseDataView
 
 
@@ -19,13 +21,10 @@ def test_add_formula_directly():
     secs = '600030.SH,000063.SZ,000001.SZ'
     props = {'start_date': 20160601, 'end_date': 20170601, 'symbol': secs,
              'freq': 1}
+    dv.init_from_config(props, data_api=ds)
     
-    dv.add_formula("myfactor", 'close / open', data_api=ds)
-    # dv.prepare_data(props=props, data_api=ds)
-    # assert dv.data_d.shape == (242, 27)
-    # assert dv.dates.shape == (242, )
-    folder_path = '../output/prepared'
-    # dv.save_dataview(folder_path=folder_path)
+    dv.add_formula("myfactor", 'close / open')
+    assert dv.data_d.shape == (242, 12)
     
 
 def test_write():
@@ -38,8 +37,9 @@ def test_write():
     props = {'start_date': 20160601, 'end_date': 20170601, 'symbol': secs,
              'fields': 'open,close,high,low,volume,pb,net_assets,ncf',
              'freq': 1}
-    
-    dv.prepare_data(props=props, data_api=ds)
+
+    dv.init_from_config(props, data_api=ds)
+    dv.prepare_data()
     assert dv.data_d.shape == (242, 27)
     assert dv.dates.shape == (242, )
     # TODO
@@ -53,6 +53,7 @@ def test_write():
     dv.save_dataview(folder_path=folder_path)
 
 
+# @profile
 def test_quarterly():
     from quantos.data.dataserver import JzDataServer
     
@@ -61,12 +62,17 @@ def test_quarterly():
     
     secs = '600030.SH,000063.SZ,000001.SZ'
     props = {'start_date': 20160609, 'end_date': 20170601, 'universe': '000300.SH', 'symbol': secs,
-             'fields': 'open,close,pb,net_assets,total_oper_rev,oper_exp', 'freq': 1}
-    
-    dv.prepare_data(props=props, data_api=ds)
+             'fields': 'open,close,' + 'pb,net_assets,' + 'total_oper_rev,oper_exp', 'freq': 1}
+
+    dv.init_from_config(props, data_api=ds)
+    dv.prepare_data()
     folder_path = '../output/prepared'
     dv.save_dataview(folder_path=folder_path)
     
+def test_get_quarterly():
+    dv = BaseDataView()
+    folder_path = '../output/prepared/20160609_20170601_freq=1D'
+    dv.load_dataview(folder=folder_path)
     res = dv.get("", 0, 0, 'total_oper_rev')
 
 
@@ -99,7 +105,7 @@ def test_add_formula_quarterly():
     df1 = dv.get_ts('myvar1')
     assert df1.shape[0] == len(dv.dates)
     
-    formula2 = 'Delta(total_oper_exp * myvar1 - open, 3)'
+    formula2 = 'Delta(oper_exp * myvar1 - open, 3)'
     dv.add_formula('myvar2', formula2)
     df2 = dv.get_ts('myvar2')
     assert df2.shape[0] == len(dv.dates)
@@ -160,7 +166,7 @@ if __name__ == "__main__":
     # test_xarray()
     # test_add_field()
     # test_add_formula()
-    test_add_formula_directly()
-    # test_quarterly()
+    # test_add_formula_directly()
+    test_quarterly()
     # test_add_field_quarterly()
     # test_add_formula_quarterly()
