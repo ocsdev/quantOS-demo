@@ -3,6 +3,20 @@ import datetime  as dt
 import pandas    as pd
 import numpy     as np
 
+long_nan = 9223372036854775807
+
+def is_long_nan(v):
+    if v == long_nan:
+        return True
+    else :
+        return False
+    
+def to_nan(x):
+    if is_long_nan(x):    
+        return np.nan
+    else:
+        return x
+        
 def _to_date(row):
     date = int(row['DATE'])
     return pd.datetime( year=date/10000, month = date/ 100 % 100, day = date%100)
@@ -15,6 +29,9 @@ def _to_datetime(row):
 
 def _to_dataframe(cloumset, index_func = None, index_column = None):
     df = pd.DataFrame(cloumset)
+    for col in df.columns:
+        if df.dtypes.loc[col] == np.int64:
+            df.loc[:,col] = df.loc[:,col].apply(to_nan)            
     if index_func:
         df.index = df.apply(index_func, axis = 1)
     elif index_column:
