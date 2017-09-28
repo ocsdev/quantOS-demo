@@ -14,6 +14,8 @@ def test_jz_data_server_daily():
     
     rb = res.loc[res.loc[:, 'symbol'] == 'rb1710.SHF', :]
     stk = res.loc[res.loc[:, 'symbol'] == '600662.SH', :]
+    assert set(rb.columns) == {'close', 'code', 'high', 'low', 'oi', 'open', 'settle', 'symbol',
+                               'trade_date', 'trade_status', 'turnover', 'volume', 'vwap'}
     assert rb.shape == (4, 13)
     assert rb.loc[:, 'volume'].values[0] == 189616
     assert stk.loc[:, 'volume'].values[0] == 7174813
@@ -39,8 +41,12 @@ def test_jz_data_server_bar():
     
     rb2 = res2.loc[res2.loc[:, 'symbol'] == 'rb1710.SHF', :]
     stk2 = res2.loc[res2.loc[:, 'symbol'] == '600662.SH', :]
-    assert rb2.shape == (345, 14)
-    assert stk2.shape == (240, 14)
+    assert set(rb2.columns) == {u'close', u'code', u'date', u'freq', u'high', u'low', u'oi', u'open',
+                                u'settle', u'symbol', u'time', u'trade_date', u'turnover', u'volume',
+                                u'vwap'}
+    assert abs(rb2.loc[:, 'settle'].values[0] - 0.0) < 1e-3
+    assert rb2.shape == (345, 15)
+    assert stk2.shape == (240, 15)
     assert rb2.loc[:, 'volume'].values[344] == 3366
     
     
@@ -97,7 +103,6 @@ def test_jz_data_server_industry():
     arr = ds.get_index_comp(index='000300.SH', start_date=20140101, end_date=20170505)
     df, msg = ds.get_industry(symbol=','.join(arr), type_='SW')
     print df
-    print
     
     
 if __name__ == "__main__":

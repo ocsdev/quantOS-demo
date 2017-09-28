@@ -284,7 +284,7 @@ class DataApi:
 
 
     def bar(self, symbol, start_time=200000, end_time=160000, 
-        trade_date=0, cycle="1m", fields="", data_format="", **kwargs ) :
+        trade_date=0, freq="1m", fields="", data_format="", **kwargs ) :
         
         begin_time = utils.to_time_int(start_time)
         if(begin_time == -1):
@@ -301,14 +301,14 @@ class DataApi:
                               "Bar",
                               security   = str(symbol),
                               fields     = fields,
-                              cycle      = cycle,
+                              cycle      = freq,
                               trade_date = trade_date,
                               begin_time = begin_time,
                               end_time   = end_time,
                               **kwargs)
 
-    def bar_view(self, symbol, start_time=200000, end_time=160000, 
-        trade_date=0, cycle="1m", fields="", data_format="", **kwargs ) :
+    def bar_quote(self, symbol, start_time=200000, end_time=160000, 
+        trade_date=0, freq="1m", fields="", data_format="", **kwargs ) :
 
         begin_time = utils.to_time_int(start_time)
         if(begin_time == -1):
@@ -325,7 +325,7 @@ class DataApi:
                               "Bar",
                               security   = str(symbol),
                               fields     = fields,
-                              cycle      = cycle,
+                              cycle      = freq,
                               trade_date = trade_date,
                               begin_time = begin_time,
                               end_time   = end_time,

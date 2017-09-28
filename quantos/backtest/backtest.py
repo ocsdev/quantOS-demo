@@ -6,6 +6,7 @@ from quantos.backtest import common
 from quantos.backtest.analyze.pnlreport import PnlManager
 from quantos.backtest.calendar import Calendar
 from quantos.backtest.event.eventEngine import Event
+
 from quantos.backtest.pubsub import Subscriber
 
 
@@ -28,6 +29,21 @@ class BacktestInstance(Subscriber):
         self.context = None
     
     def init_from_config(self, props, strategy, data_api=None, dataview=None, gateway=None, context=None):
+        """
+        
+        Parameters
+        ----------
+        props
+        strategy
+        data_api
+        dataview
+        gateway
+        context : Context
+
+        Returns
+        -------
+
+        """
         self.props = props
         self.instanceid = props.get("instanceid")
         
@@ -35,6 +51,9 @@ class BacktestInstance(Subscriber):
         self.end_date = props.get("end_date")
         
         self.context = context
+        # TODO
+        self.context.add_universe(props['universe'])
+        
         strategy.context = self.context
         # strategy.context.data_api = data_api
         # strategy.context.gateway = gateway
@@ -90,7 +109,8 @@ class AlphaBacktestInstance(BacktestInstance):
             
             if gateway.match_finished:
                 self.on_new_day(self.last_date)
-                self.strategy.re_balance_plan()
+                df_dic = self.strategy.get_univ_prices()  # access data
+                self.strategy.re_balance_plan(df_dic, suspensions=[])
                 
                 self.on_new_day(self.current_date)
                 self.strategy.send_bullets()
@@ -148,20 +168,38 @@ class AlphaBacktestInstance2(AlphaBacktestInstance):
             
             if gateway.match_finished:
                 self.on_new_day(self.last_date)
-                self.strategy.re_balance_plan()
+                df_dic = self.get_univ_prices(field_name='close')  # access data
+                self.strategy.re_balance_plan(df_dic, self.get_suspensions())
                 
                 self.on_new_day(self.current_date)
                 self.strategy.send_bullets()
             else:
                 self.on_new_day(self.current_date)
             
-            df_dic = self.strategy.get_univ_prices()  # access data
+            df_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
             trade_indications = gateway.match(df_dic, self.current_date)
             for trade_ind in trade_indications:
                 gateway.on_trade_ind(trade_ind)
         
-        print "Backtest done. {:d} days, {:.2e} trades in total.".format(len(self.trade_days),
+        print "Backtest done. {:d} days, {:.2e} trades in total.".format(len(self.context.dataview.dates),
                                                                          len(self.strategy.pm.trades))
+        
+    def get_univ_prices(self, field_name='close'):
+        dv = self.context.dataview
+        df = dv.get_snapshot(self.current_date, fields=field_name)
+        gp = df.groupby(by='symbol')
+        return {sec: df for sec, df in gp}
+    
+    def _is_trade_date(self, start, end, date, data_server):
+        return date in self.context.dataview.dates
+    
+    def get_suspensions(self):
+        trade_status = self.context.dataview.get_snapshot(self.current_date, fields='trade_status')
+        trade_status = trade_status.loc[:, 'trade_status']
+        mask_sus = trade_status != u'交易'.encode('utf-8')
+        return list(trade_status.loc[mask_sus].index.values)
+    
+
 
 
 class EventBacktestInstance(BacktestInstance):

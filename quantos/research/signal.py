@@ -21,7 +21,8 @@ def save_dataview():
                         ),
              'freq': 1}
     
-    dv.prepare_data(props=props, data_api=ds)
+    dv.init_from_config(props, ds)
+    dv.prepare_data()
     dv.save_dataview(folder_path='../../output/prepared')
 
 
@@ -120,7 +121,7 @@ if __name__ == "__main__":
 
     timer.tick('import alphalens')
     save_dataview()
-    # main()
+    main()
     # test_append_custom_data()
     
     timer.tick('end')

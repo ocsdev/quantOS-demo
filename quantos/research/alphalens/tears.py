@@ -193,9 +193,10 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
     vertical_sections = 2 + fr_cols * 3
     gf = GridFigure(rows=vertical_sections, cols=1)
 
-    plotting.plot_returns_table(alpha_beta,
-                                mean_compret_quantile,
-                                mean_ret_spread_quant)
+    if output_format:
+        plotting.plot_returns_table(alpha_beta,
+                                    mean_compret_quantile,
+                                    mean_ret_spread_quant)
 
     ax_qrb = plotting.plot_quantile_returns_bar(mean_compret_quantile,
                                                 by_group=False,
@@ -246,7 +247,7 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
                                            by_group=True,
                                            ylim_percentiles=(5, 95),
                                            ax=ax_quantile_returns_bar_by_group)
-    
+        
     if output_format == 'plot':
         plt.show()
         # gf.fig.show()
@@ -254,6 +255,8 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
         from quantos import SOURCE_ROOT_DIR
         from os.path import join
         gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'returns_tear_sheet.pdf'))
+    elif output_format == '':
+        plt.close(gf.fig)
         
     if verbose:
         mean_ret_quant_daily_mod = mean_ret_quant_daily.unstack(level=0)
@@ -286,7 +289,8 @@ def create_information_tear_sheet(factor_data, group_adjust=False, by_group=Fals
 
     ic = perf.factor_information_coefficient(factor_data, group_adjust)
 
-    plotting.plot_information_table(ic)
+    if output_format:
+        plotting.plot_information_table(ic)
 
     columns_wide = 2
     fr_cols = len(ic.columns)
@@ -324,6 +328,8 @@ def create_information_tear_sheet(factor_data, group_adjust=False, by_group=Fals
         from quantos import SOURCE_ROOT_DIR
         from os.path import join
         gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'infomation_tear_sheet.pdf'))
+    elif output_format == '':
+        plt.close(gf.fig)
     
     if verbose:
         return {'daily_ic': ic}
@@ -356,7 +362,8 @@ def create_turnover_tear_sheet(factor_data, output_format='plot'):
         [perf.factor_rank_autocorrelation(factor_data, period) for period in
          turnover_periods], axis=1)
 
-    plotting.plot_turnover_table(autocorrelation, quantile_turnover)
+    if output_format:
+        plotting.plot_turnover_table(autocorrelation, quantile_turnover)
 
     fr_cols = len(turnover_periods)
     columns_wide = 1
@@ -381,6 +388,8 @@ def create_turnover_tear_sheet(factor_data, output_format='plot'):
         from quantos import SOURCE_ROOT_DIR
         from os.path import join
         gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'turnover_tear_sheet.pdf'))
+    elif output_format == '':
+        plt.close(gf.fig)
 
 
 @plotting.customize
@@ -410,8 +419,8 @@ def create_full_tear_sheet(factor_data, long_short=True, group_adjust=False, by_
         Whether return data.
     """
 
-    
-    plotting.plot_quantile_statistics_table(factor_data)
+    if output_format:
+        plotting.plot_quantile_statistics_table(factor_data)
     res_return = create_returns_tear_sheet(factor_data, long_short, by_group,
                               set_context=False,
                               output_format=output_format, verbose=verbose)
