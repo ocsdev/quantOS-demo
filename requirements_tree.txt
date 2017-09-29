@@ -1,29 +1,30 @@
 chardet==3.0.4
-ipython==5.5.0
-  backports.shutil-get-terminal-size==1.0.0
-  decorator==4.1.2
-  pathlib2==2.3.0
-    scandir==1.5
-    six==1.10.0
-  pexpect==4.2.1
-    ptyprocess==0.5.2
-  pickleshare==0.7.4
+Jinja2==2.9.6
+  MarkupSafe==1.0
+line-profiler==2.0
+  ipython==5.5.0
+    backports.shutil-get-terminal-size==1.0.0
+    decorator==4.1.2
     pathlib2==2.3.0
       scandir==1.5
       six==1.10.0
-  prompt-toolkit==1.0.15
-    six==1.10.0
-    wcwidth==0.1.7
-  Pygments==2.2.0
-  setuptools==36.4.0
-  simplegeneric==0.8.1
-  traitlets==4.3.2
-    decorator==4.1.2
-    enum34==1.1.6
-    ipython-genutils==0.2.0
-    six==1.10.0
-Jinja2==2.9.6
-  MarkupSafe==1.0
+    pexpect==4.2.1
+      ptyprocess==0.5.2
+    pickleshare==0.7.4
+      pathlib2==2.3.0
+        scandir==1.5
+        six==1.10.0
+    prompt-toolkit==1.0.15
+      six==1.10.0
+      wcwidth==0.1.7
+    Pygments==2.2.0
+    setuptools==36.4.0
+    simplegeneric==0.8.1
+    traitlets==4.3.2
+      decorator==4.1.2
+      enum34==1.1.6
+      ipython-genutils==0.2.0
+      six==1.10.0
 matplotlib==2.0.2
   cycler==0.10.0
     six==1.10.0
@@ -68,6 +69,26 @@ tables==3.4.2
     numpy==1.13.1
   numpy==1.13.1
   six==1.10.0
+WeasyPrint==0.40
+  cairocffi==0.8.0
+    cffi==1.11.0
+      pycparser==2.18
+  CairoSVG==1.0.22
+    cairocffi==0.8.0
+      cffi==1.11.0
+        pycparser==2.18
+  cffi==1.11.0
+    pycparser==2.18
+  cssselect2==0.2.0
+    tinycss2==0.6.0
+      webencodings==0.5.1
+  html5lib==0.999999999
+    setuptools==36.4.0
+    six==1.10.0
+    webencodings==0.5.1
+  Pyphen==0.9.4
+  tinycss2==0.6.0
+    webencodings==0.5.1
 wheel==0.30.0
 xarray==0.9.6
   numpy==1.13.1
