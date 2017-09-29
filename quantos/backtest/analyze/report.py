@@ -1,8 +1,8 @@
 # encoding: utf-8
 
 from jinja2 import Environment, FileSystemLoader
-import pandas as pd
 from weasyprint import HTML
+import os
 
 
 class Report(object):
@@ -30,27 +30,25 @@ class Report(object):
         self.html = self.template.render(self.dic)
     
     def output_html(self, fn='test_out.html'):
-        with open(self.out_folder + '/' + fn, 'w') as f:
+        path = os.path.join(self.out_folder, fn)
+        path = os.path.abspath(path)
+        print path
+        with open(path, 'w') as f:
             f.write(self.html)
     
     def output_pdf(self, fn='test_out.html'):
         h = HTML(string=self.html)
-        h.write_pdf(self.out_folder + '/' + fn)#, stylesheets=[self.fp_css])
+        h.write_pdf(os.path.join(self.out_folder, fn))#, stylesheets=[self.fp_css])
 
 
 def test_output():
     r = Report({'mytitle': 'Test Title', 'mytable': 'Hello World!'},
-               'static/test_template.html', 'static/blueprint.css')
+               'static/test_template.html', 'static/blueprint.css', out_folder='../../../output')
     r.generate_html()
     print r.html
     r.output_html()
     r.output_pdf()
 
 
-def main():
-    pass
-
-
 if __name__ == "__main__":
-    # main()
     test_output()
