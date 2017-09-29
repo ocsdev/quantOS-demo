@@ -267,8 +267,8 @@ class AlphaAnalyzer(BaseAnalyzer):
         returns.loc[:, 'extra'] = returns.loc[:, 'Strategy'] - returns.loc[:, 'Benchmark']
         # returns.loc[:, 'DD']
         
-        start = pd.to_datetime(self.configs['start_date'], format="%Y%d%m")
-        end = pd.to_datetime(self.configs['end_date'], format="%Y%d%m")
+        start = pd.to_datetime(self.configs['start_date'], format="%Y%m%d")
+        end = pd.to_datetime(self.configs['end_date'], format="%Y%m%d")
         years = (end - start).days / 225.
         
         self.metrics['yearly_return'] = returns.loc[:, 'extra'].values[-1] / years
@@ -366,43 +366,9 @@ def plot_trades(df, symbol="", save_folder="."):
     ax3.plot(idx, df.loc[:, 'position'], marker='D', markersize=3, lw=2)
     ax3.axhline(0, color='k', lw=1)
     
-    
     ax1.set_title(symbol)
     
     fig.savefig(save_folder + '/' + "{}.png".format(symbol))
     plt.tight_layout()
     return
 
-if __name__ == "__main__":
-    import time
-    t_start = time.time()
-    
-    ta = AlphaAnalyzer()
-    data_server = JzDataServer()
-    
-    ta.initialize(data_server, '../output/')
-    
-    print "process trades..."
-    ta.process_trades()
-    print "get daily stats..."
-    ta.get_daily()
-    print "calc strategy return..."
-    ta.get_returns()
-    print "get position change..."
-    ta.get_pos_change_info()
-
-    print "plot..."
-    out_foler = "output"
-    selected_sec = list(ta.universe)[::3]
-    for sec, df in ta.daily.items():
-        if sec in selected_sec:
-            plot_trades(df, sec, out_foler)
-    ta.plot_pnl(out_foler)
-    print "generate report..."
-    ta.gen_report(out_foler)
-
-    t1 = time.time() - t_start
-    print "\ntime lapsed in total: {:.2f}".format(t1)
-    
-    del data_server, ta
-    print "Test passed."

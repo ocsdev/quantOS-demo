@@ -39,16 +39,3 @@ class Report(object):
     def output_pdf(self, fn='test_out.html'):
         h = HTML(string=self.html)
         h.write_pdf(os.path.join(self.out_folder, fn))#, stylesheets=[self.fp_css])
-
-
-def test_output():
-    r = Report({'mytitle': 'Test Title', 'mytable': 'Hello World!'},
-               'static/test_template.html', 'static/blueprint.css', out_folder='../../../output')
-    r.generate_html()
-    print r.html
-    r.output_html()
-    r.output_pdf()
-
-
-if __name__ == "__main__":
-    test_output()
