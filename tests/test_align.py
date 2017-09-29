@@ -31,7 +31,8 @@ def test_align():
     parser.register_function('Myfunc', lambda x: x * 0 + 1)  # simultaneously test register function and align
     expr_formula = 'revenue / Myfunc(close)'
     expression = parser.parse(expr_formula)
-    df_res = parser.evaluate({'revenue': df_value, 'close': df_close}, df_ann, date_arr)
+    for i in range(100):
+        df_res = parser.evaluate({'revenue': df_value, 'close': df_close}, df_ann, date_arr)
     
     # -------------------------------------------------------------------------------------
     sec = '600000.SH'
@@ -53,6 +54,7 @@ def test_align():
     assert abs(df_res.loc[20161028, sec] - 39981000000) < 1
     assert abs(df_res.loc[20161031, sec] - 38756000000) < 1
     assert abs(df_res.loc[20170427, sec] - 42360000000) < 1
+
 
 if __name__ == "__main__":
     import time
