@@ -192,7 +192,7 @@ class BaseDataServer(Publisher):
         pass
     
     @abstractmethod
-    def bar(self, symbol, start_time=200000, end_time=160000, trade_date=None, cycle='1m', fields=""):
+    def bar(self, symbol, start_time=200000, end_time=160000, trade_date=None, freq='1m', fields=""):
         """
         Query minute bars of various type, return DataFrame.
 
@@ -208,21 +208,21 @@ class BaseDataServer(Publisher):
             Default is current trade_date.
         fields : str, optional
             separated by comma ',', default "" (all fields included).
-        cycle : backtest.common.MINBAR_TYPE, optional
+        freq : backtest.common.MINBAR_TYPE, optional
             {'1m', '5m', '15m'}, Minute bar type, default is '1m'
 
         Returns
         -------
         df : pd.DataFrame
             columns:
-                symbol, code, date, time, trade_date, cycle, open, high, low, close, volume, turnover, vwap, oi
+                symbol, code, date, time, trade_date, freq, open, high, low, close, volume, turnover, vwap, oi
         msg : str
             error code and error message joined by comma
 
         Examples
         --------
         df, msg = api.bar("000001.SH,cu1709.SHF", start_time="09:56:00", end_time="13:56:00",
-                          trade_date="20170823", fields="open,high,low,last,volume", cycle="5m")
+                          trade_date="20170823", fields="open,high,low,last,volume", freq="5m")
 
         """
         # TODO data_server DOES NOT know "current date".
@@ -315,10 +315,10 @@ class JzDataServer(BaseDataServer):
 
     def bar(self, symbol,
             start_time=200000, end_time=160000, trade_date=None,
-            cycle='1m', fields=""):
+            freq='1m', fields=""):
         df, msg = self.api.bar(symbol=symbol, fields=fields,
                                start_time=start_time, end_time=end_time, trade_date=trade_date,
-                               cycle='1m', data_format="")
+                               freq='1m', data_format="")
         return df, msg
     
     def query(self, view, filter="", fields="", **kwargs):
@@ -688,7 +688,7 @@ class JzEventServer(JzDataServer):
         
         for sec in topic_list:
             pd_bar, msg = self.bar(sec, start_time=200000, end_time=160000,
-                                   trade_date=target_date, cycle='1m', fields="")
+                                   trade_date=target_date, freq='1m', fields="")
             
             if pd_bar is not None:
                 cache = []
