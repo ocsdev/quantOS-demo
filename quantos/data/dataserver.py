@@ -8,6 +8,7 @@ import pandas as pd
 from quantos.backtest import common
 from quantos.backtest.pubsub import Publisher
 from quantos.data.dataapi import DataApi
+from quantos.data import align
 from quantos.backtest.calendar import Calendar
 
 
@@ -625,8 +626,46 @@ class JzDataServer(BaseDataServer):
         res = pd.DataFrame(index=dates, data=dic)
         
         return res
+
+    @staticmethod
+    def _group_df_to_dict(df, by):
+        gp = df.groupby(by=by)
+        res = {key: value for key, value in gp}
+        return res
     
-    def get_industry(self, symbol, type_='SW'):
+    def get_industry_df(self, symbol, start_date, end_date, type_='SW'):
+        """
+        Get index components on each day during start_date and end_date.
+        
+        Parameters
+        ----------
+        symbol : str
+            separated by ','
+        start_date : int
+        end_date : int
+
+        Returns
+        -------
+        res : pd.DataFrame
+            index dates, columns symbols
+            values are industry code
+
+        """
+        df_raw = self.get_industry_raw(symbol, type_=type_)
+        
+        df_raw = df_raw.astype(dtype={'in_date': int})
+        
+        dic_sec = self._group_df_to_dict(df_raw, by='symbol')
+        dic_sec = {sec: df.drop_duplicates().reset_index() for sec, df in dic_sec.viewitems()}
+
+        df_ann = pd.concat([df.loc[:, 'in_date'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
+        df_value = pd.concat([df.loc[:, 'industry1_code'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
+
+        dates_arr = self.get_trade_date(start_date, end_date)
+        df_industry = align.align(df_value, df_ann, dates_arr)
+        return df_industry
+        
+    def get_industry_raw(self, symbol, type_='SW'):
         """
         Get daily industry of securities from ShenWanHongYuan or ZhongZhengZhiShu.
         
@@ -639,7 +678,6 @@ class JzDataServer(BaseDataServer):
         Returns
         -------
         df : pd.DataFrame
-        msg : str
 
         """
         if type_ == 'SW':
@@ -660,7 +698,9 @@ class JzDataServer(BaseDataServer):
             df_unique = df_raw.drop_duplicates(subset='symbol', keep='last')  # latest
             pd.DataFrame.drop_duplicates()
         """
-        return df_raw, msg
+        if msg != '0,':
+            print msg
+        return df_raw.astype(dtype={'in_date': int, 'out_date': int})
 
 
 class JzEventServer(JzDataServer):

@@ -98,13 +98,82 @@ def test_jz_data_server_components():
     assert len(arr) == 430
 
 
-def test_jz_data_server_industry():
+def _test_jz_data_server_industry():
+    from data.align import align
+    import pandas as pd
+    
     ds = JzDataServer()
     arr = ds.get_index_comp(index='000300.SH', start_date=20140101, end_date=20170505)
     df, msg = ds.get_industry(symbol=','.join(arr), type_='SW')
-    print df
+    df = df.astype(dtype={'in_date': int})
     
+    # df_ann = df.loc[:, ['in_date', 'symbol']]
+    # df_ann = df_ann.set_index(['symbol', 'in_date'])
+    # df_ann = df_ann.unstack(level='symbol')
+    
+    """
+    s_raw = df.loc[:, 'symbol']
+    s = set(s_raw)
+    print len(s_raw) - len(s)
+    
+    df_map = df.loc[:, ['industry1_code', 'industry1_name']].copy()
+    df_map = df_map.drop_duplicates(subset='industry1_code')
+    ind_map = dict(zip(df_map.loc[:, 'industry1_code'].values,
+                       df_map.loc[:, 'industry1_name'].values))
+    ind_map = {k: v.decode('utf-8') for k, v in ind_map.viewitems()}
+    for k, v in ind_map.viewitems():
+        print k, v
+    
+    df2 = df.set_index('symbol')
+    df2 = df2.loc[:, 'industry1_code']
+    
+    """
+    from quantos.data.dataview import BaseDataView
+    dic_sec = BaseDataView._group_df_to_dict(df, by='symbol')
+    dic_sec = {sec: df.drop_duplicates().reset_index() for sec, df in dic_sec.viewitems()}
+    
+    df_ann = pd.concat([df.loc[:, 'in_date'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
+    df_value = pd.concat([df.loc[:, 'industry1_code'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
+    
+    dates_arr = ds.get_trade_date(20140101, 20170505)
+    res = align(df_value, df_ann, dates_arr)
+    print
+    # df_ann = df.pivot(index='in_date', columns='symbol', values='in_date')
+    # df_value = df.pivot(index=None, columns='symbol', values='industry1_code')
+    
+    def align_single_df(df_one_sec):
+        df_value = df_one_sec.loc[:, ['industry1_code']]
+        df_ann = df_one_sec.loc[:, ['in_date']]
+        res = align(df_value, df_ann, dates_arr)
+        return res
+    # res_list = [align_single_df(df) for sec, df in dic_sec.viewitems()]
+    res_list = [align_single_df(df) for sec, df in dic_sec.items()[:10]]
+    res = pd.concat(res_list, axis=1)
+    print res
+    
+    
+def test_jz_data_server_industry_df():
+    from quantos.backtest.calendar import Calendar
+    cal = Calendar()
+    
+    ds = JzDataServer()
+    arr = ds.get_index_comp(index='000300.SH', start_date=20140101, end_date=20170505)
+    
+    symbol_arr = ','.join(arr)
+    sec = '000008.SZ'
+    df_raw = ds.get_industry_raw(symbol=sec, type_='SW')
+    df_raw = df_raw.drop_duplicates(subset='in_date')
+    df = ds.get_industry_df(symbol=symbol_arr, start_date=20140101, end_date=20170101, type_='SW')
+    
+    for idx, row in df_raw.iterrows():
+        in_date = row['in_date']
+        value = row['industry1_code']
+        if in_date in df.index:
+            assert df.loc[in_date, sec] == value
+        else:
+            idx = cal.get_next_trade_date(in_date)
+            assert df.loc[idx, sec] == value
+        
     
 if __name__ == "__main__":
-    test_jz_data_server_wd()
-    test_jz_data_server_industry()
+    test_jz_data_server_industry_df()
