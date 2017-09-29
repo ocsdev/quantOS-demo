@@ -78,8 +78,8 @@ class BaseStrategy(object):
         self.task_map = defaultdict(list)
     
     def init_from_config(self, props):
-        univ = props.get('universe', "")
-        self.add_universe(univ)
+        # univ = props.get('universe', "")
+        # self.add_universe(univ)
         pass
     
     def initialize(self, run_mode):
@@ -92,9 +92,11 @@ class BaseStrategy(object):
         gw.register_callback('portfolio manager', self.pm)
         gw.register_callback('on_trade_ind', self.on_trade_ind)
         gw.register_callback('on_order_status', self.on_trade_ind)
+    """
     
     def add_universe(self, univ):
         self.context.add_universe(univ)
+    """
     
     def on_new_day(self, trade_date):
         last_date = self.trade_date
@@ -309,7 +311,7 @@ class BaseStrategy(object):
         """
         self.pm.on_trade_ind(ind)
         print str(ind)
-    
+
     def on_order_status(self, ind):
         """
 
@@ -369,6 +371,7 @@ class AlphaStrategy(BaseStrategy):
 
     def init_from_config(self, props):
         BaseStrategy.init_from_config(self, props)
+        
         self.cash = props['init_balance']
         self.period = props['period']
         self.days_delay = props['days_delay']
@@ -475,7 +478,7 @@ class AlphaStrategy(BaseStrategy):
 
         """
         # TODO this can be refine: consider whether we increase or decrease shares on a suspended symbol.
-        if suspensions is None:
+        if not suspensions:
             return
         
         univ = self.context.universe
@@ -483,11 +486,11 @@ class AlphaStrategy(BaseStrategy):
         if len(suspensions) == len(univ):
             raise ValueError("All suspended")  # TODO custom error
         
-        mask = np.array(map(lambda s: s in suspensions, univ), dtype=bool)
-        sus_weight = np.sum(self.weights[mask])
-        self.weights[mask] = 0.0
+        weights = {sec: 0 if sec in suspensions else w for sec, w in self.weights.viewitems()}
+        weights_sum = sum(weights.viewvalues())
+        weights = {sec: w / weights_sum for sec, w in weights.viewitems()}
         
-        adjust_ratio = 1.0 / (1.0 - sus_weight)
+        self.weights = weights
     
     def get_univ_prices(self):
         ds = self.context.data_api
@@ -501,19 +504,34 @@ class AlphaStrategy(BaseStrategy):
             df_dic[sec] = df
         return df_dic
     
-    def re_balance_plan(self):
+    # TODO
+    def get_suspensions(self):
+        return []
+    
+    def re_balance_plan(self, univ_price_dic, suspensions=None):
         """
         Do portfolio re-balance.
         For now, we stick to the same close price when calculate market value and do re-balance.
+        
+        Parameters
+        ----------
+        univ_price_dic : dict
+            {sec: price}
+        suspensions : list of str
 
         """
         self.portfolio_construction()
         
-        suspensions = self.context.data_api.get_suspensions()
+        # suspensions = self.get_suspensions()
         self.re_weight_suspension(suspensions)
         
-        df_dic = self.get_univ_prices()
-        prices = {k: v.loc[:, 'close'].values[0] for k, v in df_dic.items()}
+        # univ_price_dic = self.get_univ_prices()
+        prices = {k: v.loc[:, 'close'].values[0] for k, v in univ_price_dic.viewitems()}
+        # prices = univ_price_dic
+        # TODO why this two do not equal? (suspended stocks still have prices)
+        nan_sec = [k for k, v in prices.viewitems() if np.isnan(v)]
+        print "set of suspension - set of symbol with NaN price = {}".format(set.difference(set(suspensions), set(nan_sec)))
+        print "set of symbol with NaN price - set of suspension = {}".format(set.difference(set(nan_sec), set(suspensions)))
         
         market_value = self.pm.market_value(self.trade_date, prices, suspensions)  # TODO need close price
         cash_available = self.cash + market_value

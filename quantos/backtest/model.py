@@ -64,8 +64,22 @@ class Context(object):
         self.dataview = dv
         
     def add_universe(self, univ):
-        """univ could be single symbol or securities separated by ,"""
-        self.universe += univ.split(',')
+        """
+        univ could be single symbol or securities separated by ,
+        
+        Parameters
+        ----------
+        univ : str or list
+        
+        """
+        if isinstance(univ, list):
+            self.universe = univ
+        elif isinstance(univ, (str, unicode)):
+            l = univ.split(',')
+            l = [x for x in l if x]
+            self.universe = l
+        else:
+            raise NotImplementedError("type of univ is {}".format(type(univ)))
 
 
 class BaseModel(object):

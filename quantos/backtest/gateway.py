@@ -602,7 +602,8 @@ class StockSimulatorDaily(object):
             symbol = order.symbol
             df = price_dic[symbol]
             if 'vwap' not in df.columns:
-                df.loc[:, 'vwap'] = df.loc[:, 'TURNOVER'] / df.loc[:, 'VOLUME']
+                # df.loc[:, 'vwap'] = df.loc[:, 'turnover'] / df.loc[:, 'volume']
+                pass
             
             # get fill price
             if isinstance(order, FixedPriceTypeOrder):

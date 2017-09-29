@@ -21,8 +21,8 @@ import time
 import os
 
 import numpy as np
-from data.dataserver import JzDataServer
-from example.demoalphastrategy import DemoAlphaStrategy
+from quantos.data.dataserver import JzDataServer
+from quantos.example.demoalphastrategy import DemoAlphaStrategy
 
 import quantos.util.fileio
 from quantos.backtest.backtest import AlphaBacktestInstance, AlphaBacktestInstance2
@@ -121,22 +121,34 @@ def test_alpha_strategy():
     backtest.run_alpha()
     
     backtest.save_results('../output/')
+    
+    
+def save_dataview():
+    from quantos.data.dataserver import JzDataServer
+    
+    ds = JzDataServer()
+    dv = BaseDataView()
+    
+    props = {'start_date': 20141114, 'end_date': 20161114, 'universe': '000300.SH',
+             'fields': 'open,close,high,low,volume,turnover,vwap,' + 'oper_rev,oper_exp',
+             'freq': 1}
+    
+    dv.init_from_config(props, data_api=ds)
+    dv.prepare_data()
+    dv.save_dataview(folder_path='../output/prepared')
 
 
 def test_alpha_strategy_dataview():
     dv = BaseDataView()
-    folder_path = '../output/prepared/20160601_20170601_freq=1D'
+    folder_path = '../output/prepared/20141114_20161114_freq=1D'
     dv.load_dataview(folder=folder_path)
     
-    gateway = DailyStockSimGateway()
-    jz_data_server = JzDataServer()
-
     props = {
         "benchmark": "000300.SH",
-        "symbol": dv.symbol,
-        "universe": dv.universe,  # no universe
+        # "symbol": ','.join(dv.symbol),
+        "universe": ','.join(dv.symbol),
     
-        "start_date": dv.start_date,
+        "start_date": 20150505,
         "end_date": dv.end_date,
     
         "instanceid": "alpha001",
@@ -147,15 +159,14 @@ def test_alpha_strategy_dataview():
         "init_balance": 1e7,
         "position_ratio": 0.7,
         }
-    
-    jz_data_server.init_from_config(props)
-    jz_data_server.initialize()
+
+    gateway = DailyStockSimGateway()
     gateway.init_from_config(props)
 
     context = model.Context()
-    context.register_data_api(jz_data_server)
     context.register_gateway(gateway)
     context.register_trade_api(gateway)
+    context.register_dataview(dv)
     
     risk_model = model.FactorRiskModel()
     signal_model = model.FactorRevenueModel()
@@ -176,8 +187,7 @@ def test_alpha_strategy_dataview():
     strategy.active_pc_method = 'mc'
     
     backtest = AlphaBacktestInstance2()
-    backtest.init_from_config(props, strategy, context=context,
-                              data_api=jz_data_server, gateway=gateway, dataview=None)
+    backtest.init_from_config(props, strategy, context=context)
     
     backtest.run_alpha()
     
@@ -186,7 +196,9 @@ def test_alpha_strategy_dataview():
 if __name__ == "__main__":
     t_start = time.time()
 
+    # save_dataview()
     test_alpha_strategy()
+    # test_alpha_strategy_dataview()
     # test_prepare()
     # test_read()
     
