@@ -56,6 +56,12 @@ def test_sgined_power():
     print parser.evaluate({'close': dfx, 'open': dfy})
 
 
+def test_ewma():
+    expr = parser.parse('Ewma(close, 3)')
+    res = parser.evaluate({'close': dfx})
+    assert abs(res.loc[20170801, '000001.SH'] - 3292.6) < 1e-1
+
+
 def test_group_apply():
     import numpy as np
     np.random.seed(369)
@@ -90,8 +96,8 @@ def my_globals(request):
     df_multi = df.set_index(multi_index_names, drop=False)
     df_multi.sort_index(axis=0, level=multi_index_names, inplace=True)
     
-    dfx = df_multi.loc[pd.IndexSlice[:, :], pd.IndexSlice['close']].unstack().T
-    dfy = df_multi.loc[pd.IndexSlice[:, :], pd.IndexSlice['open']].unstack().T
+    dfx = df_multi.loc[pd.IndexSlice[:, :], pd.IndexSlice['close']].unstack()
+    dfy = df_multi.loc[pd.IndexSlice[:, :], pd.IndexSlice['open']].unstack()
     
     parser = Parser()
     request.function.func_globals.update({'parser': parser, 'dfx': dfx, 'dfy': dfy})

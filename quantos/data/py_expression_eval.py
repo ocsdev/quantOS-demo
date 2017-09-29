@@ -281,6 +281,7 @@ class Parser(object):
             'Cutoff': self.cutoff,
             'GroupApply': self.group_apply_time,
             # time series
+            'Ewma': self.ewma,
             'Sum': self.sum,
             'Product': self.product,  # rolling product
             'CountNans': self.count_nans,  # rolling count Nans
@@ -430,7 +431,12 @@ class Parser(object):
         return a
 
     # -----------------------------------------------------
-    # Time Series functions
+    # Time Series functions. For two parameter, must align
+    @staticmethod
+    def ewma(df, halflife):
+        r = df.ewm(halflife=halflife, axis=0)
+        return r.mean()
+    
     def corr(self, x, y, n):
         (x, y) = self._align_bivariate(x, y)
         return pd.rolling_corr(x, y, n)
