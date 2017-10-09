@@ -282,12 +282,14 @@ class Parser(object):
             'GroupApply': self.group_apply,
             # time series
             'Ewma': self.ewma,
+            'Sma':self.sma,
             'Sum': self.sum,
             'Product': self.product,  # rolling product
             'CountNans': self.count_nans,  # rolling count Nans
             'StdDev': self.std_dev,
             'Covariance': self.cov,
             'Correlation': self.corr,
+            'Corr': self.corr,
             'Delay': self.delay,
             'Delta': self.delta,
             'Ts_Mean': self.ts_mean,
@@ -491,6 +493,12 @@ class Parser(object):
     @staticmethod
     def ewma(df, halflife):
         r = df.ewm(halflife=halflife, axis=0)
+        return r.mean()
+    
+    @staticmethod
+    def sma(df, n, m):
+        a = n * 1.0 / m - 1
+        r = df.ewm(com=a, axis=0)
         return r.mean()
     
     def corr(self, x, y, n):
