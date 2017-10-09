@@ -375,35 +375,75 @@ class Parser(object):
     
     def equal(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        return a == b
+        arr, brr = a.values, b.values
+        mask = np.logical_or(np.isnan(arr), np.isnan(brr))
+        res = arr == brr
+        res = res.astype(float)
+        res[mask] = np.nan
+        return pd.DataFrame(index=a.index, columns=a.columns, data=res)
     
     def notEqual(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        return a != b
+        arr, brr = a.values, b.values
+        mask = np.logical_or(np.isnan(arr), np.isnan(brr))
+        res = arr != brr
+        res = res.astype(float)
+        res[mask] = np.nan
+        return pd.DataFrame(index=a.index, columns=a.columns, data=res)
     
     def greaterThan(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        return a > b
+        arr, brr = a.values, b.values
+        mask = np.logical_or(np.isnan(arr), np.isnan(brr))
+        res = arr > brr
+        res = res.astype(float)
+        res[mask] = np.nan
+        return pd.DataFrame(index=a.index, columns=a.columns, data=res)
     
     def lessThan(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        return a < b
+        arr, brr = a.values, b.values
+        mask = np.logical_or(np.isnan(arr), np.isnan(brr))
+        res = arr < brr
+        res = res.astype(float)
+        res[mask] = np.nan
+        return pd.DataFrame(index=a.index, columns=a.columns, data=res)
     
     def greaterThanEqual(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        return a >= b
+        arr, brr = a.values, b.values
+        mask = np.logical_or(np.isnan(arr), np.isnan(brr))
+        res = arr >= brr
+        res = res.astype(float)
+        res[mask] = np.nan
+        return pd.DataFrame(index=a.index, columns=a.columns, data=res)
     
     def lessThanEqual(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        return a <= b
+        arr, brr = a.values, b.values
+        mask = np.logical_or(np.isnan(arr), np.isnan(brr))
+        res = arr <= brr
+        res = res.astype(float)
+        res[mask] = np.nan
+        return pd.DataFrame(index=a.index, columns=a.columns, data=res)
     
     def andOperator(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        return (a & b)
+        arr, brr = a.values, b.values
+        mask = np.logical_or(np.isnan(arr), np.isnan(brr))
+        res = arr & brr
+        res = res.astype(float)
+        res[mask] = np.nan
+        return pd.DataFrame(index=a.index, columns=a.columns, data=res)
     
     def orOperator(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        return (a | b)
+        arr, brr = a.values, b.values
+        mask = np.logical_or(np.isnan(arr), np.isnan(brr))
+        res = arr | brr
+        res = res.astype(float)
+        res[mask] = np.nan
+        return pd.DataFrame(index=a.index, columns=a.columns, data=res)
     
     def neg(self, a):
         return -a
@@ -419,8 +459,10 @@ class Parser(object):
         return np.sqrt(a * a + b * b)
     
     def ifFunction(self, cond, b, c):
+        mask = np.isnan(cond)
         data = np.where(cond, b, c)
-        df = pd.DataFrame(data, columns=b.columns, index=b.index)
+        data[mask] = np.nan
+        df = pd.DataFrame(data, columns=cond.columns, index=cond.index)
         return df
     
     def tail(self, x, lower, upper, neweval):
@@ -538,9 +580,10 @@ class Parser(object):
                 df.fillna(rank, inplace=True)
         return df
 
-    def group_apply(self, func, df_arg):
+    def group_apply(self, func, df_arg, *args, **kwargs):
         """
-        Rank, Mean, Std, Max, Min, Standardize, cutoff. Single parameter
+        Group on cross section (axis=1). Rank, Mean, Std, Max, Min, Standardize, cutoff.
+        Single parameter.
         
         Parameters
         ----------
@@ -549,8 +592,6 @@ class Parser(object):
         df_arg : pd.DataFrame
             The single argument of func.
             index is date, column is symbol.
-        df_group : pd.DataFrame or pd.Series
-            group tag of each symbol.
 
         Returns
         -------
@@ -562,7 +603,7 @@ class Parser(object):
         def gp_apply(df_value, df_group_):
             """df has date index and symbol columns."""
             gp = df_value.groupby(by=df_group_, axis=1)
-            res_apply = gp.apply(func)
+            res_apply = gp.apply(func, *args, **kwargs)
             return res_apply
 
         # align for quarterly data
@@ -843,6 +884,9 @@ class Parser(object):
             Announcement dates of financial statements of securities.
         trade_dts : np.ndarray
             The date index of result.
+        df_group : pd.DataFrame
+            Group codes used by group_apply function.
+            Index is date, column is symbol.
 
         Returns
         -------
