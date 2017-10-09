@@ -18,9 +18,10 @@
     2. Cross Section Functions (Max, Rank): must expand to daily
 -[x] how to store quarterly data in dataview object
 -[x] provide a simple API to analyze formula
--[] relative return to benchmark
--[] return array of data
--[] adjust mode: default None
+-[x] relative return to benchmark
+-[x] return array of data
+-[x] adjust mode: default post
+-[] factor = close - close of benchmark: how?
 
 - modification of financial statement data
     for 1 security, 1 report_date, multiple ann_date exist because of modification.
@@ -45,3 +46,6 @@
 4. backtest analysis: portfolio return attribution -- at each time, contribution of each return.
 
 -[] API rename
+
+# Data
+- self defined index; commidity index
