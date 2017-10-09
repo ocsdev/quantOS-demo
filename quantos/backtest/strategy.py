@@ -8,13 +8,12 @@ from backtest import common
 from event import EventEngine
 from pubsub import Subscriber
 from quantos.backtest.event import eventType
-from quantos.backtest.alphastrategy import StrategyContext
 
 
 class Strategy(object):
     # ----------------------------------------------------------------------
     def __init__(self):
-        self.context = None  # StrategyContext()
+        self.context = None
         self.pm = PortfolioManager()
         self.pm.strategy = self
         self.instanceid = ""
