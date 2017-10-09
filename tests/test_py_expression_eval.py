@@ -62,6 +62,13 @@ def test_ewma():
     assert abs(res.loc[20170801, '000001.SH'] - 3292.6) < 1e-1
 
 
+def test_if():
+    expr = parser.parse('If(close > 20, 3, -3)')
+    res = parser.evaluate({'close': dfx})
+    assert res.iloc[0, 0] == 3.
+    assert res.iloc[0, 2] == -3.
+
+
 def test_group_apply():
     import numpy as np
     np.random.seed(369)

@@ -373,9 +373,19 @@ class Parser(object):
             result = u'{0}{1}'.format(result, arg)
         return result
     
+    @staticmethod
+    def _to_array(x):
+        if isinstance(x, (pd.DataFrame, pd.Series)):
+            return x.values
+        elif isinstance(x, np.ndarray):
+            return x
+        elif isinstance(x, (int, float, bool, np.integer, np.float, np.bool)):
+            return np.asarray(x)
+    
     def equal(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        arr, brr = a.values, b.values
+        # arr, brr = a.values, b.values
+        arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr == brr
         res = res.astype(float)
@@ -384,7 +394,6 @@ class Parser(object):
     
     def notEqual(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        arr, brr = a.values, b.values
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr != brr
         res = res.astype(float)
@@ -393,7 +402,7 @@ class Parser(object):
     
     def greaterThan(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        arr, brr = a.values, b.values
+        arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr > brr
         res = res.astype(float)
@@ -402,7 +411,7 @@ class Parser(object):
     
     def lessThan(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        arr, brr = a.values, b.values
+        arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr < brr
         res = res.astype(float)
@@ -411,7 +420,7 @@ class Parser(object):
     
     def greaterThanEqual(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        arr, brr = a.values, b.values
+        arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr >= brr
         res = res.astype(float)
@@ -420,7 +429,7 @@ class Parser(object):
     
     def lessThanEqual(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        arr, brr = a.values, b.values
+        arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr <= brr
         res = res.astype(float)
@@ -429,7 +438,7 @@ class Parser(object):
     
     def andOperator(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        arr, brr = a.values, b.values
+        arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr & brr
         res = res.astype(float)
@@ -438,7 +447,7 @@ class Parser(object):
     
     def orOperator(self, a, b):
         (a, b) = self._align_bivariate(a, b)
-        arr, brr = a.values, b.values
+        arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr | brr
         res = res.astype(float)
@@ -461,6 +470,7 @@ class Parser(object):
     def ifFunction(self, cond, b, c):
         mask = np.isnan(cond)
         data = np.where(cond, b, c)
+        data = data.astype(float)
         data[mask] = np.nan
         df = pd.DataFrame(data, columns=cond.columns, index=cond.index)
         return df
