@@ -58,6 +58,10 @@ def pb_factor(symbol, context=None, user_options=None):
     return res
 
 
+def pb_factor(symbol, context=None, user_options=None):
+    dv = context.dataview
+    return dv.get_snapshot(fields="fpb")
+
 def my_commission(symbol, turnover, context=None, user_options=None):
     return turnover * user_options['myrate']
 
@@ -176,7 +180,8 @@ def test_alpha_strategy_dataview():
     signal_model.register_context(context)
     cost_model.register_context(context)
     
-    signal_model.register_func(pb_factor, 'pb_factor')
+    # signal_model.register_func(pb_factor, 'pb_factor')
+    signal_model.register_func('pb_factor')
     signal_model.activate_func({'pb_factor': {'coef': 3.27}})
     cost_model.register_func(my_commission, 'my_commission')
     cost_model.activate_func({'my_commission': {'myrate': 1e-2}})
@@ -197,8 +202,8 @@ if __name__ == "__main__":
     t_start = time.time()
 
     # save_dataview()
-    test_alpha_strategy()
-    # test_alpha_strategy_dataview()
+    # test_alpha_strategy()
+    test_alpha_strategy_dataview()
     # test_prepare()
     # test_read()
     

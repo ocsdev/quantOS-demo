@@ -11,46 +11,13 @@ from quantos.data.basic.position import GoalPosition
 from quantos.util.sequence import SequenceGenerator
 
 
-class StrategyContext(object):
-    """
-    Used to store relevant context of the strategy.
-
-    Attributes
-    ----------
-    data_api : backtest.DataServer object
-        Data provider for the strategy.
-    gateway : gateway.Gateway object
-        Broker of the strategy.
-    universe : list of str
-        Securities that the strategy cares about.
-    calendar : backtest.Calendar object
-        A certain calendar that the strategy refers to.
-
-    Methods
-    -------
-    add_universe(univ)
-        Add new securities.
-
-    """
-    
-    def __init__(self):
-        self.data_api = None
-        self.gateway = None
-        self.universe = []
-        self.calendar = None
-    
-    def add_universe(self, univ):
-        """univ could be single symbol or securities separated by ,"""
-        self.universe += univ.split(',')
-
-
 class BaseStrategy(object):
     """
     Base strategy class.
 
     Attributes
     ----------
-    context : strategy.StrategyContext object
+    context : Context object
         Used to store relevant context of the strategy.
     run_mode : int
         Whether the strategy is under back-testing or live trading.
@@ -66,7 +33,7 @@ class BaseStrategy(object):
     
     # TODO we need a better way to deal with err_msg
     def __init__(self):
-        self.context = None  # StrategyContext()
+        self.context = None
         self.run_mode = common.RUN_MODE.BACKTEST
         
         self.trade_date = 0

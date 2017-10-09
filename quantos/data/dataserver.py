@@ -643,6 +643,7 @@ class JzDataServer(BaseDataServer):
             separated by ','
         start_date : int
         end_date : int
+        type_ : {'SW', 'ZZ'}
 
         Returns
         -------
@@ -700,7 +701,9 @@ class JzDataServer(BaseDataServer):
         """
         if msg != '0,':
             print msg
-        return df_raw.astype(dtype={'in_date': int, 'out_date': int})
+        return df_raw.astype(dtype={'in_date': int,
+                                    # 'out_date': int
+                                    })
 
 
 class JzEventServer(JzDataServer):

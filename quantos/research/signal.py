@@ -44,7 +44,7 @@ def main():
     factor = dv.get_ts(factor_name).shift(1, axis=0)  # avoid look-ahead bias
     
     price = dv.get_ts('vwap')
-    price_bench = dv.data_benchmark
+    price_bench = dv._data_benchmark
     
     trade_status = dv.get_ts('trade_status')
     mask_sus = trade_status != u'交易'.encode('utf-8')

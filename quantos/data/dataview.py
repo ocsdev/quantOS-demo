@@ -59,6 +59,7 @@ class BaseDataView(object):
         self.data_d = None
         self.data_q = None
         self._data_benchmark = None
+        self._data_group = None
         
         common_list = {'symbol', 'start_date', 'end_date'}
         market_bar_list = {'open', 'high', 'low', 'close', 'volume', 'turnover', 'vwap', 'oi'}
@@ -191,6 +192,10 @@ class BaseDataView(object):
     @property
     def data_benchmark(self):
         return self._data_benchmark
+
+    @property
+    def data_group(self):
+        return self._data_group
     
     @data_benchmark.setter
     def data_benchmark(self, df_new):
@@ -272,7 +277,11 @@ class BaseDataView(object):
             {str: DataFrame}
         dic_ref_daily : dict
             {str: DataFrame}
-        dic_ref_quarterly: dict
+        dic_income : dict
+            {str: DataFrame}
+        dic_cash_flow : dict
+            {str: DataFrame}
+        dic_balance_sheet : dict
             {str: DataFrame}
 
         """
@@ -585,7 +594,7 @@ class BaseDataView(object):
         print "\nQuery data..."
         dic_market_daily, dic_ref_daily, dic_income, dic_balance_sheet, dic_cash_flow = \
             self._query_data(self.symbol, fields)
-    
+        
         # pre-process data
         print "\nPreprocess data..."
         multi_market_daily = self._preprocess_market_daily(dic_market_daily)
@@ -609,7 +618,11 @@ class BaseDataView(object):
     
     def prepare_data(self):
         """Prepare data for the FIRST time."""
+        # prepare benchmark and group
         if self.universe:
+            print "Query industry..."
+            self._data_group = self._prepare_group()
+            print "Query benchmark..."
             self._data_benchmark = self._prepare_benchmark()
         
         self.data_d, self.data_q = self._prepare_data(self.fields)
@@ -662,6 +675,12 @@ class BaseDataView(object):
         
         df_bench = self._process_index(df_bench, self.TRADE_DATE_FIELD_NAME)
         return df_bench
+    
+    def _prepare_group(self):
+        df = self.data_api.get_industry_df(symbol=','.join(self.symbol),
+                                           start_date=self.extended_start_date, end_date=self.end_date,
+                                           type_='SW')
+        return df
     
     def _add_field(self, field_name, is_quarterly=None):
         self.fields.append(field_name)
@@ -756,7 +775,7 @@ class BaseDataView(object):
             var_df_dic[var] = df_var
         
         # TODO: send ann_date into expr.evaluate. We assume that ann_date of all fields of a symbol is the same
-        df_eval = parser.evaluate(var_df_dic, df_ann, self.dates)
+        df_eval = parser.evaluate(var_df_dic, ann_dts=df_ann, trade_dts=self.dates, df_group=self.data_group)
         
         self.append_df(df_eval, field_name, is_quarterly=is_quarterly)
         self._add_field(field_name, is_quarterly=is_quarterly)
@@ -796,6 +815,7 @@ class BaseDataView(object):
         self.data_d = dic.get('/data_d', None)
         self.data_q = dic.get('/data_q', None)
         self._data_benchmark = dic.get('/data_benchmark', None)
+        self._data_group = dic.get('/data_group', None)
         self.__dict__.update(meta_data)
         
         print "Dataview loaded successfully."
@@ -991,7 +1011,9 @@ class BaseDataView(object):
         meta_path = os.path.join(folder_path, 'meta_data.json')
         data_path = os.path.join(folder_path, 'data.hd5')
         
-        data_to_store = {'data_d': self.data_d, 'data_q': self.data_q, 'data_benchmark': self._data_benchmark}
+        data_to_store = {'data_d': self.data_d, 'data_q': self.data_q,
+                         'data_benchmark': self._data_benchmark,
+                         'data_group': self._data_group}
         data_to_store = {k: v for k, v in data_to_store.items() if v is not None}
         meta_data_to_store = {key: self.__dict__[key] for key in self.meta_data_list}
 
