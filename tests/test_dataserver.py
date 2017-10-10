@@ -175,6 +175,17 @@ def test_jz_data_server_industry_df():
             idx = cal.get_next_trade_date(in_date)
             assert df.loc[idx, sec] == value
         
+
+def test_jz_dataserver_fin_indicator():
+    ds = JzDataServer()
+    
+    symbol = '000008.SZ'
+    filter_argument = ds._dic2url({'symbol': symbol})
+    
+    df_raw, msg = ds.query("wd.finIndicator", fields="",
+                           filter=filter_argument, orderby="symbol")
+    print
+
     
 if __name__ == "__main__":
     test_jz_data_server_industry_df()

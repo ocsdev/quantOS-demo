@@ -182,34 +182,34 @@ class BaseDataView(object):
              "spe_bal_netcash_inc_undir", "tot_bal_netcash_inc_undir"}
         self.fin_indicator = \
             {"extraordinary","deductedprofit","grossmargin","operateincome","investincome","stmnote_finexp",
-            "stm_is","ebit","ebitda""fcff","fcfe","exinterestdebt_current","exinterestdebt_noncurrent","interestdebt",
-            "netdebt","tangibleasset","workingcapital","networkingcapital","investcapital","retainedearnings","eps_basic",
-            "eps_diluted","eps_diluted2","bps","ocfps","grps","orps","surpluscapitalps","surplusreserveps","undistributedps",
-            "retainedps","cfps","ebitps","fcffps","fcfeps","netprofitmargin","grossprofitmargin","cogstosales",
-            "expensetosales","profittogr","saleexpensetogr","adminexpensetogr","finaexpensetogr","impairtogr_ttm",
-            "gctogr","optogr","ebittogr","roe","roe_deducted","roa2","roa","roic","roe_yearly","roa2_yearly","roe_avg",
-            "operateincometoebt","investincometoebt","nonoperateprofittoebt","taxtoebt","deductedprofittoprofit","salescashintoor",
-            "ocftoor","ocftooperateincome","capitalizedtoda","debttoassets","assetstoequity","dupont_assetstoequity",
-            "catoassets","ncatoassets","tangibleassetstoassets","intdebttototalcap","equitytototalcapital","currentdebttodebt",
-            "longdebtodebt","current","quick","cashratio","ocftoshortdebt","debttoequity","equitytodebt",
-            "equitytointerestdebt","tangibleassettodebt","tangassettointdebt","tangibleassettonetdebt","ocftodebt",
-            "ocftointerestdebt","ocftonetdebt","ebittointerest","longdebttoworkingcapital","ebitdatodebt","turndays",
-            "invturndays","arturndays","invturn","arturn","caturn","faturn","assetsturn","roa_yearly","dupont_roa",
-            "s_stm_bs","prefinexpense_opprofit","nonopprofit","optoebt","noptoebt","ocftoprofit","cashtoliqdebt",
-            "cashtoliqdebtwithinterest","optoliqdebt","optodebt","roic_yearly","tot_faturn","profittoop","qfa_operateincome",
-            "qfa_investincome","qfa_deductedprofit","qfa_eps","qfa_netprofitmargin","qfa_grossprofitmargin","qfa_expensetosales",
-            "qfa_profittogr","qfa_saleexpensetogr","qfa_adminexpensetogr","qfa_finaexpensetogr","qfa_impairtogr_ttm",
-            "qfa_gctogr","qfa_optogr","qfa_roe","qfa_roe_deducted","qfa_roa","qfa_operateincometoebt","qfa_investincometoebt",
-            "qfa_deductedprofittoprofit","qfa_salescashintoor","qfa_ocftosales","qfa_ocftoor","yoyeps_basic","yoyeps_diluted",
-            "yoyocfps","yoyop","yoyebt","yoynetprofit","yoynetprofit_deducted","yoyocf","yoyroe","yoybps","yoyassets",
-            "yoyequity","yoy_tr","yoy_or","qfa_yoygr","qfa_cgrgr","qfa_yoysales","qfa_cgrsales","qfa_yoyop","qfa_cgrop",
-            "qfa_yoyprofit","qfa_cgrprofit","qfa_yoynetprofit","qfa_cgrnetprofit","yoy_equity","rd_expense","waa_roe"}
-        self.custom_daily_fields = []
-        self.custom_quarterly_fields = []
+             "stm_is","ebit","ebitda""fcff","fcfe","exinterestdebt_current","exinterestdebt_noncurrent","interestdebt",
+             "netdebt","tangibleasset","workingcapital","networkingcapital","investcapital","retainedearnings","eps_basic",
+             "eps_diluted","eps_diluted2","bps","ocfps","grps","orps","surpluscapitalps","surplusreserveps","undistributedps",
+             "retainedps","cfps","ebitps","fcffps","fcfeps","netprofitmargin","grossprofitmargin","cogstosales",
+             "expensetosales","profittogr","saleexpensetogr","adminexpensetogr","finaexpensetogr","impairtogr_ttm",
+             "gctogr","optogr","ebittogr","roe","roe_deducted","roa2","roa","roic","roe_yearly","roa2_yearly","roe_avg",
+             "operateincometoebt","investincometoebt","nonoperateprofittoebt","taxtoebt","deductedprofittoprofit","salescashintoor",
+             "ocftoor","ocftooperateincome","capitalizedtoda","debttoassets","assetstoequity","dupont_assetstoequity",
+             "catoassets","ncatoassets","tangibleassetstoassets","intdebttototalcap","equitytototalcapital","currentdebttodebt",
+             "longdebtodebt","current","quick","cashratio","ocftoshortdebt","debttoequity","equitytodebt",
+             "equitytointerestdebt","tangibleassettodebt","tangassettointdebt","tangibleassettonetdebt","ocftodebt",
+             "ocftointerestdebt","ocftonetdebt","ebittointerest","longdebttoworkingcapital","ebitdatodebt","turndays",
+             "invturndays","arturndays","invturn","arturn","caturn","faturn","assetsturn","roa_yearly","dupont_roa",
+             "s_stm_bs","prefinexpense_opprofit","nonopprofit","optoebt","noptoebt","ocftoprofit","cashtoliqdebt",
+             "cashtoliqdebtwithinterest","optoliqdebt","optodebt","roic_yearly","tot_faturn","profittoop","qfa_operateincome",
+             "qfa_investincome","qfa_deductedprofit","qfa_eps","qfa_netprofitmargin","qfa_grossprofitmargin","qfa_expensetosales",
+             "qfa_profittogr","qfa_saleexpensetogr","qfa_adminexpensetogr","qfa_finaexpensetogr","qfa_impairtogr_ttm",
+             "qfa_gctogr","qfa_optogr","qfa_roe","qfa_roe_deducted","qfa_roa","qfa_operateincometoebt","qfa_investincometoebt",
+             "qfa_deductedprofittoprofit","qfa_salescashintoor","qfa_ocftosales","qfa_ocftoor","yoyeps_basic","yoyeps_diluted",
+             "yoyocfps","yoyop","yoyebt","yoynetprofit","yoynetprofit_deducted","yoyocf","yoyroe","yoybps","yoyassets",
+             "yoyequity","yoy_tr","yoy_or","qfa_yoygr","qfa_cgrgr","qfa_yoysales","qfa_cgrsales","qfa_yoyop","qfa_cgrop",
+             "qfa_yoyprofit","qfa_cgrprofit","qfa_yoynetprofit","qfa_cgrnetprofit","yoy_equity","rd_expense","waa_roe"}
+        self .custom_daily_fields = []
+        self .custom_quarterly_fields = []
         
-        # const
-        self.ANN_DATE_FIELD_NAME = 'ann_date'
-        self.REPORT_DATE_FIELD_NAME = 'report_date'
+        # co nst
+        self .ANN_DATE_FIELD_NAME = 'ann_date'
+        self .REPORT_DATE_FIELD_NAME = 'report_date'
         self.TRADE_STATUS_FIELD_NAME = 'trade_status'
         self.TRADE_DATE_FIELD_NAME = 'trade_date'
     
@@ -259,11 +259,14 @@ class BaseDataView(object):
             pool = self.fin_stat_balance_sheet
         elif field_type == 'cash_flow':
             pool = self.fin_stat_cash_flow
+        elif field_type == 'fin_indicator':
+            pool = self.fin_indicator
         elif field_type == 'daily':
             pool = set.union(self.market_daily_fields, self.reference_daily_fields,
                              self.custom_daily_fields)
         elif field_type == 'quarterly':
             pool = set.union(self.fin_stat_income, self.fin_stat_balance_sheet, self.fin_stat_cash_flow,
+                             self.fin_indicator,
                              self.custom_quarterly_fields)
         else:
             raise NotImplementedError("field_type = {:s}".format(field_type))
@@ -277,7 +280,10 @@ class BaseDataView(object):
         if append:
             if field_type == 'market_daily':
                 s.add(self.TRADE_STATUS_FIELD_NAME)
-            elif field_type == 'income' or field_type == 'balance_sheet' or field_type == 'cash_flow':
+            elif (field_type == 'income'
+                  or field_type == 'balance_sheet'
+                  or field_type == 'cash_flow'
+                  or field_type == 'fin_indicator'):
                 s.add(self.ANN_DATE_FIELD_NAME)
                 s.add(self.REPORT_DATE_FIELD_NAME)
         
@@ -306,6 +312,8 @@ class BaseDataView(object):
         dic_cash_flow : dict
             {str: DataFrame}
         dic_balance_sheet : dict
+            {str: DataFrame}
+        dic_fin_ind : dict
             {str: DataFrame}
 
         """
@@ -361,10 +369,19 @@ class BaseDataView(object):
                 if msg3 != '0,':
                     print msg3
                 dic_cf = self._group_df_to_dict(df_cf, 'symbol')
+
+            fields_fin_ind = self._get_fields('fin_indicator', fields, append=True)
+            if fields_fin_ind:
+                df_fin_ind, msg4 = self.data_api.query_wd_fin_stat('fin_indicator', symbol_str,
+                                                                   self.extended_start_date, self.end_date,
+                                                                   sep.join(fields_cf))
+                if msg4 != '0,':
+                    print msg4
+                dic_fin_ind = self._group_df_to_dict(df_fin_ind, 'symbol')
         else:
             raise NotImplementedError("freq = {}".format(self.freq))
         
-        return dic_market_daily, dic_ref_daily, dic_income, dic_balance, dic_cf
+        return dic_market_daily, dic_ref_daily, dic_income, dic_balance, dic_cf, dic_fin_ind
 
     @staticmethod
     def _process_index(df, index_name='trade_date'):
@@ -459,6 +476,7 @@ class BaseDataView(object):
         if not dic:
             return None
         for sec, df in dic.viewitems():
+            # df = df.astype({'trade_status': str})
             dic[sec] = self._process_index(df, self.TRADE_DATE_FIELD_NAME)
             
         res = self._dic_of_df_to_multi_index_df(dic, levels=['symbol', 'field'])
@@ -504,8 +522,8 @@ class BaseDataView(object):
             return None
         new_dic = dict()
         for sec, df in dic.viewitems():
-            df_mod = self._process_index(df, self.REPORT_DATE_FIELD_NAME)
-            df_mod = df_mod.loc[:, self._get_fields(type_, fields, append=True)]
+            df_mod = df.loc[:, self._get_fields(type_, fields, append=True)]
+            df_mod = self._process_index(df_mod, self.REPORT_DATE_FIELD_NAME)
             
             new_dic[sec] = df_mod
     
@@ -536,11 +554,15 @@ class BaseDataView(object):
             return None
         
         merge = pd.concat(dfs, axis=1, join='outer')
+        
+        # drop duplicated columns. ONE LINE EFFICIENT version
+        merge = merge.loc[:, ~merge.columns.duplicated()]
+        
         if merge.isnull().sum().sum() > 0:
             Warning("nan in final merged data.")
             merge.fillna(method='ffill', inplace=True)
             
-        merge.sort_index(axis=1, level=['symbol', 'field'], inplace=True)
+        merge = merge.sort_index(axis=1, level=['symbol', 'field'])
         merge.index.name = index_name
         
         return merge
@@ -616,7 +638,7 @@ class BaseDataView(object):
         
         # query data
         print "\nQuery data..."
-        dic_market_daily, dic_ref_daily, dic_income, dic_balance_sheet, dic_cash_flow = \
+        dic_market_daily, dic_ref_daily, dic_income, dic_balance_sheet, dic_cash_flow, dic_fin_ind = \
             self._query_data(self.symbol, fields)
         
         # pre-process data
@@ -626,11 +648,12 @@ class BaseDataView(object):
         multi_income = self._preprocess_ref_quarterly('income', dic_income, fields)
         multi_balance_sheet = self._preprocess_ref_quarterly('balance_sheet', dic_balance_sheet, fields)
         multi_cash_flow = self._preprocess_ref_quarterly('cash_flow', dic_cash_flow, fields)
+        multi_fin_ind = self._preprocess_ref_quarterly('fin_indicator', dic_fin_ind, fields)
     
         print "\nMerge data..."
         merge_d = self._merge_data([multi_market_daily, multi_ref_daily],
                                    index_name=self.TRADE_DATE_FIELD_NAME)
-        merge_q = self._merge_data([multi_income, multi_balance_sheet, multi_cash_flow],
+        merge_q = self._merge_data([multi_income, multi_balance_sheet, multi_cash_flow, multi_fin_ind],
                                    index_name=self.REPORT_DATE_FIELD_NAME)
     
         # drop dates that are not trade date
@@ -702,8 +725,7 @@ class BaseDataView(object):
     
     def _prepare_group(self):
         df = self.data_api.get_industry_df(symbol=','.join(self.symbol),
-                                           start_date=self.extended_start_date, end_date=self.end_date,
-                                           type_='SW')
+                                           start_date=self.extended_start_date, end_date=self.end_date)
         return df
     
     def _add_field(self, field_name, is_quarterly=None):
@@ -1060,6 +1082,9 @@ class BaseDataView(object):
         dic : dict
 
         """
+        import warnings
+        warnings.filterwarnings('ignore', category=pd.io.pytables.PerformanceWarning)
+        
         quantos.util.fileio.create_dir(fp)
         h5 = pd.HDFStore(fp)
         for key, value in dic.items():
@@ -1117,6 +1142,7 @@ class BaseDataView(object):
         res = (field_name in self.fin_stat_balance_sheet
                or field_name in self.fin_stat_cash_flow
                or field_name in self.fin_stat_income
+               or field_name in self.fin_indicator
                or field_name in self.custom_quarterly_fields)
         return res
     

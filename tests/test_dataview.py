@@ -53,7 +53,6 @@ def test_write():
     dv.save_dataview(folder_path=folder_path)
 
 
-# @profile
 def test_quarterly():
     from quantos.data.dataserver import JzDataServer
     
@@ -62,12 +61,18 @@ def test_quarterly():
     
     secs = '600030.SH,000063.SZ,000001.SZ'
     props = {'start_date': 20160609, 'end_date': 20170601, 'universe': '000300.SH', 'symbol': secs,
-             'fields': 'open,close,' + 'pb,net_assets,' + 'total_oper_rev,oper_exp', 'freq': 1}
+             'fields': ('open,close,'
+                        + 'pb,net_assets,'
+                        + 'total_oper_rev,oper_exp,'
+                        + 'cash_paid_invest,'
+                        + 'capital_stk,'
+                        + 'roe'), 'freq': 1}
 
     dv.init_from_config(props, data_api=ds)
     dv.prepare_data()
     folder_path = '../output/prepared'
     dv.save_dataview(folder_path=folder_path)
+    
     
 def test_get_quarterly():
     dv = BaseDataView()
