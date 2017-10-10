@@ -312,6 +312,7 @@ class JzDataServer(BaseDataServer):
               fields="", adjust_mode=None):
         df, err_msg = self.api.daily(symbol=symbol, start_date=start_date, end_date=end_date,
                                      fields=fields, adjust_mode=adjust_mode, data_format="")
+        # trade_status performance warning
         return df, err_msg
 
     def bar(self, symbol,
@@ -406,19 +407,24 @@ class JzDataServer(BaseDataServer):
         msg : str
 
         """
-        view_map = {'income': 'wd.income', 'cash_flow': 'wd.cashFlow', 'balance_sheet': 'wd.balanceSheet'}
+        view_map = {'income': 'wd.income', 'cash_flow': 'wd.cashFlow', 'balance_sheet': 'wd.balanceSheet',
+                    'fin_indicator': 'wd.finIndicator'}
         view_name = view_map.get(type_, None)
         if view_name is None:
             raise NotImplementedError("type_ = {:s}".format(type_))
         
-        filter_argument = self._dic2url({'symbol': symbol,
-                                         'start_date': start_date,
-                                         'end_date': end_date,
-                                         'report_type': '408002000',  # joint sheet
-                                         'update_flag': '0'})  # 0 means first time, not update
+        dic_argument = {'symbol': symbol,
+                        'start_date': start_date,
+                        'end_date': end_date,
+                        'update_flag': '0'}
+        if view_name != 'wd.finIndicator':
+            dic_argument.update({'report_type': '408002000'})  # joint sheet
+        
+        filter_argument = self._dic2url(dic_argument)  # 0 means first time, not update
         
         res, msg = self.query(view_name, fields=fields, filter=filter_argument,
                               order_by=self.REPORT_DATE_FIELD_NAME)
+        # change data type
         try:
             cols = list(set.intersection({'ann_date', 'report_date'}, set(res.columns)))
             dic_dtype = {col: int for col in cols}
@@ -428,7 +434,7 @@ class JzDataServer(BaseDataServer):
         
         return res, msg
 
-    def query_wd_balance_sheet(self, symbol, start_date, end_date, fields="", extend=0):
+    def OLD_query_wd_balance_sheet(self, symbol, start_date, end_date, fields="", extend=0):
         """
         Helper function to call data_api.query with 'wd.income' more conveniently.
         
@@ -466,7 +472,7 @@ class JzDataServer(BaseDataServer):
         return self.query("wd.balanceSheet", fields=fields, filter=filter_argument,
                           order_by=self.REPORT_DATE_FIELD_NAME)
 
-    def query_wd_cash_flow(self, symbol, start_date, end_date, fields="", extend=0):
+    def OLD_query_wd_cash_flow(self, symbol, start_date, end_date, fields="", extend=0):
         """
         Helper function to call data_api.query with 'wd.income' more conveniently.
         
@@ -663,6 +669,11 @@ class JzDataServer(BaseDataServer):
 
         dates_arr = self.get_trade_date(start_date, end_date)
         df_industry = align.align(df_value, df_ann, dates_arr)
+        
+        # TODO before industry classification is available, we assume they belong to their first group.
+        df_industry = df_industry.fillna(method='bfill')
+        df_industry = df_industry.astype(str)
+        
         return df_industry
         
     def get_industry_raw(self, symbol, type_='ZZ'):
