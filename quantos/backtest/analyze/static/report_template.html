@@ -5,8 +5,8 @@
 <meta charset="UTF-8">
 
 <style>
-{% include 'static/github.css' %}
-{% include 'static/additional.css' %}
+{% include 'github.css' %}
+{% include 'additional.css' %}
 </style>
 
 <title>{{ html_title }}</title>
@@ -41,6 +41,7 @@
 {% endfor %}
 </table>
 
+{% if position_change is not none %}
 <h2>Position Changes</h2>
 {% for date, df in position_change.items() %}
 
@@ -52,6 +53,7 @@ cash = {{ account[date]['cash'] / 1000.0 | round(0) }}k,
 {{ df.to_html() }}
 
 {% endfor %}
+{% endif %}
 
 <h2>Selected Security Visualization</h2>
 {% for sec in selected_securities %}
@@ -59,8 +61,10 @@ cash = {{ account[date]['cash'] / 1000.0 | round(0) }}k,
 </tr>
 {% endfor %}
 
+{% if df_daily is not none %}
 <h2>Daily PnL for Each Security</h2>
 {{ df_daily }}
+{% endif %}
     
 </body>
 </html>
