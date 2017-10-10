@@ -163,7 +163,7 @@ def test_jz_data_server_industry_df():
     sec = '000008.SZ'
     df_raw = ds.get_industry_raw(symbol=sec, type_='SW')
     df_raw = df_raw.drop_duplicates(subset='in_date')
-    df = ds.get_industry_df(symbol=symbol_arr, start_date=20140101, end_date=20170101, type_='SW')
+    df = ds.get_industry_df(symbol=symbol_arr, start_date=20140101, end_date=20170505, type_='SW')
     
     for idx, row in df_raw.iterrows():
         in_date = row['in_date']
