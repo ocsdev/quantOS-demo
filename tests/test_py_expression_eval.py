@@ -92,6 +92,12 @@ def test_group_apply():
     assert abs(res.iloc[19, 18] - (-1.17779)) < 1e-5
 
 
+def test_calc_return():
+    expr = parser.parse('Return(close, 2, 0)')
+    res = parser.evaluate({'close': dfx})
+    assert abs(res.loc[20170808, '000001.SH'] - 0.006067) < 1e-6
+
+
 @pytest.fixture(autouse=True)
 def my_globals(request):
     ds = JzDataServer()

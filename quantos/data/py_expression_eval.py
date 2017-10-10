@@ -292,6 +292,7 @@ class Parser(object):
             'Corr': self.corr,
             'Delay': self.delay,
             'Delta': self.delta,
+            'Return': self.calc_return,
             'Ts_Mean': self.ts_mean,
             'Ts_Min': self.ts_min,
             'Ts_Max': self.ts_max,
@@ -523,6 +524,15 @@ class Parser(object):
     
     def delta(self, x, n):
         return x.diff(n)
+    
+    @staticmethod
+    def calc_return(df, forward=1, log=False):
+        if log:
+            res = np.log(df).diff(forward)
+        else:
+            shift = df.shift(forward)
+            res = (df - shift) / shift
+        return res
     
     def ts_mean(self, x, n):
         return pd.rolling_mean(x, n)
