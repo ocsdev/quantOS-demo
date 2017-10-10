@@ -778,7 +778,6 @@ class BaseDataView(object):
         df_eval = parser.evaluate(var_df_dic, ann_dts=df_ann, trade_dts=self.dates, df_group=self.data_group)
         
         self.append_df(df_eval, field_name, is_quarterly=is_quarterly)
-        self._add_field(field_name, is_quarterly=is_quarterly)
 
     @staticmethod
     def _load_h5(fp):
