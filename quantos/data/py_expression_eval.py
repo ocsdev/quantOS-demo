@@ -887,7 +887,7 @@ class Parser(object):
                 pass
             else:
                 if self.errormsg == '':
-                    self.error_parsing(self.pos, 'unknown character')
+                    self.error_parsing(self.pos, "You have an unknown character in your formula; near '%s'",(self.expression[self.pos:]))
                 else:
                     self.error_parsing(self.pos, self.errormsg)
         if self.tmpprio < 0 or self.tmpprio >= 10:
