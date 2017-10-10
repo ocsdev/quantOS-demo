@@ -83,9 +83,10 @@ def test_group_apply():
     np.random.shuffle(cols)
     
     df_group = pd.DataFrame(index=df_value.index, columns=cols, data=r)
-    
-    expr = parser.parse('GroupApply(Standardize, close, mygroup)')
-    res = parser.evaluate({'close': df_value, 'mygroup': df_group})
+
+    parser = Parser()
+    expr = parser.parse('GroupApply(Standardize, GroupApply(Cutoff, close, 2.8))')
+    res = parser.evaluate({'close': df_value}, df_group=df_group)
     
     assert abs(res.iloc[3, 6] - (-1.53432)) < 1e-5
     assert abs(res.iloc[19, 18] - (-1.17779)) < 1e-5
