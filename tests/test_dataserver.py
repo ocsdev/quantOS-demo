@@ -98,13 +98,13 @@ def test_jz_data_server_components():
     assert len(arr) == 430
 
 
-def _test_jz_data_server_industry():
+def test_jz_data_server_industry():
     from data.align import align
     import pandas as pd
     
     ds = JzDataServer()
-    arr = ds.get_index_comp(index='000300.SH', start_date=20140101, end_date=20170505)
-    df, msg = ds.get_industry(symbol=','.join(arr), type_='SW')
+    arr = ds.get_index_comp(index='000300.SH', start_date=20130101, end_date=20170505)
+    df = ds.get_industry_raw(symbol=','.join(arr), type_='ZZ')
     df = df.astype(dtype={'in_date': int})
     
     # df_ann = df.loc[:, ['in_date', 'symbol']]
@@ -157,13 +157,14 @@ def test_jz_data_server_industry_df():
     cal = Calendar()
     
     ds = JzDataServer()
-    arr = ds.get_index_comp(index='000300.SH', start_date=20140101, end_date=20170505)
+    arr = ds.get_index_comp(index='000300.SH', start_date=20130101, end_date=20170505)
     
     symbol_arr = ','.join(arr)
     sec = '000008.SZ'
-    df_raw = ds.get_industry_raw(symbol=sec, type_='SW')
+    type_ = 'ZZ'
+    df_raw = ds.get_industry_raw(symbol=sec, type_=type_)
     df_raw = df_raw.drop_duplicates(subset='in_date')
-    df = ds.get_industry_df(symbol=symbol_arr, start_date=20140101, end_date=20170505, type_='SW')
+    df = ds.get_industry_df(symbol=symbol_arr, start_date=df_raw.index[0], end_date=20170505, type_=type_)
     
     for idx, row in df_raw.iterrows():
         in_date = row['in_date']

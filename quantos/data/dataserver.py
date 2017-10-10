@@ -654,10 +654,9 @@ class JzDataServer(BaseDataServer):
         """
         df_raw = self.get_industry_raw(symbol, type_=type_)
         
-        df_raw = df_raw.astype(dtype={'in_date': int})
-        
         dic_sec = self._group_df_to_dict(df_raw, by='symbol')
-        dic_sec = {sec: df.drop_duplicates().reset_index() for sec, df in dic_sec.viewitems()}
+        dic_sec = {sec: df.drop_duplicates().sort_values(by='in_date', axis=0).reset_index()
+                   for sec, df in dic_sec.viewitems()}
 
         df_ann = pd.concat([df.loc[:, 'in_date'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
         df_value = pd.concat([df.loc[:, 'industry1_code'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
@@ -666,7 +665,7 @@ class JzDataServer(BaseDataServer):
         df_industry = align.align(df_value, df_ann, dates_arr)
         return df_industry
         
-    def get_industry_raw(self, symbol, type_='SW'):
+    def get_industry_raw(self, symbol, type_='ZZ'):
         """
         Get daily industry of securities from ShenWanHongYuan or ZhongZhengZhiShu.
         
@@ -694,11 +693,6 @@ class JzDataServer(BaseDataServer):
     
         df_raw, msg = self.query("lb.secIndustry", fields=','.join(fields_list),
                                  filter=filter_argument, orderby="symbol")
-        """
-            df_raw = df_raw.sort_values('in_date', axis=0)
-            df_unique = df_raw.drop_duplicates(subset='symbol', keep='last')  # latest
-            pd.DataFrame.drop_duplicates()
-        """
         if msg != '0,':
             print msg
         return df_raw.astype(dtype={'in_date': int,
