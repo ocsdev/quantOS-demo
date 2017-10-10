@@ -48,6 +48,8 @@ class Context(object):
         
         self.universe = []
         
+        self.trade_date = 0
+        
     def register_portfolio_manager(self, portfolio_manager):
         self.pm = portfolio_manager
         
@@ -97,7 +99,7 @@ class BaseModel(object):
         self.func_table = dict()
         self.active_funcs = []
     
-    def register_func(self, func, name="", options=None):
+    def register_func(self, name, func, options=None):
         rf = RegisteredFunction(func, name, options)
         self.func_table[name] = rf
 
@@ -142,6 +144,7 @@ class FactorRevenueModel(BaseRevenueModel):
     def __init__(self):
         super(FactorRevenueModel, self).__init__()
         
+        self.forecast_dic = None
         self.total_forecast = None
     
     @staticmethod
@@ -194,7 +197,6 @@ class FactorRevenueModel(BaseRevenueModel):
         Parameters
         ----------
         weights : dict
-            {
 
         Returns
         -------
@@ -207,6 +209,79 @@ class FactorRevenueModel(BaseRevenueModel):
             forecast = self.combine_sum(forecasts)
             
             total_revenue += w * forecast
+        
+        return total_revenue
+
+
+class FactorRevenueModel_dv(FactorRevenueModel):
+    """
+    Forecast profit of target weight (portfolio), where:
+    
+    total_forecast = sum(individual_forecast)
+    individual_forecast = combine(individual_forecast from different source)
+    
+    output: dict
+    
+    """
+    def get_forecasts(self):
+        """
+        
+        Returns
+        -------
+        forecasts : dict
+            {str: pd.DataFrame}
+            DataFrame index is symbol, column is field.
+
+        """
+        forecasts = dict()
+        for factor in self.active_funcs:
+            rf = self.func_table[factor]
+            forecasts[factor] = rf.func(context=self.context, user_options=rf.options)
+        return forecasts
+    
+    def combine_sum(self, forecasts):
+        """
+        
+        Parameters
+        ----------
+        forecasts : dict
+            {str: pd.DataFrame}
+            DataFrame index is symbol, column is field.
+
+        Returns
+        -------
+        res : dict
+
+        """
+        merge = pd.concat(forecasts.values(), axis=1)
+        res = merge.sum(axis=1)
+        res = res.to_dict()
+        return res
+    
+    def make_forecast(self):
+        forecasts = self.get_forecasts()
+        forecasts = {key: value.fillna(0) for key, value in forecasts.items()}
+        forecast = self.combine_sum(forecasts)
+        self.forecast_dic = forecast
+        
+    def forecast_revenue(self, weights):
+        """
+        Forecast total revenue of the portfolio with weights.
+        
+        Parameters
+        ----------
+        weights : dict
+
+        Returns
+        -------
+        res : float
+
+        """
+        total_revenue = 0.0
+        self.make_forecast()
+        
+        weighted_revenue = {key: value * self.forecast_dic[key] for key, value in weights.viewitems()}
+        total_revenue = np.sum(weighted_revenue.values())
         
         return total_revenue
 

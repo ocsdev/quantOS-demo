@@ -162,7 +162,7 @@ class AlphaAnalyzer(BaseAnalyzer):
         df.index.name = 'index'
         
         cols_to_drop = ['task_id', 'entrust_no', 'fill_no']
-        df.drop(cols_to_drop, axis=1, inplace=True)
+        df = df.drop(cols_to_drop, axis=1)
         
         fs, fp = df.loc[:, 'fill_size'], df.loc[:, 'fill_price']
         turnover = fs * fp
@@ -209,7 +209,7 @@ class AlphaAnalyzer(BaseAnalyzer):
     def get_daily(self):
         """Add various statistics to daily DataFrame."""
         daily_dic = dict()
-        for sec, df_trade in self.trades.items():
+        for sec, df_trade in self.trades.viewitems():
             df_close = self.closes[sec]
             
             daily_dic[sec] = self._get_daily(df_close, df_trade)
@@ -295,18 +295,19 @@ class AlphaAnalyzer(BaseAnalyzer):
         plt.tight_layout()
         fig.savefig(save_folder + '/' + 'pnl_img.png')
 
-    def gen_report(self, out_folder='output', selected=[]):
-        d = dict()
-        d['html_title'] = "Alpha Strategy Backtest Result"
-        d['selected_securities'] = selected
-        d['props'] = self.configs
-        d['metrics'] = self.metrics
-        d['position_change'] = self.position_change
-        d['account'] = self.account
+    def gen_report(self, static_folder='.', out_folder='output', selected=[]):
+        dic = dict()
+        dic['html_title'] = "Alpha Strategy Backtest Result"
+        dic['selected_securities'] = selected
+        dic['props'] = self.configs
+        dic['metrics'] = self.metrics
+        dic['position_change'] = self.position_change
+        dic['account'] = self.account
         
-        r = Report(d,
-                   'static/report_template.html', 'static/blueprint.css',
-                   out_folder=out_folder)
+        import os
+        html_template_fp = os.path.join(static_folder, 'report_template.html')
+        css_fp = os.path.join(static_folder, 'blueprint.css')
+        r = Report(dic, html_template_fp, css_fp, out_folder=out_folder)
         
         r.generate_html()
         r.output_html('report.html')

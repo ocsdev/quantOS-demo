@@ -347,8 +347,11 @@ class AlphaStrategy(BaseStrategy):
         self.register_pc_method('equal_weight', self.equal_weight)
         self.register_pc_method('mc', self.optimize_mc, options={'util_func': self.util_net_revenue,
                                                                  'constraints': None, 'initial_value': None})
+        self.register_pc_method('factor', self.factor_value_weight)
 
     def register_pc_method(self, name, func, options=None):
+        if options is None:
+            options = {}
         self.pc_methods[name] = func, options
     
     def _get_weights_last(self):
@@ -360,7 +363,14 @@ class AlphaStrategy(BaseStrategy):
         return univ_pos_dic
 
     def util_net_revenue(self, weights_target):
-        """util = net_revenue = revenue - all costs."""
+        """
+        util = net_revenue = revenue - all costs.
+        
+        Parameters
+        ----------
+        weights_target : dict
+        
+        """
         weights_last = self._get_weights_last()
     
         revenue = self.revenue_model.forecast_revenue(weights_target)
@@ -371,7 +381,7 @@ class AlphaStrategy(BaseStrategy):
         risk_coef = 1.0
         cost_coef = 1.0
         net_revenue = revenue - risk_coef * risk - cost_coef * cost  # - liquid * liq_factor
-        return -net_revenue
+        return net_revenue
     
     def portfolio_construction(self):
         """
@@ -385,13 +395,24 @@ class AlphaStrategy(BaseStrategy):
         """
         func, options = self.pc_methods[self.active_pc_method]
 
-        func(**options)
+        weights, msg = func(**options)
+        if msg:
+            print msg
+        self.weights = weights
 
-    def equal_weight(self, util_func, constrains=None, initial_value=None):
+    def equal_weight(self, util_func=None, constrains=None, initial_value=None):
         n = len(self.context.universe)
         weights_arr = np.ones(n, dtype=float) / n
-        self.weights = dict(zip(self.context.universe, weights_arr))
+        weights = dict(zip(self.context.universe, weights_arr))
+        return weights, ''
     
+    def factor_value_weight(self, util_func=None, constrains=None, initial_value=None):
+        self.revenue_model.make_forecast()
+        weights_raw = self.revenue_model.forecast_dic
+        w_sum = np.sum(weights_raw.values())
+        weights = {k: v / w_sum for k, v in weights_raw.items()}
+        return weights, ""
+        
     def optimize_mc(self, util_func, constraints=None, initial_value=None):
         """
         Use naive search (Monte Carol) to find variable that maximize util_func.
@@ -422,7 +443,7 @@ class AlphaStrategy(BaseStrategy):
         min_weights = None
         for i in range(n_exp):
             weights = {self.context.universe[j]: weights_mat[i, j] for j in range(n_var)}
-            f = util_func(weights)
+            f = -util_func(weights)
             if f < min_f:
                 min_weights = weights
                 min_f = f
@@ -431,8 +452,8 @@ class AlphaStrategy(BaseStrategy):
             msg = "No weights can make f > {:.2e} found in this search".format(min_f)
         else:
             msg = ""
-        self.weights = min_weights
-        # return min_weights, msg
+        # self.weights = min_weights
+        return min_weights, msg
 
     def re_weight_suspension(self, suspensions=None):
         """
@@ -497,8 +518,11 @@ class AlphaStrategy(BaseStrategy):
         # prices = univ_price_dic
         # TODO why this two do not equal? (suspended stocks still have prices)
         nan_sec = [k for k, v in prices.viewitems() if np.isnan(v)]
-        print "set of suspension - set of symbol with NaN price = {}".format(set.difference(set(suspensions), set(nan_sec)))
-        print "set of symbol with NaN price - set of suspension = {}".format(set.difference(set(nan_sec), set(suspensions)))
+        # print "set of suspension - set of symbol with NaN price = {}".format(set.difference(set(suspensions), set(nan_sec)))
+        set_diff = set.difference(set(nan_sec), set(suspensions))
+        if not set_diff:
+            print Warning("there are NaN values but not suspended.")
+        # print "set of symbol with NaN price - set of suspension = {}".format(set_diff)
         
         market_value = self.pm.market_value(self.trade_date, prices, suspensions)  # TODO need close price
         cash_available = self.cash + market_value

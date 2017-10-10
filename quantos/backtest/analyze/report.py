@@ -14,7 +14,9 @@ class Report(object):
         self.out_folder = out_folder
         self.html = ""
         
-        self.env = Environment(loader=FileSystemLoader(['', '/', '.', '..']))
+        template_dir = os.path.dirname(os.path.abspath(self.fp_temp))
+        
+        self.env = Environment(loader=FileSystemLoader([template_dir, '/']))
         self.update_env()
         self.template = self.env.get_template(self.fp_temp)
     

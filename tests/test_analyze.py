@@ -8,7 +8,10 @@ import os
 def test_backtest_analyze():
     ta = ana.AlphaAnalyzer()
     data_server = JzDataServer()
-    
+
+    out_folder = os.path.join(SOURCE_ROOT_DIR, "../output")
+    static_folder = os.path.join(SOURCE_ROOT_DIR, "backtest/analyze/static")
+
     ta.initialize(data_server, '../output/')
     
     print "process trades..."
@@ -18,19 +21,17 @@ def test_backtest_analyze():
     print "calc strategy return..."
     ta.get_returns()
     print "get position change..."
-    ta.get_pos_change_info()
+    # ta.get_pos_change_info()
     
-    out_foler = "../output"
-
     print "plot..."
-    selected_sec = list(ta.universe)[::3]
+    selected_sec = []  # list(ta.universe)[::3]
     for sec, df in ta.daily.items():
         if sec in selected_sec:
-            ana.plot_trades(df, sec, out_foler)
-    ta.plot_pnl(out_foler)
+            ana.plot_trades(df, sec, out_folder)
+    ta.plot_pnl(out_folder)
     print "generate report..."
     
-    ta.gen_report(out_foler)
+    ta.gen_report(static_folder=static_folder, out_folder=out_folder, selected=selected_sec)
 
 
 if __name__ == "__main__":

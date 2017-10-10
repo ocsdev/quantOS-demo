@@ -93,10 +93,12 @@ class AlphaBacktestInstance(BacktestInstance):
             # TODO here we must make sure the matching will not last to next period
             self.current_date = self.calendar.get_next_trade_date(self.current_date)
         
-        while (self.current_date < self.end_date and
-                   not self._is_trade_date(self.start_date, self.end_date, self.current_date,
+        while (self.current_date < self.end_date
+               and not self._is_trade_date(self.start_date, self.end_date, self.current_date,
                                            self.context.data_api)):
             self.current_date = self.calendar.get_next_trade_date(self.current_date)
+            self.last_date = self.calendar.get_last_trade_date(self.current_date)
+            self.context.trade_date = self.current_date
     
     def run_alpha(self):
         gateway = self.context.gateway
@@ -155,20 +157,24 @@ class AlphaBacktestInstance(BacktestInstance):
         
         quantos.util.fileio.save_json(self.props, folder + 'configs.json')
 
+        print ("Backtest results has been successfully saved to:\n" + folder)
 
-class AlphaBacktestInstance2(AlphaBacktestInstance):
+
+class AlphaBacktestInstance_dv(AlphaBacktestInstance):
     def run_alpha(self):
         gateway = self.context.gateway
         
         self.current_date = self.start_date
         while True:
             self.go_next_trade_date()
+            
+            df_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
+            
             if self.current_date > self.end_date:
                 break
             
             if gateway.match_finished:
                 self.on_new_day(self.last_date)
-                df_dic = self.get_univ_prices(field_name='close')  # access data
                 self.strategy.re_balance_plan(df_dic, self.get_suspensions())
                 
                 self.on_new_day(self.current_date)
@@ -176,7 +182,6 @@ class AlphaBacktestInstance2(AlphaBacktestInstance):
             else:
                 self.on_new_day(self.current_date)
             
-            df_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
             trade_indications = gateway.match(df_dic, self.current_date)
             for trade_ind in trade_indications:
                 gateway.on_trade_ind(trade_ind)

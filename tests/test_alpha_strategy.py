@@ -23,9 +23,10 @@ import os
 import numpy as np
 from quantos.data.dataserver import JzDataServer
 from quantos.example.demoalphastrategy import DemoAlphaStrategy
+from quantos import SOURCE_ROOT_DIR
 
 import quantos.util.fileio
-from quantos.backtest.backtest import AlphaBacktestInstance, AlphaBacktestInstance2
+from quantos.backtest.backtest import AlphaBacktestInstance, AlphaBacktestInstance_dv
 from quantos.backtest.gateway import DailyStockSimGateway
 from quantos.backtest import model
 from quantos.data.dataview import BaseDataView
@@ -58,9 +59,15 @@ def pb_factor(symbol, context=None, user_options=None):
     return res
 
 
-def pb_factor(symbol, context=None, user_options=None):
+def pb_factor_dataview(context=None, user_options=None):
     dv = context.dataview
-    return dv.get_snapshot(fields="fpb")
+    return dv.get_snapshot(context.trade_date, fields="open")
+
+
+def gtja_factor_dataview(context=None, user_options=None):
+    dv = context.dataview
+    return dv.get_snapshot(context.trade_date, fields="high")
+
 
 def my_commission(symbol, turnover, context=None, user_options=None):
     return turnover * user_options['myrate']
@@ -109,9 +116,9 @@ def test_alpha_strategy():
     signal_model.register_context(context)
     cost_model.register_context(context)
     
-    signal_model.register_func(pb_factor, 'pb_factor')
+    signal_model.register_func('pb_factor', pb_factor)
     signal_model.activate_func({'pb_factor': {'coef': 3.27}})
-    cost_model.register_func(my_commission, 'my_commission')
+    cost_model.register_func('my_commission', my_commission)
     cost_model.activate_func({'my_commission': {'myrate': 1e-2}})
     
     strategy = DemoAlphaStrategy(risk_model, signal_model, cost_model)
@@ -144,23 +151,25 @@ def save_dataview():
 
 def test_alpha_strategy_dataview():
     dv = BaseDataView()
-    folder_path = '../output/prepared/20141114_20161114_freq=1D'
-    dv.load_dataview(folder=folder_path)
+
+    import os
+    fullpath = os.path.abspath(os.path.join(SOURCE_ROOT_DIR, '../output/prepared/20141114_20170327_freq=1D'))
+    dv.load_dataview(folder=fullpath)
     
     props = {
         "benchmark": "000300.SH",
         # "symbol": ','.join(dv.symbol),
         "universe": ','.join(dv.symbol),
     
-        "start_date": 20150505,
+        "start_date": dv.start_date,
         "end_date": dv.end_date,
     
         "instanceid": "alpha001",
         
-        "period": "month",
-        "days_delay": 1,
+        "period": "week",
+        "days_delay": 0,
     
-        "init_balance": 1e7,
+        "init_balance": 1e9,
         "position_ratio": 0.7,
         }
 
@@ -173,25 +182,25 @@ def test_alpha_strategy_dataview():
     context.register_dataview(dv)
     
     risk_model = model.FactorRiskModel()
-    signal_model = model.FactorRevenueModel()
+    signal_model = model.FactorRevenueModel_dv()
     cost_model = model.SimpleCostModel()
     
     risk_model.register_context(context)
     signal_model.register_context(context)
     cost_model.register_context(context)
     
-    # signal_model.register_func(pb_factor, 'pb_factor')
-    signal_model.register_func('pb_factor')
-    signal_model.activate_func({'pb_factor': {'coef': 3.27}})
-    cost_model.register_func(my_commission, 'my_commission')
+    signal_model.register_func('gtja', gtja_factor_dataview)
+    signal_model.activate_func({'gtja': {}})
+    cost_model.register_func('my_commission', my_commission)
     cost_model.activate_func({'my_commission': {'myrate': 1e-2}})
     
     strategy = DemoAlphaStrategy(risk_model, signal_model, cost_model)
     # strategy.register_context(context)
     # strategy.active_pc_method = 'equal_weight'
-    strategy.active_pc_method = 'mc'
+    # strategy.active_pc_method = 'mc'
+    strategy.active_pc_method = 'factor'
     
-    backtest = AlphaBacktestInstance2()
+    backtest = AlphaBacktestInstance_dv()
     backtest.init_from_config(props, strategy, context=context)
     
     backtest.run_alpha()
