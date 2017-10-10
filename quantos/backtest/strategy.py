@@ -8,40 +8,7 @@ from backtest import common
 from event import EventEngine
 from pubsub import Subscriber
 from quantos.backtest.event import eventType
-
-
-class Strategy(object):
-    # ----------------------------------------------------------------------
-    def __init__(self):
-        self.context = None
-        self.pm = PortfolioManager()
-        self.pm.strategy = self
-        self.instanceid = ""
-        self.trade_date = 0
-        self.runmode = common.RUN_MODE.REALTIME
-        
-        self.initbalance = 0.0
-    
-    @abstractmethod
-    def init_from_config(self, props):
-        pass
-    
-    @abstractmethod
-    def initialize(self, runmode):
-        pass
-    
-    def initUniverse(self, universe):
-        self.context.add_universe(universe)
-    
-    def getUniverse(self):
-        return self.context.universe
-    
-    # -------------------------------------------
-    def sendOrder(self, order, algo, param):
-        self.context.gateway.send_order(order, algo, param)
-    
-    def cancelOrder(self, order):
-        self.context.gateway.cancelOrder(order)
+from quantos.backtest.alphastrategy import Strategy
 
 
 class EventDrivenStrategy(Strategy, Subscriber):
@@ -49,29 +16,32 @@ class EventDrivenStrategy(Strategy, Subscriber):
         
         Strategy.__init__(self)
         
+        self.pm = PortfolioManager()
+        self.pm.strategy = self
+        
         self.eventEngine = EventEngine()
-        self.eventEngine.register(eventType.EVENT_TIMER, self.onCycle)
-        self.eventEngine.register(eventType.EVENT_MD_QUOTE, self.onQuote)
+        self.eventEngine.register(eventType.EVENT_TIMER, self.on_cycle)
+        self.eventEngine.register(eventType.EVENT_MD_QUOTE, self.on_quote)
         self.eventEngine.register(eventType.EVENT_TRADE_IND, self.pm.on_trade_ind)
         self.eventEngine.register(eventType.EVENT_ORDERSTATUS_IND, self.pm.on_order_status)
     
     @abstractmethod
-    def onNewDay(self, trade_date):
+    def on_new_day(self, trade_date):
         pass
     
     @abstractmethod
-    def onQuote(self, quote):
+    def on_quote(self, quote):
         pass
     
     @abstractmethod
-    def onCycle(self):
+    def on_cycle(self):
         pass
     
     def initialize(self, runmode):
         if runmode == common.RUN_MODE.REALTIME:
-            self.subscribeEvents()
+            self.subscribe_events()
     
-    def subscribeEvents(self):
+    def subscribe_events(self):
         universe = self.context.universe
         data_server = self.context.dataserver
         for i in xrange(len(universe)):
@@ -86,5 +56,5 @@ class EventDrivenStrategy(Strategy, Subscriber):
     def stop(self):
         self.eventEngine.stop()
     
-    def registerEvent(self, event):
+    def register_event(self, event):
         self.eventEngine.put(event)

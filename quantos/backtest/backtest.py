@@ -1,7 +1,8 @@
 # encoding: utf-8
 
 import quantos.util.fileio
-from event.eventType import EVENT
+from quantos.backtest.event.eventType import EVENT
+from quantos.data.basic.marketdata import Bar
 from quantos.backtest import common
 from quantos.backtest.analyze.pnlreport import PnlManager
 from quantos.backtest.calendar import Calendar
@@ -14,7 +15,6 @@ class BacktestInstance(Subscriber):
     def __init__(self):
         Subscriber.__init__(self)
         
-        self.instanceid = ''
         self.strategy = None
         self.start_date = 0
         self.end_date = 0
@@ -26,7 +26,7 @@ class BacktestInstance(Subscriber):
         
         self.props = None
         
-        self.context = None
+        self.ctx = None
     
     def init_from_config(self, props, strategy, data_api=None, dataview=None, gateway=None, context=None):
         """
@@ -45,16 +45,15 @@ class BacktestInstance(Subscriber):
 
         """
         self.props = props
-        self.instanceid = props.get("instanceid")
         
         self.start_date = props.get("start_date")
         self.end_date = props.get("end_date")
         
-        self.context = context
+        self.ctx = context
         # TODO
-        self.context.add_universe(props['universe'])
+        self.ctx.add_universe(props['universe'])
         
-        strategy.context = self.context
+        strategy.context = self.ctx
         # strategy.context.data_api = data_api
         # strategy.context.gateway = gateway
         # strategy.context.calendar = self.calendar
@@ -68,11 +67,6 @@ class BacktestInstance(Subscriber):
 
 
 class AlphaBacktestInstance(BacktestInstance):
-    """
-    Attributes
-    ----------
-    
-    """
     def __init__(self):
         BacktestInstance.__init__(self)
         
@@ -85,7 +79,7 @@ class AlphaBacktestInstance(BacktestInstance):
         return date in self.trade_days
     
     def go_next_trade_date(self):
-        if self.context.gateway.match_finished:
+        if self.ctx.gateway.match_finished:
             self.current_date = self.calendar.get_next_period_day(self.current_date,
                                                                   self.strategy.period, self.strategy.days_delay)
             self.last_date = self.calendar.get_last_trade_date(self.current_date)
@@ -95,13 +89,13 @@ class AlphaBacktestInstance(BacktestInstance):
         
         while (self.current_date < self.end_date
                and not self._is_trade_date(self.start_date, self.end_date, self.current_date,
-                                           self.context.data_api)):
+                                           self.ctx.data_api)):
             self.current_date = self.calendar.get_next_trade_date(self.current_date)
             self.last_date = self.calendar.get_last_trade_date(self.current_date)
-            self.context.trade_date = self.current_date
+            self.ctx.trade_date = self.current_date
     
     def run_alpha(self):
-        gateway = self.context.gateway
+        gateway = self.ctx.gateway
         
         self.current_date = self.start_date
         while True:
@@ -122,14 +116,14 @@ class AlphaBacktestInstance(BacktestInstance):
             df_dic = self.strategy.get_univ_prices()  # access data
             trade_indications = gateway.match(df_dic, self.current_date)
             for trade_ind in trade_indications:
-                gateway.on_trade_ind(trade_ind)
+                self.strategy.on_trade_ind(trade_ind)
         
         print "Backtest done. {:d} days, {:.2e} trades in total.".format(len(self.trade_days),
                                                                          len(self.strategy.pm.trades))
     
     def on_new_day(self, date):
         self.strategy.on_new_day(date)
-        self.context.gateway.on_new_day(date)
+        self.ctx.gateway.on_new_day(date)
     
     def save_results(self, folder='../output/'):
         import pandas as pd
@@ -162,7 +156,7 @@ class AlphaBacktestInstance(BacktestInstance):
 
 class AlphaBacktestInstance_dv(AlphaBacktestInstance):
     def run_alpha(self):
-        gateway = self.context.gateway
+        gateway = self.ctx.gateway
         
         self.current_date = self.start_date
         while True:
@@ -184,117 +178,79 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
             
             trade_indications = gateway.match(df_dic, self.current_date)
             for trade_ind in trade_indications:
-                gateway.on_trade_ind(trade_ind)
+                self.strategy.on_trade_ind(trade_ind)
         
-        print "Backtest done. {:d} days, {:.2e} trades in total.".format(len(self.context.dataview.dates),
+        print "Backtest done. {:d} days, {:.2e} trades in total.".format(len(self.ctx.dataview.dates),
                                                                          len(self.strategy.pm.trades))
         
     def get_univ_prices(self, field_name='close'):
-        dv = self.context.dataview
+        dv = self.ctx.dataview
         df = dv.get_snapshot(self.current_date, fields=field_name)
         gp = df.groupby(by='symbol')
         return {sec: df for sec, df in gp}
     
     def _is_trade_date(self, start, end, date, data_server):
-        return date in self.context.dataview.dates
+        return date in self.ctx.dataview.dates
     
     def get_suspensions(self):
-        trade_status = self.context.dataview.get_snapshot(self.current_date, fields='trade_status')
+        trade_status = self.ctx.dataview.get_snapshot(self.current_date, fields='trade_status')
         trade_status = trade_status.loc[:, 'trade_status']
         mask_sus = trade_status != u'交易'.encode('utf-8')
         return list(trade_status.loc[mask_sus].index.values)
     
-
-
 
 class EventBacktestInstance(BacktestInstance):
     def __init__(self):
         super(EventBacktestInstance, self).__init__()
         
         self.pnlmgr = None
+        self.bar_type = 1
 
     def init_from_config(self, props, strategy, data_api=None, dataview=None, gateway=None, context=None):
         self.props = props
-        self.instanceid = props.get("instanceid")
-
-        self.start_date = props.get("start_date")
-        self.end_date = props.get("end_date")
 
         data_api.init_from_config(props)
         data_api.initialize()
 
-        gateway.init_from_config(props)
+        gateway.register_callback('portfolio manager', strategy.pm)
 
-        self.context = context
-        strategy.context = self.context
-        # strategy.context.dataserver = data_api
-        # strategy.context.gateway = gateway
-        # strategy.context.calendar = self.calendar
+        self.start_date = self.props.get("start_date")
+        self.end_date = self.props.get("end_date")
+        self.bar_type = props.get("bar_type")
 
-        gateway.register_callback(strategy.pm)
+        self.ctx = context
+        self.strategy = strategy
+        self.ctx.universe = props.get("symbol")
 
+        strategy.context = self.ctx
         strategy.init_from_config(props)
         strategy.initialize(common.RUN_MODE.BACKTEST)
-
-        self.strategy = strategy
 
         self.pnlmgr = PnlManager()
         self.pnlmgr.setStrategy(strategy)
         self.pnlmgr.initFromConfig(props, data_api)
-
-        return True
     
-    def run(self):
+    def go_next_trade_date(self):
+        next_dt = self.calendar.get_next_trade_date(self.current_date)
         
-        data_server = self.context.dataserver
-        universe = self.context.universe
-        
-        data_server.add_batch_subscribe(self, universe)
-        
-        last_trade_date = 0
-        while (True):
-            quote = data_server.getNextQuote()
-            
-            if quote is None:
-                break
-            
-            trade_date = quote.getDate()
-            
-            # switch to a new day
-            if (trade_date != last_trade_date):
-                
-                if (last_trade_date > 0):
-                    self.close_day(last_trade_date)
-                
-                self.strategy.trade_date = trade_date
-                self.strategy.pm.on_new_day(trade_date, last_trade_date)
-                self.strategy.onNewday(trade_date)
-                last_trade_date = trade_date
-            
-            self.process_quote(quote)
+        self.last_date = self.current_date
+        self.current_date = next_dt
     
-    def get_next_trade_date(self, current):
-        next_dt = self.calendar.get_next_trade_date(current)
-        return next_dt
-    
-    def run2(self):
-        data_api = self.context.data_api
-        universe = self.context.universe
+    def run_event(self):
+        data_api = self.ctx.data_api
+        universe = self.ctx.universe
         
         data_api.add_batch_subscribe(self, universe)
         
         self.current_date = self.start_date
         
-        # ------------
         def __extract(func):
             return lambda event: func(event.data, **event.kwargs)
         
         ee = self.strategy.eventEngine  # TODO event-driven way of lopping, is it proper?
-        ee.register(EVENT.CALENDAR_NEW_TRADE_DATE, __extract(self.strategy.onNewday))
+        ee.register(EVENT.CALENDAR_NEW_TRADE_DATE, __extract(self.strategy.on_new_day))
         ee.register(EVENT.MD_QUOTE, __extract(self.process_quote))
         ee.register(EVENT.MARKET_CLOSE, __extract(self.close_day))
-        
-        # ------------
         
         while self.current_date <= self.end_date:  # each loop is a new trading day
             quotes = data_api.get_daily_quotes(self.current_date)
@@ -329,26 +285,49 @@ class EventBacktestInstance(BacktestInstance):
                 # no quotes because of holiday or other issues. We don't update last_date
                 print "in backtest.py: function run(): {} quotes is None, continue.".format(self.last_date)
             
-            self.current_date = self.get_next_trade_date(self.current_date)
+            self.current_date = self.go_next_trade_date(self.current_date)
             
             # self.strategy.onTradingEnd()
-    
-    def process_quote(self, quote):
-        result = self.context.gateway.process_quote(quote)
-        
-        for (tradeInd, statusInd) in result:
-            self.strategy.pm.on_trade_ind(tradeInd)
-            self.strategy.pm.on_order_status(statusInd)
-        
-        self.strategy.onQuote(quote)
 
-    # close one trade day, cancel all orders
-    def close_day(self, trade_date):
-        print 'close trade_date ' + str(trade_date)
-        result = self.context.gateway.close_day(trade_date)
-        
-        for statusInd in result:
-            self.strategy.pm.on_order_status(statusInd)
+    def on_new_day(self):
+        self.ctx.gateway.on_new_day(self.current_date)
+        self.strategy.on_new_day(self.current_date)
+        print 'on_new_day in backtest {}'.format(self.current_date)
+
+    def run(self):
+        self.current_date = self.start_date
     
+        while self.current_date <= self.end_date:  # each loop is a new trading day
+            self.go_next_trade_date()
+            self.on_new_day()
+            
+            df_quotes, msg = self.ctx.data_api.bar(symbol=self.ctx.universe, start_time=200000, end_time=160000,
+                                                   trade_date=self.current_date, freq=self.bar_type)
+            if df_quotes is None:
+                print msg
+                continue
+                
+            df_quotes = df_quotes.sort_values(by='time')
+            quotes_list = Bar.create_from_df(df_quotes)
+            
+            # for idx in df_quotes.index:
+            #     df_row = df_quotes.loc[[idx], :]
+            for quote in quotes_list:
+                self.process_quote(quote)
+        
+        print "Backtest done."
+        
+    def process_quote(self, quote):
+        # match
+        trade_results = self.ctx.gateway.process_quote(quote)
+        
+        # trade indication
+        for tradeInd, statusInd in trade_results:
+            self.strategy.on_trade_ind(tradeInd)
+            self.strategy.on_order_status(statusInd)
+        
+        # on_quote
+        self.strategy.on_quote(quote)
+
     def generate_report(self):
         return self.pnlmgr.generateReport()

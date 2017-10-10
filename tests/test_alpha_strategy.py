@@ -93,8 +93,6 @@ def test_alpha_strategy():
     
         "start_date": 20120101,
         "end_date": 20170601,
-    
-        "instanceid": "alpha001"
         }
 
     """
@@ -164,9 +162,7 @@ def test_alpha_strategy_dataview():
         "start_date": dv.start_date,
         "end_date": dv.end_date,
     
-        "instanceid": "alpha001",
-        
-        "period": "week",
+        "period": "month",
         "days_delay": 0,
     
         "init_balance": 1e9,

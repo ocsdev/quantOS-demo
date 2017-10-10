@@ -1,6 +1,8 @@
 # encoding: utf-8
 
+import abc
 from abc import abstractmethod
+from six import with_metaclass
 from collections import defaultdict
 
 import numpy as np
@@ -11,9 +13,9 @@ from quantos.data.basic.position import GoalPosition
 from quantos.util.sequence import SequenceGenerator
 
 
-class BaseStrategy(object):
+class Strategy(with_metaclass(abc.ABCMeta)):
     """
-    Base strategy class.
+    Abstract base class for strategies.
 
     Attributes
     ----------
@@ -31,46 +33,43 @@ class BaseStrategy(object):
 
     """
     
-    # TODO we need a better way to deal with err_msg
     def __init__(self):
         self.context = None
         self.run_mode = common.RUN_MODE.BACKTEST
         
-        self.trade_date = 0
-        
         self.pm = PortfolioManager(self)
-        
+
+        self.task_id_map = defaultdict(list)
         self.seq_gen = SequenceGenerator()
-        
-        self.task_map = defaultdict(list)
+
+        self.trade_date = 0
+
+        self.init_balance = 0.0
     
+    @abc.abstractmethod
     def init_from_config(self, props):
-        # univ = props.get('universe', "")
-        # self.add_universe(univ)
         pass
     
     def initialize(self, run_mode):
         self.run_mode = run_mode
-        self.register_callback()
+        # self.register_callback()
         pass
     
+    """
     def register_callback(self):
         gw = self.context.gateway
         gw.register_callback('portfolio manager', self.pm)
         gw.register_callback('on_trade_ind', self.on_trade_ind)
         gw.register_callback('on_order_status', self.on_trade_ind)
-    """
     
-    def add_universe(self, univ):
-        self.context.add_universe(univ)
     """
-    
     def on_new_day(self, trade_date):
         last_date = self.trade_date
         self.trade_date = trade_date
         self.pm.on_new_day(self.trade_date, last_date)
     
     def _get_next_num(self, key):
+        """used to generate id for orders and trades."""
         return str(self.trade_date * 10000 + self.seq_gen.get_next(key))
     
     def place_order(self, symbol, action, price, size, algo="", algo_param=None):
@@ -106,7 +105,7 @@ class BaseStrategy(object):
         order.task_id = self._get_next_num('task_id')
         order.entrust_no = self._get_next_num('entrust_no')
         
-        self.task_map[order.task_id].append(order.entrust_no)
+        self.task_id_map[order.task_id].append(order.entrust_no)
         
         self.pm.add_order(order)
         
@@ -133,7 +132,7 @@ class BaseStrategy(object):
         err_msg : str
 
         """
-        entrust_no_list = self.task_map.get(task_id, None)
+        entrust_no_list = self.task_id_map.get(task_id, None)
         if entrust_no_list is None:
             return False, "No task id {}".format(task_id)
         
@@ -177,7 +176,7 @@ class BaseStrategy(object):
             err_msg = self.context.gateway.place_order(order)
             err_msgs.append(err_msg)
             
-            self.task_map[order.task_id].append(order.entrust_no)
+            self.task_id_map[order.task_id].append(order.entrust_no)
         
         return task_id, ','.join(err_msgs)
     
@@ -277,7 +276,6 @@ class BaseStrategy(object):
 
         """
         self.pm.on_trade_ind(ind)
-        print str(ind)
 
     def on_order_status(self, ind):
         """
@@ -293,7 +291,7 @@ class BaseStrategy(object):
         self.pm.on_order_status(ind)
 
 
-class AlphaStrategy(BaseStrategy):
+class AlphaStrategy(Strategy):
     """
     Alpha strategy class.
 
@@ -316,7 +314,7 @@ class AlphaStrategy(BaseStrategy):
     """
     # TODO register context
     def __init__(self, risk_model, revenue_model, cost_model):
-        BaseStrategy.__init__(self)
+        Strategy.__init__(self)
         
         self.period = ""
         self.days_delay = 0
@@ -337,7 +335,7 @@ class AlphaStrategy(BaseStrategy):
         self.active_pc_method = ""
 
     def init_from_config(self, props):
-        BaseStrategy.init_from_config(self, props)
+        Strategy.init_from_config(self, props)
         
         self.cash = props['init_balance']
         self.period = props['period']
@@ -349,6 +347,20 @@ class AlphaStrategy(BaseStrategy):
                                                                  'constraints': None, 'initial_value': None})
         self.register_pc_method('factor', self.factor_value_weight)
 
+    def on_trade_ind(self, ind):
+        """
+
+        Parameters
+        ----------
+        ind : TradeInd
+
+        Returns
+        -------
+
+        """
+        self.pm.on_trade_ind(ind)
+        print str(ind)
+        
     def register_pc_method(self, name, func, options=None):
         if options is None:
             options = {}

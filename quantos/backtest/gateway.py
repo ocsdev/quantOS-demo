@@ -1,72 +1,13 @@
 # encoding: UTF-8
 
 from abc import abstractmethod
+import abc
+from six import with_metaclass
 
 from quantos.data.basic.order import *
 from quantos.data.basic.position import Position
 from quantos.data.basic.trade import Trade
 from quantos.util.sequence import SequenceGenerator
-
-
-class OrderDeprecated(object):
-    def __init__(self):
-        self.order_type = common.ORDER_TYPE.LIMIT
-        self.entrust_no = ''
-        self.symbol = ''
-        self.entrust_action = ''
-        self.entrust_price = 0.0
-        self.entrust_size = 0
-        self.entrust_date = 0
-        self.entrust_time = ''
-        self.order_status = ''
-        self.fill_size = 0
-        self.fill_price = 0.0
-        self.cancel_size = 0
-        self.errmsg = ''
-    
-    def isFinished(self):
-        if self.order_status == common.ORDER_STATUS.FILLED or self.order_status == common.ORDER_STATUS.CANCELLED or self.order_status == common.ORDER_STATUS.REJECTED:
-            return True
-        else:
-            return False
-    
-    def initFromQuote(self, quote):
-        self.entrust_date = quote.getDate()
-        self.entrust_time = quote.time
-    
-    def copy(self, order):
-        self.order_type = order.order_type
-        self.entrust_no = order.entrust_no
-        self.symbol = order.symbol
-        self.entrust_action = order.entrust_action
-        self.entrust_price = order.entrust_price
-        self.entrust_size = order.entrust_size
-        self.entrust_date = order.entrust_date
-        self.entrust_time = order.entrust_time
-        self.order_status = order.order_status
-        self.fill_size = order.fill_size
-        self.fill_price = order.fill_price
-        self.cancel_size = order.cancel_size
-        self.errmsg = order.errmsg
-
-
-class TradeIndDeprecated(object):
-    def __init__(self):
-        self.entrust_no = ''
-        self.symbol = ''
-        self.entrust_action = ''
-        
-        self.fill_price = 0.0
-        self.fill_size = 0.0
-        self.fill_no = ''
-        self.fill_date = 0
-        self.fill_time = ''
-        
-        self.entrust_price = 0.0
-        self.entrust_size = 0
-        
-        self.refquote = None
-        self.refcode = ''
 
 
 class OrderStatusInd(object):
@@ -103,7 +44,7 @@ class OrderStatusInd(object):
         self.fill_price = order.fill_price
 
 
-class TradeCallback(object):
+class TradeCallback(with_metaclass(abc.ABCMeta)):
     @abstractmethod
     def on_trade_ind(self, trade):
         pass
@@ -124,14 +65,6 @@ class TradeStat(object):
         self.buy_want_size = 0
         self.sell_filled_size = 0
         self.sell_want_size = 0
-
-
-class PositionDeprecated(object):
-    def __init__(self):
-        self.trade_date = 0
-        self.symbol = ''
-        self.init_size = 0
-        self.curr_size = 0
 
 
 class PortfolioManager(TradeCallback):
@@ -163,6 +96,10 @@ class PortfolioManager(TradeCallback):
     @staticmethod
     def _make_position_key(symbol, trade_date):
         return '@'.join((symbol, str(trade_date)))
+
+    @staticmethod
+    def _make_order_key(entrust_id, trade_date):
+        return '@'.join((str(entrust_id), str(trade_date)))
     
     def on_order_rsp(self, order, result, msg):
         if result:
@@ -211,12 +148,12 @@ class PortfolioManager(TradeCallback):
 
         """
         if order.entrust_no in self.orders:
-            print 'duplicate entrust_no ' + order.entrust_no
+            print 'duplicate entrust_no {}'.format(order.entrust_no)
             return False
         
         new_order = Order()
         new_order.copy(order)  # TODO why copy?
-        self.orders[order.entrust_no] = new_order
+        self.orders[self._make_order_key(order.entrust_no, self.strategy.trade_date)] = new_order
         
         position_key = self._make_position_key(order.symbol, self.strategy.trade_date)
         if position_key not in self.positions:
@@ -242,7 +179,7 @@ class PortfolioManager(TradeCallback):
         
         if ind.order_status == common.ORDER_STATUS.CANCELLED or ind.order_status == common.ORDER_STATUS.REJECTED:
             entrust_no = ind.entrust_no
-            order = self.orders.get(entrust_no, None)
+            order = self.orders.get(self._make_order_key(entrust_no, self.strategy.trade_date), None)
             if order is not None:
                 order.order_status = ind.order_status
                 
@@ -259,7 +196,7 @@ class PortfolioManager(TradeCallback):
     def on_trade_ind(self, ind):
         entrust_no = ind.entrust_no
         
-        order = self.orders.get(entrust_no, None)
+        order = self.orders.get(self._make_order_key(entrust_no, self.strategy.trade_date), None)
         if order is None:
             print 'cannot find order for entrust_no' + entrust_no
             return
@@ -338,30 +275,6 @@ class PortfolioManager(TradeCallback):
         return market_value
 
 
-class Gateway(object):
-    def __init__(self):
-        self.callback = None
-    
-    def register_callback(self, callback):
-        self.callback = callback
-    
-    @abstractmethod
-    def init_from_config(self, props):
-        pass
-    
-    @abstractmethod
-    def send_order(self, order, algo, param):
-        pass
-    
-    @abstractmethod
-    def process_quote(self, quote):
-        pass
-    
-    @abstractmethod
-    def close_day(self, trade_date):
-        pass
-
-
 class BaseGateway(object):
     """
     Strategy communicates with Gateway using APIs defined by ourselves;
@@ -385,11 +298,24 @@ class BaseGateway(object):
         pass
     
     def register_callback(self, type_, callback):
+        '''
+        
+        Parameters
+        ----------
+        type_
+        callback
+
+        Returns
+        -------
+
+        '''
+        '''
         if type_ == 'on_trade_ind':
             self.cb_on_trade_ind = callback
         elif type_ == 'on_order_status':
             self.cb_on_order_status = callback
-        elif type_ == 'portfolio manager':
+        '''
+        if type_ == 'portfolio manager':
             self.cb_pm = callback
         else:
             raise NotImplementedError("callback of type {}".format(type_))
@@ -456,9 +382,6 @@ class BaseGateway(object):
         """
         pass
     
-    def on_trade_ind(self, ind):
-        self.cb_on_trade_ind(ind)
-
 
 class DailyStockSimGateway(BaseGateway):
     def __init__(self):
@@ -646,60 +569,71 @@ class StockSimulatorDaily(object):
 class OrderBook(object):
     def __init__(self):
         self.orders = []
-        self.trade_id = long(0)
-        self.order_id = long(0)
+        self.trade_id = 0
+        self.order_id = 0
+        
+        self.seq_gen = SequenceGenerator()
     
-    def nextTradeId(self):
-        self.trade_id += 1
-        return str(self.trade_id)
+    def next_trade_id(self):
+        return self.seq_gen.get_next('trade_id')
     
-    def nextOrderId(self):
-        self.order_id += 1
-        return str(self.order_id)
+    def next_order_id(self):
+        return self.seq_gen.get_next('order_id')
     
-    def addOrder(self, order):
+    def add_order(self, order):
         neworder = Order()
         # to do
-        order.entrust_no = self.nextOrderId()
+        order.entrust_no = self.next_order_id()
         neworder.copy(order)
         self.orders.append(neworder)
     
-    def makeTrade(self, quote):
+    def make_trade(self, quote, freq='1m'):
         
-        if (quote.type == common.QUOTE_TYPE.TICK):
+        if freq == common.QUOTE_TYPE.TICK:
+            # TODO
             return self.makeTickTrade(quote)
         
-        if (quote.type == common.QUOTE_TYPE.MIN
-            or quote.type == common.QUOTE_TYPE.FiVEMIN
-            or quote.type == common.QUOTE_TYPE.QUARTERMIN
-            or quote.type == common.QUOTE_TYPE.SPECIALBAR):
-            return self.makeBarTrade(quote)
+        if (freq == common.QUOTE_TYPE.MIN
+            or freq == common.QUOTE_TYPE.FIVEMIN
+            or freq == common.QUOTE_TYPE.QUARTERMIN
+            or freq == common.QUOTE_TYPE.SPECIALBAR):
+            
+            return self.make_trade_bar(quote)
         
-        if (quote.type == common.QUOTE_TYPE.DAILY):
+        if freq == common.QUOTE_TYPE.DAILY:
+            # TODO
             return self.makeDaiylTrade(quote)
     
-    def makeBarTrade(self, quote):
+    def make_trade_bar(self, quote):
+        # low = quote.loc[:, 'low'].values[0]
+        # high = quote.loc[:, 'high'].values[0]
+        # quote_time = quote.loc[:, 'time'].values[0]
+        # quote_symbol = quote.loc[:, 'symbol'].values[0]
+        low = quote.low
+        high = quote.high
+        quote_time = quote.time
+        quote_symbol = quote.symbol
         
         result = []
         # to be optimized
         for i in xrange(len(self.orders)):
             order = self.orders[i]
-            if (quote.symbol != order.symbol):
+            if quote_symbol != order.symbol:
                 continue
-            if (order.is_finished):
+            if order.is_finished:
                 continue
             
-            if (order.order_type == common.ORDER_TYPE.LIMIT):
-                if (order.entrust_action == common.ORDER_ACTION.BUY and order.entrust_price >= quote.low):
+            if order.order_type == common.ORDER_TYPE.LIMIT:
+                if order.entrust_action == common.ORDER_ACTION.BUY and order.entrust_price >= low:
                     trade = Trade()
-                    trade.fill_no = self.nextTradeId()
+                    trade.fill_no = self.next_trade_id()
                     trade.entrust_no = order.entrust_no
                     trade.symbol = order.symbol
                     trade.entrust_action = order.entrust_action
                     trade.fill_size = order.entrust_size
                     trade.fill_price = order.entrust_price
                     trade.fill_date = order.entrust_date
-                    trade.fill_time = quote.time
+                    trade.fill_time = quote_time
                     
                     order.order_status = common.ORDER_STATUS.FILLED
                     order.fill_size = trade.fill_size
@@ -709,16 +643,16 @@ class OrderBook(object):
                     orderstatusInd.init_from_order(order)
                     result.append((trade, orderstatusInd))
                 
-                if (order.entrust_action == common.ORDER_ACTION.SELL and order.entrust_price <= quote.high):
+                if order.entrust_action == common.ORDER_ACTION.SELL and order.entrust_price <= high:
                     trade = Trade()
-                    trade.fill_no = self.nextTradeId()
+                    trade.fill_no = self.next_trade_id()
                     trade.entrust_no = order.entrust_no
                     trade.symbol = order.symbol
                     trade.entrust_action = order.entrust_action
                     trade.fill_size = order.entrust_size
                     trade.fill_price = order.entrust_price
                     trade.fill_date = order.entrust_date
-                    trade.fill_time = quote.time
+                    trade.fill_time = quote_time
                     
                     order.order_status = common.ORDER_STATUS.FILLED
                     order.fill_size = trade.fill_size
@@ -728,17 +662,17 @@ class OrderBook(object):
                     orderstatusInd.init_from_order(order)
                     result.append((trade, orderstatusInd))
             
-            if (order.order_type == common.ORDER_TYPE.STOP):
-                if (order.entrust_action == common.ORDER_ACTION.BUY and order.entrust_price <= quote.high):
+            if order.order_type == common.ORDER_TYPE.STOP:
+                if order.entrust_action == common.ORDER_ACTION.BUY and order.entrust_price <= high:
                     trade = Trade()
-                    trade.fill_no = self.nextTradeId()
+                    trade.fill_no = self.next_trade_id()
                     trade.entrust_no = order.entrust_no
                     trade.symbol = order.symbol
                     trade.entrust_action = order.entrust_action
                     trade.fill_size = order.entrust_size
                     trade.fill_price = order.entrust_price
                     trade.fill_date = order.entrust_date
-                    trade.fill_time = quote.time
+                    trade.fill_time = quote_time
                     
                     order.order_status = common.ORDER_STATUS.FILLED
                     order.fill_size = trade.fill_size
@@ -747,16 +681,16 @@ class OrderBook(object):
                     orderstatusInd.init_from_order(order)
                     result.append((trade, orderstatusInd))
                 
-                if (order.entrust_action == common.ORDER_ACTION.SELL and order.entrust_price >= quote.low):
+                if order.entrust_action == common.ORDER_ACTION.SELL and order.entrust_price >= low:
                     trade = Trade()
-                    trade.fill_no = self.nextTradeId()
+                    trade.fill_no = self.next_trade_id()
                     trade.entrust_no = order.entrust_no
                     trade.symbol = order.symbol
                     trade.entrust_action = order.entrust_action
                     trade.fill_size = order.entrust_size
                     trade.fill_price = order.entrust_price
                     trade.fill_date = order.entrust_date
-                    trade.fill_time = quote.time
+                    trade.fill_time = quote_time
                     
                     order.order_status = common.ORDER_STATUS.FILLED
                     order.fill_size = trade.fill_size
@@ -767,7 +701,7 @@ class OrderBook(object):
         
         return result
     
-    def cancelOrder(self, entrust_no):
+    def cancel_order(self, entrust_no):
         for i in xrange(len(self.orders)):
             order = self.orders[i]
             
@@ -784,14 +718,10 @@ class OrderBook(object):
             
             return orderstatus
     
-    def cancelAllOrder(self):
-        
+    def cancel_all(self):
         result = []
-        
-        for i in xrange(len(self.orders)):
-            order = self.orders[i]
-            
-            if (order.is_finished):
+        for order in self.orders:
+            if order.is_finished:
                 continue
             order.cancel_size = order.entrust_size - order.fill_size
             order.order_status = common.ORDER_STATUS.CANCELLED
@@ -804,23 +734,21 @@ class OrderBook(object):
         return result
 
 
-##########################################################################
-
-class BarSimulatorGateway(Gateway):
-    # ----------------------------------------------------------------------
+class BarSimulatorGateway(BaseGateway):
     def __init__(self):
-        Gateway.__init__(self)
+        super(BarSimulatorGateway, self).__init__()
         self.orderbook = OrderBook()
     
     def init_from_config(self, props):
         pass
     
+    def on_new_day(self, trade_date):
+        self.orderbook = OrderBook()
+    
     def send_order(self, order, algo, param):
-        self.orderbook.addOrder(order)
-        self.callback.on_order_rsp(order, True, '')
+        self.orderbook.add_order(order)
+        self.cb_pm.on_order_rsp(order, True, '')
     
-    def process_quote(self, quote):
-        return self.orderbook.makeTrade(quote)
-    
-    def close_day(self, trade_date):
-        return self.orderbook.cancelAllOrder()
+    def process_quote(self, df_quote, freq='1m'):
+        results = self.orderbook.make_trade(df_quote, freq)
+        return results

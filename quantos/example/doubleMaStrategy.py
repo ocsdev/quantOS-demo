@@ -22,16 +22,17 @@ class DoubleMaStrategy(EventDrivenStrategy):
     
     def init_from_config(self, props):
         self.symbol = props.get('symbol')
-        self.initbalance = props.get('init_balance')
+        self.init_balance = props.get('init_balance')
     
     def initialize(self, runmode):
-        self.initUniverse(self.symbol)
+        # self.initUniverse(self.symbol)
+        pass
     
-    def onCycle(self):
+    def on_cycle(self):
         pass
     
     def createOrder(self, quote, price, size):
-        order = Order.new_order(quote.symbol, "", price, size, quote.getDate(), quote.time)
+        order = Order.new_order(quote.symbol, "", price, size, quote.date, quote.time)
         order.order_type = common.ORDER_TYPE.LIMIT
         return order
     
@@ -55,11 +56,11 @@ class DoubleMaStrategy(EventDrivenStrategy):
         order.entrust_action = common.ORDER_ACTION.SELL
         self.context.gateway.send_order(order, '', '')
     
-    def onNewday(self, trade_date):
+    def on_new_day(self, trade_date):
         print 'new day comes ' + str(trade_date)
     
-    def onQuote(self, quote):
-        quote_date = quote.getDate()
+    def on_quote(self, quote):
+        quote_date = quote.date
         p = self.pm.get_position(quote.symbol, quote_date)
         if p is None:
             self.pos = 0

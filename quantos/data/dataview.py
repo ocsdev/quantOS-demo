@@ -325,6 +325,7 @@ class BaseDataView(object):
         dic_balance = None
         dic_cf = None
         dic_income = None
+        dic_fin_ind = None
         
         if self.freq == 1:
             # TODO : use fields = {field: kwargs} to enable params

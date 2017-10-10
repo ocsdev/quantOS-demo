@@ -31,13 +31,13 @@ class ReprStrEnum(str, ReprEnum):
 
 
 @unique
-class QUOTE_TYPE(ReprIntEnum):
-    TICK = 0
-    MIN = 1
-    FIVEMIN = 5
-    QUARTERMIN = 15
-    DAILY = 1440
-    SPECIALBAR = -1
+class QUOTE_TYPE(ReprStrEnum):
+    TICK = '0'
+    MIN = '1m'
+    FIVEMIN = '5m'
+    QUARTERMIN = '15m'
+    DAILY = '1d'
+    SPECIALBAR = '-1'
 
 
 @unique
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     
     print "Running test..."
     
-    assert QUOTE_TYPE.TICK == 0
+    assert QUOTE_TYPE.TICK == '0'
     assert RUN_MODE.BACKTEST == 1
     assert ORDER_ACTION.BUY == 'buy'
     assert ORDER_TYPE.MARKET == 'market'

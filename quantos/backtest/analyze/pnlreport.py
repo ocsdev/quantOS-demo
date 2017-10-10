@@ -1,6 +1,8 @@
 import datetime as dt
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 from quantos.backtest.backtest import common
 from quantos.backtest.calendar import Calendar
@@ -101,8 +103,8 @@ class PnlManager(object):
         report.trades = self.tradeToDataframe(self.strategy.pm.trades)
         win_count = 0
         i = 0
-        pre_value = self.strategy.initbalance
-        cur_value = self.strategy.initbalance
+        pre_value = self.strategy.init_balance
+        cur_value = self.strategy.init_balance
         rtn = []
         
         for pnl in pnls:
@@ -248,7 +250,7 @@ class PnlManager(object):
             
             pre_close = pre_close_prices.get(code, 0.0)
             close = cur_close_prices.get(code, 0.0)
-            inst = self.instmgr.getInst(code)
+            inst = self.instmgr.get_intruments(code)
             mult = inst.multiplier
             hold_pnl = hold_size * mult * (close - pre_close)
             pnl += hold_pnl
@@ -318,14 +320,14 @@ class PnlManager(object):
         for code, trades in trade_map.items():
             position = 0
             close = close_prices.get(code, 0.0)
-            inst = self.instmgr.getInst(code)
+            inst = self.instmgr.get_intruments(code)
             tax_rate = 0.0
             commission_rate = 0.0
             
-            if inst.isStock():
+            if inst.is_stock():
                 tax_rate = self.stk_tax
                 commission_rate = self.stk_commission
-            elif inst.isFuture():
+            elif inst.is_future():
                 commission_rate = self.fut_commission
             for trade in trades:
                 tax = 0.0
