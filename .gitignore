@@ -8,7 +8,7 @@ research/alphalens/example
 data/prepared
 
 # Personal Configs
-etc/*.json
+# etc/*.json
 
 # IDE configs
 .idea/
