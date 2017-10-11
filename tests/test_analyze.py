@@ -1,16 +1,17 @@
 # encoding: utf-8
+
+from quantos.util import fileio
 import quantos.backtest.analyze.analyze as ana
 from quantos.data.dataserver import JzDataServer
 from quantos import SOURCE_ROOT_DIR
-import os
 
 
 def test_backtest_analyze():
     ta = ana.AlphaAnalyzer()
     data_server = JzDataServer()
 
-    out_folder = os.path.join(SOURCE_ROOT_DIR, "../output")
-    static_folder = os.path.join(SOURCE_ROOT_DIR, "backtest/analyze/static")
+    out_folder = fileio.join_relative_path("../output")
+    static_folder = fileio.join_relative_path("backtest/analyze/static")
 
     ta.initialize(data_server, '../output/')
     

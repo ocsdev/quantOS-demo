@@ -1,15 +1,14 @@
 # encoding: utf-8
 from quantos.backtest.analyze.report import Report
-from quantos import SOURCE_ROOT_DIR
-import os
+from quantos.util import fileio
 
 
 def test_output():
-    static_folder = os.path.join(SOURCE_ROOT_DIR, 'backtest/analyze/static')
+    static_folder = fileio.join_relative_path('backtest/analyze/static')
     
     r = Report({'mytitle': 'Test Title', 'mytable': 'Hello World!'},
-               os.path.join(static_folder, 'test_template.html'),
-               os.path.join(static_folder, 'blueprint.css'),
+               fileio.join_relative_path(static_folder, 'test_template.html'),
+               fileio.join_relative_path(static_folder, 'blueprint.css'),
                out_folder='../output')
     r.generate_html()
     r.output_html()

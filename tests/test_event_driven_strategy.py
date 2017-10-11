@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
 
 import json
-import os
 
-from quantos import SOURCE_ROOT_DIR
+
+from quantos.util import fileio
 from quantos.backtest import model
 from quantos.backtest import common
 from quantos.data.dataserver import JzDataServer
@@ -13,7 +13,7 @@ from quantos.backtest.gateway import BarSimulatorGateway
 
 
 def test_double_ma():
-    prop_file_path = os.path.join(SOURCE_ROOT_DIR, "etc/backtest.json")
+    prop_file_path = fileio.join_relative_path("etc/backtest.json")
     print prop_file_path
     prop_file = open(prop_file_path, 'r')
     

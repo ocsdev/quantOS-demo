@@ -3,6 +3,8 @@ import json
 import os
 import errno
 
+from quantos import SOURCE_ROOT_DIR
+
 
 def create_dir(filename):
     if not os.path.exists(os.path.dirname(filename)):
@@ -24,3 +26,7 @@ def save_json(serializable, file_name):
     
     with open(file_name, 'w') as f:
         json.dump(serializable, f)
+
+
+def join_relative_path(*paths):
+    return os.path.join(SOURCE_ROOT_DIR, *paths)

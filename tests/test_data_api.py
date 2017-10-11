@@ -1,11 +1,17 @@
 # encoding: UTF-8
 
+from quantos.util import fileio
 from quantos.data.dataapi import DataApi
 
 
 def test_data_api():
-    api = DataApi("tcp://10.1.0.210:8910", use_jrpc=False)
-    api.login('arbitrary_user', "123")
+    dic = fileio.read_json(fileio.join_relative_path('etc/data_config.json'))
+    address = dic.get("server.address", None)
+    username = dic.get("server.username", None)
+    password = dic.get("server.password", None)
+    
+    api = DataApi(address, use_jrpc=False)
+    api.login(username=username, password=password)
     
     daily, msg = api.daily(symbol="600030.SH,000002.SZ", start_date=20170103, end_date=20170708,
                            fields="open,high,low,close,volume,last,trade_date,settle")

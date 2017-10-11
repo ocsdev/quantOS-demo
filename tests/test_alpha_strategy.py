@@ -18,14 +18,13 @@ suspensions and limit reachers:
 3. subtract market value and re-normalize weights (positions) after (daily) market open, before sending orders
 """
 import time
-import os
 
 import numpy as np
 from quantos.data.dataserver import JzDataServer
 from quantos.example.demoalphastrategy import DemoAlphaStrategy
-from quantos import SOURCE_ROOT_DIR
+from quantos.util import fileio
 
-import quantos.util.fileio
+from quantos.util import fileio
 from quantos.backtest.backtest import AlphaBacktestInstance, AlphaBacktestInstance_dv
 from quantos.backtest.gateway import DailyStockSimGateway
 from quantos.backtest import model
@@ -33,7 +32,7 @@ from quantos.data.dataview import BaseDataView
 
 
 def read_props(fp):
-    props = quantos.util.fileio.read_json(fp)
+    props = fileio.read_json(fp)
     
     enum_props = {}
     for k, v in enum_props.iteritems():
@@ -77,8 +76,7 @@ def test_alpha_strategy():
     gateway = DailyStockSimGateway()
     jz_data_server = JzDataServer()
 
-    prop_file_path = os.path.join(os.path.dirname(__file__),
-                                  '../quantos/etc', 'alpha.json')
+    prop_file_path = fileio.join_relative_path('etc', 'alpha.json')
     props = read_props(prop_file_path)
     """
     props = {
@@ -150,8 +148,7 @@ def save_dataview():
 def test_alpha_strategy_dataview():
     dv = BaseDataView()
 
-    import os
-    fullpath = os.path.abspath(os.path.join(SOURCE_ROOT_DIR, '../output/prepared/20141114_20170327_freq=1D'))
+    fullpath = fileio.join_relative_path('../output/prepared/20141114_20170327_freq=1D')
     dv.load_dataview(folder=fullpath)
     
     props = {
