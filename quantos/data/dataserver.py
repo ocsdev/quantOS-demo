@@ -5,7 +5,8 @@ from abc import abstractmethod
 import numpy as np
 import pandas as pd
 
-from quantos.backtest import common
+from quantos.util import fileio
+from quantos import SOURCE_ROOT_DIR
 from quantos.backtest.pubsub import Publisher
 from quantos.data.dataapi import DataApi
 from quantos.data import align
@@ -234,15 +235,19 @@ class JzDataServer(BaseDataServer):
     
     def __init__(self):
         BaseDataServer.__init__(self)
+
+        dic = fileio.read_json(fileio.join_relative_path('etc/data_config.json'))
+        address = dic.get("server.address", None)
+        username = dic.get("server.username", None)
+        password = dic.get("server.password", None)
         
-        address = 'tcp://10.1.0.210:8910'
         self.api = DataApi(address, use_jrpc=False)
         self.api.set_timeout(60)
-        r, msg = self.api.login("test", "123")
+        r, msg = self.api.login(username=username, password=password)
         if not r:
             print msg
         else:
-            print "DataAPI login success."
+            print "DataAPI login success.{}".format(address)
         
         self.REPORT_DATE_FIELD_NAME = 'report_date'
 
