@@ -187,43 +187,43 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
                                          std_err=compstd_quant_daily)
 
     # start plotting
-    print "\n\nFactor Returns Tear Sheet (long short = {}): ".format(long_short)
-    
-    fr_cols = len(factor_returns.columns)
-    vertical_sections = 2 + fr_cols * 3
-    gf = GridFigure(rows=vertical_sections, cols=1)
-
     if output_format:
+        print "\n\nFactor Returns Tear Sheet (long short = {}): ".format(long_short)
+
+        fr_cols = len(factor_returns.columns)
+        vertical_sections = 2 + fr_cols * 3
+        gf = GridFigure(rows=vertical_sections, cols=1)
+
         plotting.plot_returns_table(alpha_beta,
                                     mean_compret_quantile,
                                     mean_ret_spread_quant)
 
-    ax_qrb = plotting.plot_quantile_returns_bar(mean_compret_quantile,
-                                                by_group=False,
-                                                ylim_percentiles=None,
-                                                ax=gf.next_row())
+        ax_qrb = plotting.plot_quantile_returns_bar(mean_compret_quantile,
+                                                    by_group=False,
+                                                    ylim_percentiles=None,
+                                                    ax=gf.next_row())
 
-    ax_qrv = plotting.plot_quantile_returns_violin(mean_compret_quant_daily,
-                                                   ylim_percentiles=(1, 99),
-                                                   ax=gf.next_row())
+        ax_qrv = plotting.plot_quantile_returns_violin(mean_compret_quant_daily,
+                                                       ylim_percentiles=(1, 99),
+                                                       ax=gf.next_row())
 
-    for p in factor_returns:
-        ax_cr = plotting.plot_cumulative_returns(factor_returns[p],
-                                                 period=p,
-                                                 ax=gf.next_row())
+        for p in factor_returns:
+            ax_cr = plotting.plot_cumulative_returns(factor_returns[p],
+                                                     period=p,
+                                                     ax=gf.next_row())
 
-        ax_qrbq = plotting.plot_cumulative_returns_by_quantile(mean_ret_quant_daily[p],
-                                                               period=p,
-                                                               ax=gf.next_row())
+            ax_qrbq = plotting.plot_cumulative_returns_by_quantile(mean_ret_quant_daily[p],
+                                                                   period=p,
+                                                                   ax=gf.next_row())
 
-    ax_mean_quantile_returns_spread_ts = [gf.next_row()
-                                          for x in range(fr_cols)]
-    ax_mqrsts = plotting.plot_mean_quantile_returns_spread_time_series(
-        mean_ret_spread_quant,
-        std_err=std_spread_quant,
-        bandwidth=0.5,
-        ax=ax_mean_quantile_returns_spread_ts
-    )
+        ax_mean_quantile_returns_spread_ts = [gf.next_row()
+                                              for x in range(fr_cols)]
+        ax_mqrsts = plotting.plot_mean_quantile_returns_spread_time_series(
+            mean_ret_spread_quant,
+            std_err=std_spread_quant,
+            bandwidth=0.5,
+            ax=ax_mean_quantile_returns_spread_ts
+        )
 
     if by_group:
         mean_return_quantile_group, mean_return_quantile_group_std_err = \
@@ -235,18 +235,19 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
         mean_compret_quantile_group = \
             mean_return_quantile_group.apply(utils.rate_of_return, axis=0)
 
-        num_groups = len(mean_compret_quantile_group.index
-                                                    .get_level_values('group')
-                                                    .unique())
-        vertical_sections = 1 + (((num_groups - 1) // 2) + 1)
-        gf = GridFigure(rows=vertical_sections, cols=2)
+        if output_format:
+            num_groups = len(mean_compret_quantile_group.index
+                                                        .get_level_values('group')
+                                                        .unique())
+            vertical_sections = 1 + (((num_groups - 1) // 2) + 1)
+            gf = GridFigure(rows=vertical_sections, cols=2)
 
-        ax_quantile_returns_bar_by_group = [gf.next_cell()
-                                            for _ in range(num_groups)]
-        plotting.plot_quantile_returns_bar(mean_compret_quantile_group,
-                                           by_group=True,
-                                           ylim_percentiles=(5, 95),
-                                           ax=ax_quantile_returns_bar_by_group)
+            ax_quantile_returns_bar_by_group = [gf.next_cell()
+                                                for _ in range(num_groups)]
+            plotting.plot_quantile_returns_bar(mean_compret_quantile_group,
+                                               by_group=True,
+                                               ylim_percentiles=(5, 95),
+                                               ax=ax_quantile_returns_bar_by_group)
         
     if output_format == 'plot':
         plt.show()
@@ -256,7 +257,7 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
         from os.path import join
         gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'returns_tear_sheet.pdf'))
     elif output_format == '':
-        plt.close(gf.fig)
+        pass
         
     if verbose:
         mean_ret_quant_daily_mod = mean_ret_quant_daily.unstack(level=0)
@@ -291,19 +292,19 @@ def create_information_tear_sheet(factor_data, group_adjust=False, by_group=Fals
 
     if output_format:
         plotting.plot_information_table(ic)
+        
+        columns_wide = 2
+        fr_cols = len(ic.columns)
+        rows_when_wide = (((fr_cols - 1) // columns_wide) + 1)
+        vertical_sections = fr_cols + 3 * rows_when_wide + 2 * fr_cols
+        gf = GridFigure(rows=vertical_sections, cols=columns_wide)
 
-    columns_wide = 2
-    fr_cols = len(ic.columns)
-    rows_when_wide = (((fr_cols - 1) // columns_wide) + 1)
-    vertical_sections = fr_cols + 3 * rows_when_wide + 2 * fr_cols
-    gf = GridFigure(rows=vertical_sections, cols=columns_wide)
+        ax_ic_ts = [gf.next_row() for _ in range(fr_cols)]
+        plotting.plot_ic_ts(ic, ax=ax_ic_ts)
 
-    ax_ic_ts = [gf.next_row() for _ in range(fr_cols)]
-    plotting.plot_ic_ts(ic, ax=ax_ic_ts)
-
-    ax_ic_hqq = [gf.next_cell() for _ in range(fr_cols * 2)]
-    plotting.plot_ic_hist(ic, ax=ax_ic_hqq[::2])
-    plotting.plot_ic_qq(ic, ax=ax_ic_hqq[1::2])
+        ax_ic_hqq = [gf.next_cell() for _ in range(fr_cols * 2)]
+        plotting.plot_ic_hist(ic, ax=ax_ic_hqq[::2])
+        plotting.plot_ic_qq(ic, ax=ax_ic_hqq[1::2])
 
     if not by_group:
 
@@ -311,15 +312,17 @@ def create_information_tear_sheet(factor_data, group_adjust=False, by_group=Fals
                                                             group_adjust,
                                                             by_group,
                                                             "M")
-        ax_monthly_ic_heatmap = [gf.next_cell() for x in range(fr_cols)]
-        plotting.plot_monthly_ic_heatmap(mean_monthly_ic,
-                                         ax=ax_monthly_ic_heatmap)
+        if output_format:
+            ax_monthly_ic_heatmap = [gf.next_cell() for x in range(fr_cols)]
+            plotting.plot_monthly_ic_heatmap(mean_monthly_ic,
+                                             ax=ax_monthly_ic_heatmap)
 
     if by_group:
         mean_group_ic = perf.mean_information_coefficient(factor_data,
                                                           by_group=True)
 
-        plotting.plot_ic_by_group(mean_group_ic, ax=gf.next_row())
+        if output_format:
+            plotting.plot_ic_by_group(mean_group_ic, ax=gf.next_row())
 
     if output_format == 'plot':
         plt.show()
@@ -329,7 +332,7 @@ def create_information_tear_sheet(factor_data, group_adjust=False, by_group=Fals
         from os.path import join
         gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'infomation_tear_sheet.pdf'))
     elif output_format == '':
-        plt.close(gf.fig)
+        pass
     
     if verbose:
         return {'daily_ic': ic}
@@ -365,21 +368,21 @@ def create_turnover_tear_sheet(factor_data, output_format='plot'):
     if output_format:
         plotting.plot_turnover_table(autocorrelation, quantile_turnover)
 
-    fr_cols = len(turnover_periods)
-    columns_wide = 1
-    rows_when_wide = (((fr_cols - 1) // 1) + 1)
-    vertical_sections = fr_cols + 3 * rows_when_wide + 2 * fr_cols
-    gf = GridFigure(rows=vertical_sections, cols=columns_wide)
+        fr_cols = len(turnover_periods)
+        columns_wide = 1
+        rows_when_wide = (((fr_cols - 1) // 1) + 1)
+        vertical_sections = fr_cols + 3 * rows_when_wide + 2 * fr_cols
+        gf = GridFigure(rows=vertical_sections, cols=columns_wide)
 
-    for period in sorted(quantile_turnover.keys()):
-        plotting.plot_top_bottom_quantile_turnover(quantile_turnover[period],
-                                                   period=period,
-                                                   ax=gf.next_row())
+        for period in sorted(quantile_turnover.keys()):
+            plotting.plot_top_bottom_quantile_turnover(quantile_turnover[period],
+                                                       period=period,
+                                                       ax=gf.next_row())
 
-    for period in autocorrelation:
-        plotting.plot_factor_rank_auto_correlation(autocorrelation[period],
-                                                   period=period,
-                                                   ax=gf.next_row())
+        for period in autocorrelation:
+            plotting.plot_factor_rank_auto_correlation(autocorrelation[period],
+                                                       period=period,
+                                                       ax=gf.next_row())
 
     if output_format == 'plot':
         plt.show()
@@ -389,7 +392,7 @@ def create_turnover_tear_sheet(factor_data, output_format='plot'):
         from os.path import join
         gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'turnover_tear_sheet.pdf'))
     elif output_format == '':
-        plt.close(gf.fig)
+        pass
 
 
 @plotting.customize
@@ -421,12 +424,13 @@ def create_full_tear_sheet(factor_data, long_short=True, group_adjust=False, by_
 
     if output_format:
         plotting.plot_quantile_statistics_table(factor_data)
+        
     res_return = create_returns_tear_sheet(factor_data, long_short, by_group,
-                              set_context=False,
-                              output_format=output_format, verbose=verbose)
+                                           set_context=False,
+                                           output_format=output_format, verbose=verbose)
     res_ic = create_information_tear_sheet(factor_data, group_adjust, by_group,
-                                  set_context=False,
-                                  output_format=output_format, verbose=verbose)
+                                           set_context=False,
+                                           output_format=output_format, verbose=verbose)
     create_turnover_tear_sheet(factor_data, set_context=False,
                                output_format=output_format)
     
