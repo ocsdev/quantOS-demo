@@ -9,7 +9,7 @@ import pandas as pd
 from matplotlib.ticker import Formatter
 
 from quantos.backtest.analyze.report import Report
-from quantos.data.dataserver import JzDataServer
+from quantos.data.dataservice import RemoteDataService
 
 
 # sys.path.append(os.path.abspath(".."))

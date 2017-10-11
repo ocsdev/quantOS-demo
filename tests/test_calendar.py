@@ -5,7 +5,7 @@ import datetime
 from quantos.backtest.calendar import Calendar
 
 
-def test_jzcalendar():
+def test_calendar():
     calendar = Calendar()
     date = 20170808
     # print calendar.get_last_trade_date(date)
@@ -19,4 +19,7 @@ def test_jzcalendar():
     while monthly < 20180301:
         monthly = calendar.get_next_period_day(monthly, 'month', 0)
         assert datetime.datetime.strptime(str(monthly), "%Y%m%d").weekday() < 5
-    
+
+
+if __name__ == "__main__":
+    test_calendar()

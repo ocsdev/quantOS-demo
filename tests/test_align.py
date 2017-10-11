@@ -1,6 +1,6 @@
 # encoding: utf-8
 import pandas as pd
-from quantos.data.dataserver import JzDataServer
+from quantos.data.dataservice import RemoteDataService
 
 from quantos.data.py_expression_eval import Parser
 
@@ -8,8 +8,8 @@ from quantos.data.py_expression_eval import Parser
 def test_align():
     # -------------------------------------------------------------------------------------
     # input and pre-process demo data
-    ds = JzDataServer()
-    raw, msg = ds.query_wd_fin_stat('income', '600000.SH', 20151225, 20170501, 'oper_rev')
+    ds = RemoteDataService()
+    raw, msg = ds.query_lb_fin_stat('income', '600000.SH', 20151225, 20170501, 'oper_rev')
     assert msg == '0,'
     
     idx_list = ['report_date', 'symbol']

@@ -3,16 +3,16 @@
 import numpy as np
 import pandas as pd
 
-from quantos.data.dataview import BaseDataView
-from quantos.data.dataserver import JzDataServer
+from quantos.data.dataview import DataView
+from quantos.data.dataservice import RemoteDataService
 from quantos.research import alphalens
 
 
 def save_dataview():
     # total 130 seconds
     
-    ds = JzDataServer()
-    dv = BaseDataView()
+    ds = RemoteDataService()
+    dv = DataView()
     
     props = {'start_date': 20140108, 'end_date': 20170108, 'universe': '000300.SH',
              'fields': ('open,high,low,close,vwap,volume,turnover,'
@@ -27,7 +27,7 @@ def save_dataview():
 
 
 def main():
-    dv = BaseDataView()
+    dv = DataView()
     
     import os
     fullpath = os.path.abspath('../../output/prepared/20140108_20170108_freq=1D')
@@ -69,9 +69,9 @@ def main():
 def _test_append_custom_data():
     # --------------------------------------------------------------------------------
     # get custom data
-    ds = JzDataServer()
+    ds = RemoteDataService()
     # lb.blablabla
-    df_raw, msg = ds.api.query("wd.secRestricted",
+    df_raw, msg = ds.api.query("lb.secRestricted",
                                   fields="symbol,list_date,lifted_shares,lifted_ratio",
                                   filter="start_date=20170325&end_date=20170525",
                                   orderby="",
@@ -88,7 +88,7 @@ def _test_append_custom_data():
     # --------------------------------------------------------------------------------
     # Format df_custom
 
-    dv = BaseDataView()
+    dv = DataView()
     dv.load_dataview('../output/prepared/20160609_20170601_freq=1D')
     
     df_value = df_value.loc[:, dv.symbol]

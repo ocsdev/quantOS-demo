@@ -2,18 +2,18 @@
 
 from quantos.util import fileio
 import quantos.backtest.analyze.analyze as ana
-from quantos.data.dataserver import JzDataServer
+from quantos.data.dataservice import RemoteDataService
 from quantos import SOURCE_ROOT_DIR
 
 
 def test_backtest_analyze():
     ta = ana.AlphaAnalyzer()
-    data_server = JzDataServer()
+    data_service = RemoteDataService()
 
     out_folder = fileio.join_relative_path("../output")
     static_folder = fileio.join_relative_path("backtest/analyze/static")
 
-    ta.initialize(data_server, '../output/')
+    ta.initialize(data_service, '../output/')
     
     print "process trades..."
     ta.process_trades()

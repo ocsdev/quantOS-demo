@@ -18,7 +18,7 @@ from quantos.data.align import align
 from quantos.data.py_expression_eval import Parser
 
 
-class BaseDataView(object):
+class DataView(object):
     """
     Prepare data before research / backtest. Support file I/O.
     Support: add field, add formula, save / load.
@@ -341,7 +341,7 @@ class BaseDataView(object):
 
             fields_ref_daily = self._get_fields('ref_daily', fields)
             if fields_ref_daily:
-                df_ref_daily, msg2 = self.data_api.query_wd_dailyindicator(symbol_str, self.start_date, self.end_date,
+                df_ref_daily, msg2 = self.data_api.query_lb_dailyindicator(symbol_str, self.start_date, self.end_date,
                                                                            sep.join(fields_ref_daily))
                 if msg2 != '0,':
                     print msg2
@@ -349,7 +349,7 @@ class BaseDataView(object):
 
             fields_income = self._get_fields('income', fields, append=True)
             if fields_income:
-                df_income, msg3 = self.data_api.query_wd_fin_stat('income', symbol_str, self.extended_start_date, self.end_date,
+                df_income, msg3 = self.data_api.query_lb_fin_stat('income', symbol_str, self.extended_start_date, self.end_date,
                                                                   sep.join(fields_income))
                 if msg3 != '0,':
                     print msg3
@@ -357,7 +357,7 @@ class BaseDataView(object):
 
             fields_balance = self._get_fields('balance_sheet', fields, append=True)
             if fields_balance:
-                df_balance, msg3 = self.data_api.query_wd_fin_stat('balance_sheet', symbol_str, self.extended_start_date, self.end_date,
+                df_balance, msg3 = self.data_api.query_lb_fin_stat('balance_sheet', symbol_str, self.extended_start_date, self.end_date,
                                                                    sep.join(fields_balance))
                 if msg3 != '0,':
                     print msg3
@@ -365,7 +365,7 @@ class BaseDataView(object):
 
             fields_cf = self._get_fields('cash_flow', fields, append=True)
             if fields_cf:
-                df_cf, msg3 = self.data_api.query_wd_fin_stat('cash_flow', symbol_str, self.extended_start_date, self.end_date,
+                df_cf, msg3 = self.data_api.query_lb_fin_stat('cash_flow', symbol_str, self.extended_start_date, self.end_date,
                                                               sep.join(fields_cf))
                 if msg3 != '0,':
                     print msg3
@@ -373,7 +373,7 @@ class BaseDataView(object):
 
             fields_fin_ind = self._get_fields('fin_indicator', fields, append=True)
             if fields_fin_ind:
-                df_fin_ind, msg4 = self.data_api.query_wd_fin_stat('fin_indicator', symbol_str,
+                df_fin_ind, msg4 = self.data_api.query_lb_fin_stat('fin_indicator', symbol_str,
                                                                    self.extended_start_date, self.end_date,
                                                                    sep.join(fields_cf))
                 if msg4 != '0,':

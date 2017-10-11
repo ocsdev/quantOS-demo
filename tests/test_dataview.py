@@ -2,7 +2,7 @@
 
 import sys
 sys.path.append('/home/bliu/work/myproj/quantos/trunk')
-from quantos.data.dataview import BaseDataView
+from quantos.data.dataview import DataView
 
 
 def test_xarray():
@@ -13,10 +13,10 @@ def test_xarray():
 
 
 def test_add_formula_directly():
-    from quantos.data.dataserver import JzDataServer
+    from quantos.data.dataservice import RemoteDataService
     
-    ds = JzDataServer()
-    dv = BaseDataView()
+    ds = RemoteDataService()
+    dv = DataView()
     
     secs = '600030.SH,000063.SZ,000001.SZ'
     props = {'start_date': 20160601, 'end_date': 20170601, 'symbol': secs,
@@ -28,10 +28,10 @@ def test_add_formula_directly():
     
 
 def test_write():
-    from quantos.data.dataserver import JzDataServer
+    from quantos.data.dataservice import RemoteDataService
     
-    ds = JzDataServer()
-    dv = BaseDataView()
+    ds = RemoteDataService()
+    dv = DataView()
     
     secs = '600030.SH,000063.SZ,000001.SZ'
     props = {'start_date': 20160601, 'end_date': 20170601, 'symbol': secs,
@@ -54,10 +54,10 @@ def test_write():
 
 
 def test_quarterly():
-    from quantos.data.dataserver import JzDataServer
+    from quantos.data.dataservice import RemoteDataService
     
-    ds = JzDataServer()
-    dv = BaseDataView()
+    ds = RemoteDataService()
+    dv = DataView()
     
     secs = '600030.SH,000063.SZ,000001.SZ'
     props = {'start_date': 20160609, 'end_date': 20170601, 'universe': '000300.SH', 'symbol': secs,
@@ -75,21 +75,21 @@ def test_quarterly():
     
     
 def test_get_quarterly():
-    dv = BaseDataView()
+    dv = DataView()
     folder_path = '../output/prepared/20160609_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
     res = dv.get("", 0, 0, 'total_oper_rev')
 
 
 def test_add_field_quarterly():
-    dv = BaseDataView()
+    dv = DataView()
     folder_path = '../output/prepared/20160609_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
     nrows, ncols = dv.data_q.shape
     n_securities = len(dv.data_d.columns.levels[0])
     
-    from quantos.data.dataserver import JzDataServer
-    ds = JzDataServer()
+    from quantos.data.dataservice import RemoteDataService
+    ds = RemoteDataService()
     dv.add_field('net_inc_other_ops', ds)
     """
     dv.add_field('oper_rev', ds)
@@ -99,7 +99,7 @@ def test_add_field_quarterly():
     
     
 def test_add_formula_quarterly():
-    dv = BaseDataView()
+    dv = DataView()
     folder_path = '../output/prepared/20160609_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
     nrows, ncols = dv.data_d.shape
@@ -117,7 +117,7 @@ def test_add_formula_quarterly():
 
 
 def test_load():
-    dv = BaseDataView()
+    dv = DataView()
     folder_path = '../output/prepared/20160601_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
     
@@ -137,20 +137,20 @@ def test_load():
 
 
 def test_add_field():
-    dv = BaseDataView()
+    dv = DataView()
     folder_path = '../output/prepared/20160601_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
     nrows, ncols = dv.data_d.shape
     n_securities = len(dv.data_d.columns.levels[0])
     
-    from quantos.data.dataserver import JzDataServer
-    ds = JzDataServer()
+    from quantos.data.dataservice import RemoteDataService
+    ds = RemoteDataService()
     dv.add_field('share_amount', ds)
     assert dv.data_d.shape == (nrows, ncols + 1 * n_securities)
 
 
 def test_add_formula():
-    dv = BaseDataView()
+    dv = DataView()
     folder_path = '../output/prepared/20160601_20170601_freq=1D'
     dv.load_dataview(folder=folder_path)
     nrows, ncols = dv.data_d.shape

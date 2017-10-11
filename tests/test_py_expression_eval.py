@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pytest
-from quantos.data.dataserver import JzDataServer
+from quantos.data.dataservice import RemoteDataService
 
 from quantos.data.py_expression_eval import Parser
 
@@ -100,7 +100,7 @@ def test_calc_return():
 
 @pytest.fixture(autouse=True)
 def my_globals(request):
-    ds = JzDataServer()
+    ds = RemoteDataService()
     
     df, msg = ds.daily("000001.SH, 600030.SH, 000300.SH", start_date=20170801, end_date=20170820,
                        fields="open,high,low,close,vwap,preclose")

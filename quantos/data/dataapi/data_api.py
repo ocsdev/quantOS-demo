@@ -213,13 +213,12 @@ class DataApi:
         
         return utils.extract_result(cr, data_format=data_format, index_column=index_column, class_name=data_class)
 
-    '''		
     def quote(self, symbol, fields="", data_format="", **kwargs):
         
         r, msg = self._call_rpc("jsq.query",
                                 self._get_format(data_format, "pandas"),
                                 "Quote",
-                                _index_column = "SYMBOL",
+                                _index_column = "symbol",
                                 symbol   = str(symbol),
                                 fields   = fields,
                                 **kwargs)
@@ -287,7 +286,7 @@ class DataApi:
         Unscribe codes and return list of subscribed code.
         """
         assert False, "NOT IMPLEMENTED"
-    '''		
+
 
     def bar(self, symbol, start_time=200000, end_time=160000, 
         trade_date=0, freq="1m", fields="", data_format="", **kwargs ) :

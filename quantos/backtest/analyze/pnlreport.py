@@ -365,8 +365,8 @@ if __name__ == '__main__':
     props['symbol'] = '600030.SH'
     pnlmgr = PnlManager()
     
-    from quantos.data.dataserver import JzDataServer
-    ds = JzDataServer()
+    from quantos.data.dataservice import RemoteDataService
+    ds = RemoteDataService()
     pnlmgr.initFromConfig(props, ds)
     trades = []
     t1 = Trade()

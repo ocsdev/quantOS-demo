@@ -1,10 +1,10 @@
 # encoding: UTF-8
 
-from quantos.data.dataserver import JzDataServer
+from quantos.data.dataservice import RemoteDataService
 
 
-def test_jz_data_server_daily():
-    ds = JzDataServer()
+def test_remote_data_service_daily():
+    ds = RemoteDataService()
     
     # test daily
     res, msg = ds.daily('rb1710.SHF,600662.SH', fields="",
@@ -21,8 +21,8 @@ def test_jz_data_server_daily():
     assert stk.loc[:, 'volume'].values[0] == 7174813
 
 
-def test_jz_data_server_daily_quited():
-    ds = JzDataServer()
+def test_remote_data_service_daily_quited():
+    ds = RemoteDataService()
     
     # test daily
     res, msg = ds.daily('600832.SH', fields="",
@@ -32,8 +32,8 @@ def test_jz_data_server_daily_quited():
     assert res.shape == (175, 13)
 
 
-def test_jz_data_server_bar():
-    ds = JzDataServer()
+def test_remote_data_service_bar():
+    ds = RemoteDataService()
     
     # test bar
     res2, msg2 = ds.bar('rb1710.SHF,600662.SH', start_time=200000, end_time=160000, trade_date=20170831, fields="")
@@ -50,47 +50,47 @@ def test_jz_data_server_bar():
     assert rb2.loc[:, 'volume'].values[344] == 3366
     
     
-def test_jz_data_server_wd():
-    ds = JzDataServer()
+def test_remote_data_service_lb():
+    ds = RemoteDataService()
     
-    # test wd.secDailyIndicator
+    # test lb.secDailyIndicator
     fields = "pb,pe,share_float_free,net_assets,limit_status"
-    for res3, msg3 in [ds.query("wd.secDailyIndicator", fields=fields,
+    for res3, msg3 in [ds.query("lb.secDailyIndicator", fields=fields,
                                 filter="symbol=600030.SH&start_date=20170907&end_date=20170907",
                                 orderby="trade_date"),
-                       ds.query_wd_dailyindicator('600030.SH', 20170907, 20170907, fields)]:
+                       ds.query_lb_dailyindicator('600030.SH', 20170907, 20170907, fields)]:
         assert msg3 == '0,'
         assert abs(res3.loc[0, 'pb'] - 1.5135) < 1e-4
         assert abs(res3.loc[0, 'share_float_free'] - 781496.5954) < 1e-4
         assert abs(res3.loc[0, 'net_assets'] - 1.437e11) < 1e8
         assert res3.loc[0, 'limit_status'] == 0
     
-    # test wd.income
-    for res4, msg4 in [ds.query("wd.income", fields="",
+    # test lb.income
+    for res4, msg4 in [ds.query("lb.income", fields="",
                                 filter="symbol=600000.SH&start_date=20150101&end_date=20170101&report_type=408002000",
                                 order_by="report_date"),
-                       ds.query_wd_fin_stat('income', '600000.SH', 20150101, 20170101, fields="")]:
+                       ds.query_lb_fin_stat('income', '600000.SH', 20150101, 20170101, fields="")]:
         assert msg4 == '0,'
         assert res4.shape == (8, 12)
         assert res4.loc[4, 'oper_rev'] == 37918000000
 
 
-def test_jz_data_server_daily_ind_performance():
-    ds = JzDataServer()
+def test_remote_data_service_daily_ind_performance():
+    ds = RemoteDataService()
     
     hs300 = ds.get_index_comp('000300.SH', 20140101, 20170101)
     hs300_str = ','.join(hs300)
     
     fields = "pb,pe,share_float_free,net_assets,limit_status"
-    res, msg = ds.query("wd.secDailyIndicator", fields=fields,
+    res, msg = ds.query("lb.secDailyIndicator", fields=fields,
                           filter=("symbol=" + hs300_str
                                   + "&start_date=20160907&end_date=20170907"),
                           orderby="trade_date")
     assert msg == '0,'
 
 
-def test_jz_data_server_components():
-    ds = JzDataServer()
+def test_remote_data_service_components():
+    ds = RemoteDataService()
     res = ds.get_index_comp_df(index='000300.SH', start_date=20140101, end_date=20170505)
     assert res.shape == (814, 430)
     
@@ -98,11 +98,11 @@ def test_jz_data_server_components():
     assert len(arr) == 430
 
 
-def test_jz_data_server_industry():
+def test_remote_data_service_industry():
     from data.align import align
     import pandas as pd
     
-    ds = JzDataServer()
+    ds = RemoteDataService()
     arr = ds.get_index_comp(index='000300.SH', start_date=20130101, end_date=20170505)
     df = ds.get_industry_raw(symbol=','.join(arr), type_='ZZ')
     df = df.astype(dtype={'in_date': int})
@@ -128,8 +128,8 @@ def test_jz_data_server_industry():
     df2 = df2.loc[:, 'industry1_code']
     
     """
-    from quantos.data.dataview import BaseDataView
-    dic_sec = BaseDataView._group_df_to_dict(df, by='symbol')
+    from quantos.data.dataview import DataView
+    dic_sec = DataView._group_df_to_dict(df, by='symbol')
     dic_sec = {sec: df.drop_duplicates().reset_index() for sec, df in dic_sec.viewitems()}
     
     df_ann = pd.concat([df.loc[:, 'in_date'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
@@ -152,11 +152,11 @@ def test_jz_data_server_industry():
     print res
     
     
-def test_jz_data_server_industry_df():
+def test_remote_data_service_industry_df():
     from quantos.backtest.calendar import Calendar
     cal = Calendar()
     
-    ds = JzDataServer()
+    ds = RemoteDataService()
     arr = ds.get_index_comp(index='000300.SH', start_date=20130101, end_date=20170505)
     
     symbol_arr = ','.join(arr)
@@ -176,16 +176,16 @@ def test_jz_data_server_industry_df():
             assert df.loc[idx, sec] == value
         
 
-def test_jz_dataserver_fin_indicator():
-    ds = JzDataServer()
+def test_remote_data_service_fin_indicator():
+    ds = RemoteDataService()
     
     symbol = '000008.SZ'
     filter_argument = ds._dic2url({'symbol': symbol})
     
-    df_raw, msg = ds.query("wd.finIndicator", fields="",
+    df_raw, msg = ds.query("lb.finIndicator", fields="",
                            filter=filter_argument, orderby="symbol")
     print
 
     
 if __name__ == "__main__":
-    test_jz_data_server_industry_df()
+    test_remote_data_service_industry_df()

@@ -6,12 +6,15 @@ from quantos.data.dataapi import DataApi
 
 def test_data_api():
     dic = fileio.read_json(fileio.join_relative_path('etc/data_config.json'))
-    address = dic.get("server.address", None)
-    username = dic.get("server.username", None)
-    password = dic.get("server.password", None)
+    address = dic.get("remote.address", None)
+    username = dic.get("remote.username", None)
+    password = dic.get("remote.password", None)
+    if address is None or username is None or password is None:
+        raise ValueError("no data service config available!")
     
     api = DataApi(address, use_jrpc=False)
-    api.login(username=username, password=password)
+    login_msg = api.login(username=username, password=password)
+    print login_msg
     
     daily, msg = api.daily(symbol="600030.SH,000002.SZ", start_date=20170103, end_date=20170708,
                            fields="open,high,low,close,volume,last,trade_date,settle")

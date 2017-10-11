@@ -20,7 +20,7 @@ suspensions and limit reachers:
 import time
 
 import numpy as np
-from quantos.data.dataserver import JzDataServer
+from quantos.data.dataservice import RemoteDataService
 from quantos.example.demoalphastrategy import DemoAlphaStrategy
 from quantos.util import fileio
 
@@ -28,7 +28,7 @@ from quantos.util import fileio
 from quantos.backtest.backtest import AlphaBacktestInstance, AlphaBacktestInstance_dv
 from quantos.backtest.gateway import DailyStockSimGateway
 from quantos.backtest import model
-from quantos.data.dataview import BaseDataView
+from quantos.data.dataview import DataView
 
 
 def read_props(fp):
@@ -74,7 +74,7 @@ def my_commission(symbol, turnover, context=None, user_options=None):
 
 def test_alpha_strategy():
     gateway = DailyStockSimGateway()
-    jz_data_server = JzDataServer()
+    remote_data_service = RemoteDataService()
 
     prop_file_path = fileio.join_relative_path('etc', 'alpha.json')
     props = read_props(prop_file_path)
@@ -95,12 +95,12 @@ def test_alpha_strategy():
 
     """
 
-    jz_data_server.init_from_config(props)
-    jz_data_server.initialize()
+    remote_data_service.init_from_config(props)
+    remote_data_service.initialize()
     gateway.init_from_config(props)
 
     context = model.Context()
-    context.register_data_api(jz_data_server)
+    context.register_data_api(remote_data_service)
     context.register_gateway(gateway)
     context.register_trade_api(gateway)
     
@@ -131,10 +131,10 @@ def test_alpha_strategy():
     
     
 def save_dataview():
-    from quantos.data.dataserver import JzDataServer
+    from quantos.data.dataservice import RemoteDataService
     
-    ds = JzDataServer()
-    dv = BaseDataView()
+    ds = RemoteDataService()
+    dv = DataView()
     
     props = {'start_date': 20141114, 'end_date': 20161114, 'universe': '000300.SH',
              'fields': 'open,close,high,low,volume,turnover,vwap,' + 'oper_rev,oper_exp',
@@ -146,7 +146,7 @@ def save_dataview():
 
 
 def test_alpha_strategy_dataview():
-    dv = BaseDataView()
+    dv = DataView()
 
     fullpath = fileio.join_relative_path('../output/prepared/20141114_20170327_freq=1D')
     dv.load_dataview(folder=fullpath)

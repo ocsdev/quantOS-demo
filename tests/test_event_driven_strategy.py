@@ -6,7 +6,7 @@ import json
 from quantos.util import fileio
 from quantos.backtest import model
 from quantos.backtest import common
-from quantos.data.dataserver import JzDataServer
+from quantos.data.dataservice import RemoteDataService
 from quantos.example.doubleMaStrategy import DoubleMaStrategy
 from quantos.backtest.backtest import EventBacktestInstance
 from quantos.backtest.gateway import BarSimulatorGateway
@@ -26,16 +26,16 @@ def test_double_ma():
     # strategy   = CtaStrategy()
     strategy = DoubleMaStrategy()
     gateway = BarSimulatorGateway()
-    data_server = JzDataServer()
+    data_service = RemoteDataService()
 
     context = model.Context()
-    context.register_data_api(data_server)
+    context.register_data_api(data_service)
     context.register_gateway(gateway)
     context.register_trade_api(gateway)
     
     backtest = EventBacktestInstance()
     backtest.init_from_config(props, strategy, context=context,
-                              data_api=data_server, gateway=gateway, dataview=None)
+                              data_api=data_service, gateway=gateway, dataview=None)
     
     # backtest.run()
     backtest.run()

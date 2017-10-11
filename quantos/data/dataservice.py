@@ -13,7 +13,7 @@ from quantos.data import align
 from quantos.backtest.calendar import Calendar
 
 
-class BaseDataServer(Publisher):
+class DataService(Publisher):
     """
     Abstract base class providing both historic and live data
     from various data sources.
@@ -226,7 +226,7 @@ class BaseDataServer(Publisher):
         pass
 
 
-class JzDataServer(BaseDataServer):
+class RemoteDataService(DataService):
     """
     JzDataServer uses data from jz's local database.
 
@@ -234,12 +234,14 @@ class JzDataServer(BaseDataServer):
     # TODO no validity check for input parameters
     
     def __init__(self):
-        BaseDataServer.__init__(self)
+        DataService.__init__(self)
 
         dic = fileio.read_json(fileio.join_relative_path('etc/data_config.json'))
-        address = dic.get("server.address", None)
-        username = dic.get("server.username", None)
-        password = dic.get("server.password", None)
+        address = dic.get("remote.address", None)
+        username = dic.get("remote.username", None)
+        password = dic.get("remote.password", None)
+        if address is None or username is None or password is None:
+            raise ValueError("no address, username or password available!")
         
         self.api = DataApi(address, use_jrpc=False)
         self.api.set_timeout(60)
@@ -247,7 +249,7 @@ class JzDataServer(BaseDataServer):
         if not r:
             print msg
         else:
-            print "DataAPI login success.{}".format(address)
+            print "DataAPI login success.".format(address)
         
         self.REPORT_DATE_FIELD_NAME = 'report_date'
 
@@ -288,7 +290,7 @@ class JzDataServer(BaseDataServer):
         
         Examples
         --------
-        res3, msg3 = ds.query("wd.secDailyIndicator", fields="price_level,high_52w_adj,low_52w_adj",
+        res3, msg3 = ds.query("lb.secDailyIndicator", fields="price_level,high_52w_adj,low_52w_adj",
                               filter="start_date=20170907&end_date=20170907",
                               orderby="trade_date",
                               data_format='pandas')
@@ -327,9 +329,9 @@ class JzDataServer(BaseDataServer):
         l = ['='.join([key, str(value)]) for key, value in d.items()]
         return '&'.join(l)
 
-    def query_wd_fin_stat(self, type_, symbol, start_date, end_date, fields=""):
+    def query_lb_fin_stat(self, type_, symbol, start_date, end_date, fields=""):
         """
-        Helper function to call data_api.query with 'wd.income' more conveniently.
+        Helper function to call data_api.query with 'lb.income' more conveniently.
         
         Parameters
         ----------
@@ -350,8 +352,8 @@ class JzDataServer(BaseDataServer):
         msg : str
 
         """
-        view_map = {'income': 'wd.income', 'cash_flow': 'wd.cashFlow', 'balance_sheet': 'wd.balanceSheet',
-                    'fin_indicator': 'wd.finIndicator'}
+        view_map = {'income': 'lb.income', 'cash_flow': 'lb.cashFlow', 'balance_sheet': 'lb.balanceSheet',
+                    'fin_indicator': 'lb.finIndicator'}
         view_name = view_map.get(type_, None)
         if view_name is None:
             raise NotImplementedError("type_ = {:s}".format(type_))
@@ -360,7 +362,7 @@ class JzDataServer(BaseDataServer):
                         'start_date': start_date,
                         'end_date': end_date,
                         'update_flag': '0'}
-        if view_name != 'wd.finIndicator':
+        if view_name != 'lb.finIndicator':
             dic_argument.update({'report_type': '408002000'})  # joint sheet
         
         filter_argument = self._dic2url(dic_argument)  # 0 means first time, not update
@@ -377,9 +379,9 @@ class JzDataServer(BaseDataServer):
         
         return res, msg
 
-    def OLD_query_wd_balance_sheet(self, symbol, start_date, end_date, fields="", extend=0):
+    def OLD_query_lb_balance_sheet(self, symbol, start_date, end_date, fields="", extend=0):
         """
-        Helper function to call data_api.query with 'wd.income' more conveniently.
+        Helper function to call data_api.query with 'lb.income' more conveniently.
         
         Parameters
         ----------
@@ -412,12 +414,12 @@ class JzDataServer(BaseDataServer):
                                          'end_date': end_date,
                                          'report_type': '408002000'})
     
-        return self.query("wd.balanceSheet", fields=fields, filter=filter_argument,
+        return self.query("lb.balanceSheet", fields=fields, filter=filter_argument,
                           order_by=self.REPORT_DATE_FIELD_NAME)
 
-    def OLD_query_wd_cash_flow(self, symbol, start_date, end_date, fields="", extend=0):
+    def OLD_query_lb_cash_flow(self, symbol, start_date, end_date, fields="", extend=0):
         """
-        Helper function to call data_api.query with 'wd.income' more conveniently.
+        Helper function to call data_api.query with 'lb.income' more conveniently.
         
         Parameters
         ----------
@@ -450,12 +452,12 @@ class JzDataServer(BaseDataServer):
                                          'end_date': end_date,
                                          'report_type': '408002000'})
     
-        return self.query("wd.cashFlow", fields=fields, filter=filter_argument,
+        return self.query("lb.cashFlow", fields=fields, filter=filter_argument,
                           order_by=self.REPORT_DATE_FIELD_NAME)
     
-    def query_wd_dailyindicator(self, symbol, start_date, end_date, fields=""):
+    def query_lb_dailyindicator(self, symbol, start_date, end_date, fields=""):
         """
-        Helper function to call data_api.query with 'wd.secDailyIndicator' more conveniently.
+        Helper function to call data_api.query with 'lb.secDailyIndicator' more conveniently.
         
         Parameters
         ----------
@@ -477,7 +479,7 @@ class JzDataServer(BaseDataServer):
                                          'start_date': start_date,
                                          'end_date': end_date})
     
-        return self.query("wd.secDailyIndicator",
+        return self.query("lb.secDailyIndicator",
                           fields=fields,
                           filter=filter_argument,
                           orderby="trade_date")
@@ -502,7 +504,7 @@ class JzDataServer(BaseDataServer):
                                          'start_date': start_date,
                                          'end_date': end_date})
     
-        df_io, msg = self.query("wd.indexCons", fields="",
+        df_io, msg = self.query("lb.indexCons", fields="",
                                 filter=filter_argument, orderby="symbol")
         return df_io, msg
     
