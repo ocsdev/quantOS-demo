@@ -201,20 +201,26 @@ class DataApi:
         if not r:
             return (r, msg)
 
+        index_column = None
         rpc_params = { }
         for kw in kwargs.items():
-            rpc_params[ str(kw[0]) ] = kw[1]
+            if str(kw[0]) == "_index_column" :
+                index_column = kw[1]
+            else:
+                rpc_params[ str(kw[0]) ] = kw[1]
 
         cr = self._remote.call(method, rpc_params, timeout=self._timeout)
         
-        return utils.extract_result(cr, data_format=data_format, class_name=data_class)
+        return utils.extract_result(cr, data_format=data_format, index_column=index_column, class_name=data_class)
 
+    '''		
     def quote(self, symbol, fields="", data_format="", **kwargs):
         
         r, msg = self._call_rpc("jsq.query",
-                                self._get_format(data_format, ""),
+                                self._get_format(data_format, "pandas"),
                                 "Quote",
-                                security = str(symbol),
+                                _index_column = "SYMBOL",
+                                symbol   = str(symbol),
                                 fields   = fields,
                                 **kwargs)
         return (r, msg)    
@@ -227,7 +233,7 @@ class DataApi:
         codes.sort()
         
         # XXX subscribe with default fields!
-        rpc_params = {"security" : ",".join(codes),
+        rpc_params = {"symbol"   : ",".join(codes),
                       "fields"   : "" }
 
         cr = self._remote.call("jsq.subscribe", rpc_params)
@@ -257,7 +263,7 @@ class DataApi:
         if func:
             self._on_jsq_callback = func
         
-        rpc_params = {"security" : symbol,
+        rpc_params = {"symbol"   : symbol,
                       "fields"   : fields }
 
         cr = self._remote.call("jsq.subscribe", rpc_params)
@@ -281,7 +287,7 @@ class DataApi:
         Unscribe codes and return list of subscribed code.
         """
         assert False, "NOT IMPLEMENTED"
-
+    '''		
 
     def bar(self, symbol, start_time=200000, end_time=160000, 
         trade_date=0, freq="1m", fields="", data_format="", **kwargs ) :
@@ -299,9 +305,9 @@ class DataApi:
         return self._call_rpc("jsi.query",
                               self._get_format(data_format, "pandas"),
                               "Bar",
-                              security   = str(symbol),
+                              symbol     = str(symbol),
                               fields     = fields,
-                              cycle      = freq,
+                              freq       = freq,
                               trade_date = trade_date,
                               begin_time = begin_time,
                               end_time   = end_time,
@@ -323,9 +329,9 @@ class DataApi:
         return self._call_rpc("jsi.bar_view",
                               self._get_format(data_format, "pandas"),
                               "Bar",
-                              security   = str(symbol),
+                              symbol     = str(symbol),
                               fields     = fields,
-                              cycle      = freq,
+                              freq       = freq,
                               trade_date = trade_date,
                               begin_time = begin_time,
                               end_time   = end_time,
@@ -349,7 +355,7 @@ class DataApi:
         return self._call_rpc("jsd.query",
                               self._get_format(data_format, "pandas"),
                               "Daily",
-                              security       = str(symbol),
+                              symbol         = str(symbol),
                               fields         = fields,
                               begin_date     = begin_date,
                               end_date       = end_date,
