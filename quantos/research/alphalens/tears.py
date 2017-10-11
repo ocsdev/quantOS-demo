@@ -262,7 +262,9 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
     if verbose:
         mean_ret_quant_daily_mod = mean_ret_quant_daily.unstack(level=0)
         mean_ret_quant_daily_mod.columns = mean_ret_quant_daily_mod.columns.droplevel(level=0)
-        res = dict(mean_ret_quant_daily_mod.iteritems())
+        tuples = mean_ret_quant_daily_mod.iteritems()
+        tuples = [(str(a), b) for a, b in tuples]
+        res = dict(tuples)
         return {'mean_quantile_return_daily': res}
 
 
