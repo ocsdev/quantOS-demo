@@ -3,13 +3,15 @@
 import numpy as np
 import pandas as pd
 
-import quantos.util.fileio
+from quantos.util import fileio
 from quantos.backtest.event.eventType import EVENT
 from quantos.data.basic.marketdata import Bar
 from quantos.backtest import common
 from quantos.backtest.analyze.pnlreport import PnlManager
 from quantos.backtest.calendar import Calendar
 from quantos.backtest.event.eventEngine import Event
+from quantos.backtest import common
+from quantos.data.basic.trade import Trade
 
 from quantos.backtest.pubsub import Subscriber
 
@@ -159,10 +161,13 @@ class AlphaBacktestInstance(BacktestInstance):
             ser = pd.Series(data=v, index=None, dtype=type_map[key], name=key)
             ser_list[key] = ser
         df_trades = pd.DataFrame(ser_list)
+        df_trades.index.name = 'index'
         
-        df_trades.to_csv(folder + 'trades.csv')
+        fn = folder + 'trades.csv'
+        fileio.create_dir(fn)
+        df_trades.to_csv(fn)
         
-        quantos.util.fileio.save_json(self.props, folder + 'configs.json')
+        fileio.save_json(self.props, folder + 'configs.json')
 
         print ("Backtest results has been successfully saved to:\n" + folder)
 
@@ -175,6 +180,36 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
         We assume all cash will be re-invested.
         Since we adjust our position at next re-balance day, PnL before that may be incorrect.
         """
+        start = self.calendar.get_next_trade_date(self.last_rebalance_date)  # start will be one day later
+        end = self.current_rebalance_date  # end is the same to ensure position adjusted for dividend on rebalance day
+        df_adj = self.ctx.dataview.get_ts('adjust_factor',
+                                          start_date=start, end_date=end)
+        pm = self.strategy.pm
+        
+        for symbol in pm.holding_securities:
+            ser = df_adj.loc[:, symbol]
+            ser_div = ser.div(ser.shift(1)).fillna(1.0)
+            mask_diff = ser_div != 1
+            ser_adj = ser_div.loc[mask_diff]
+            for date, ratio in ser_adj.iteritems():
+                pos_old = pm.get_position(symbol).curr_size
+                # TODO pos will become float, original: int
+                pos_new = pos_old * ratio
+                pos_diff = pos_new - pos_old  # must be positive
+                if pos_diff <= 0:
+                    # TODO this is possible
+                    # raise ValueError("pos_diff <= 0")
+                    continue
+                
+                trade_ind = Trade()
+                trade_ind.symbol = symbol
+                trade_ind.task_id = 101010
+                trade_ind.entrust_no = 101010
+                trade_ind.entrust_action = common.ORDER_ACTION.BUY  # for now only BUY
+                trade_ind.send_fill_info(price=0.0, size=pos_diff, date=date, time=0, no=101010)
+                
+                self.strategy.on_trade_ind(trade_ind)
+        '''
         adj_curr = self.ctx.dataview.get_snapshot(self.current_rebalance_date, fields='adjust_factor')
         adj_last = self.ctx.dataview.get_snapshot(self.last_rebalance_date, fields='adjust_factor')
         cols = adj_curr.index
@@ -185,6 +220,7 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
         for sec in pm.holding_securities:
             r = adj_ratio[sec]
             pm.set_position(sec, self.current_rebalance_date, r)
+        '''
     
     def delist_adjust(self):
         pass
@@ -199,9 +235,14 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
             
             if self.current_date > self.end_date:
                 break
-            
+
             # match orders or re-balance
             if gateway.match_finished:
+                # position adjust according to dividend, cash paid, de-list actions during the last period
+                # two adjust must in order
+                self.position_adjust()
+                self.delist_adjust()
+    
                 # plan re-balance before new day
                 self.on_new_day(self.last_date)
                 # univ_price_dic = self.get_univ_prices(field_name="close_adj,open_adj,high_adj,low_adj")  # access data
@@ -209,11 +250,6 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
                 
                 # do re-balance on new day
                 self.on_new_day(self.current_date)
-
-                # position adjust according to dividend, cash paid, de-list actions during the last period
-                # two adjust must in order
-                self.position_adjust()
-                self.delist_adjust()
                 
                 univ_price_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
                 suspensions = self.get_suspensions()

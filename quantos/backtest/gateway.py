@@ -67,7 +67,7 @@ class TradeStat(object):
         self.sell_want_size = 0
 
 
-class PortfolioManager(TradeCallback):
+class PortfolioManager_RAW(TradeCallback):
     """
     Used to store relevant context of the strategy.
 
@@ -283,6 +283,214 @@ class PortfolioManager(TradeCallback):
         
         return market_value
 
+
+class PortfolioManager(TradeCallback):
+    """
+    Used to store relevant context of the strategy.
+
+    Attributes
+    ----------
+    orders : list of quantos.data.basic.Order objects
+    trades : list of quantos.data.basic.Trade objects
+    positions : dict of {symbol + trade_date : quantos.data.basic.Position}
+    strategy : Strategy
+    holding_securities : set of securities
+
+    Methods
+    -------
+
+    """
+    
+    # TODO want / frozen update
+    def __init__(self, strategy=None):
+        self.orders = {}
+        self.trades = []
+        self.positions = {}
+        self.holding_securities = set()
+        self.tradestat = {}
+        self.strategy = strategy
+    
+    @staticmethod
+    def _make_position_key(symbol, trade_date=0):
+        return '@'.join(symbol)
+    
+    @staticmethod
+    def _make_order_key(entrust_id, trade_date):
+        return '@'.join((str(entrust_id), str(trade_date)))
+    
+    def on_order_rsp(self, order, result, msg):
+        if result:
+            self.add_order(order)
+    
+    def get_position(self, symbol, date=0):
+        key = self._make_position_key(symbol)
+        position = self.positions.get(key, None)
+        return position
+    
+    def on_new_day(self, date, pre_date):
+        """
+        for sec in self.holding_securities:
+            pre_key = self._make_position_key(sec, pre_date)
+            new_key = self._make_position_key(sec, date)
+            if pre_key in self.positions:
+                pre_position = self.positions.get(pre_key)
+                new_position = Position()
+                new_position.curr_size = pre_position.curr_size
+                new_position.init_size = new_position.curr_size
+                new_position.symbol = pre_position.symbol
+                new_position.trade_date = date
+                self.positions[new_key] = new_position
+        """
+    
+    def add_order(self, order):
+        """
+        Add order to orders, create position and tradestat if necessary.
+
+        Parameters
+        ----------
+        order : Order
+
+        """
+        if order.entrust_no in self.orders:
+            print 'duplicate entrust_no {}'.format(order.entrust_no)
+            return False
+        
+        new_order = Order()
+        new_order.copy(order)  # TODO why copy?
+        self.orders[self._make_order_key(order.entrust_no, self.strategy.trade_date)] = new_order
+        
+        position_key = self._make_position_key(order.symbol, self.strategy.trade_date)
+        if position_key not in self.positions:
+            position = Position()
+            position.symbol = order.symbol
+            self.positions[position_key] = position
+        
+        if order.symbol not in self.tradestat:
+            tradestat = TradeStat()
+            tradestat.symbol = order.symbol
+            self.tradestat[order.symbol] = tradestat
+        
+        tradestat = self.tradestat.get(order.symbol)
+        
+        if order.entrust_action == common.ORDER_ACTION.BUY:
+            tradestat.buy_want_size += order.entrust_size
+        else:
+            tradestat.sell_want_size += order.entrust_size
+    
+    def on_order_status(self, ind):
+        if ind.order_status is None:
+            return
+        
+        if ind.order_status == common.ORDER_STATUS.CANCELLED or ind.order_status == common.ORDER_STATUS.REJECTED:
+            entrust_no = ind.entrust_no
+            order = self.orders.get(self._make_order_key(entrust_no, self.strategy.trade_date), None)
+            if order is not None:
+                order.order_status = ind.order_status
+                
+                tradestat = self.tradestat.get(ind.symbol)
+                release_size = ind.entrust_size - ind.fill_size
+                
+                if ind.entrust_action == common.ORDER_ACTION.BUY:
+                    tradestat.buy_want_size -= release_size
+                else:
+                    tradestat.sell_want_size -= release_size
+            else:
+                raise ValueError("order {} does not exist".format(entrust_no))
+    
+    def set_position(self, symbol, date, ratio=1):
+        """Modify latest (thus date might not be necessary) position by a ratio."""
+        pos_key = self._make_position_key(symbol, date)
+        pos = self.positions.get(pos_key)
+        
+        pos.curr_size *= ratio
+        pos.init_size *= ratio
+        self.positions[pos_key] = pos
+    
+    def on_trade_ind(self, ind):
+        # record trades
+        self.trades.append(ind)
+
+        # change order status
+        entrust_no = ind.entrust_no
+        if entrust_no == 101010:  # trades generate by system
+            pass
+        else:
+            order = self.orders.get(self._make_order_key(entrust_no, self.strategy.trade_date), None)
+            if order is None:
+                print 'cannot find order for entrust_no' + entrust_no
+                return
+            
+            order.fill_size += ind.fill_size
+            
+            if order.fill_size == order.entrust_size:
+                order.order_status = common.ORDER_STATUS.FILLED
+            else:
+                order.order_status = common.ORDER_STATUS.ACCEPTED
+        
+        # change position and trade stats
+        position_key = self._make_position_key(ind.symbol, self.strategy.trade_date)
+        position = self.positions.get(position_key)
+        tradestat = self.tradestat.get(ind.symbol)
+        
+        if (ind.entrust_action == common.ORDER_ACTION.BUY
+            or ind.entrust_action == common.ORDER_ACTION.COVER
+            or ind.entrust_action == common.ORDER_ACTION.COVERYESTERDAY
+            or ind.entrust_action == common.ORDER_ACTION.COVERTODAY):
+            
+            tradestat.buy_filled_size += ind.fill_size
+            tradestat.buy_want_size -= ind.fill_size
+            
+            position.curr_size += ind.fill_size
+        
+        elif (ind.entrust_action == common.ORDER_ACTION.SELL
+              or ind.entrust_action == common.ORDER_ACTION.SELLTODAY
+              or ind.entrust_action == common.ORDER_ACTION.SELLYESTERDAY
+              or ind.entrust_action == common.ORDER_ACTION.SHORT):
+            
+            tradestat.sell_filled_size += ind.fill_size
+            tradestat.sell_want_size -= ind.fill_size
+            
+            position.curr_size -= ind.fill_size
+        
+        if position.curr_size != 0:
+            self.holding_securities.add(ind.symbol)
+        else:
+            self.holding_securities.remove(ind.symbol)
+    
+    def market_value(self, ref_date, ref_prices, suspensions=None):
+        """
+        Calculate total market value according to all current positions.
+        NOTE for now this func only support stocks.
+
+        Parameters
+        ----------
+        ref_date : int
+            The date we refer to to get symbol position.
+        ref_prices : dict of {symbol: price}
+            The prices we refer to to get symbol price.
+        suspensions : list of securities
+            Securities that are suspended.
+
+        Returns
+        -------
+        market_value : float
+
+        """
+        # TODO some securities could not be able to be traded
+        if suspensions is None:
+            suspensions = []
+        
+        market_value = 0.0
+        for sec in self.holding_securities:
+            if sec in suspensions:
+                continue
+            
+            size = self.get_position(sec, ref_date).curr_size
+            # TODO PortfolioManager object should not access price
+            price = ref_prices[sec]
+            market_value += price * size * 100
+        
+        return market_value
 
 class BaseGateway(object):
     """
