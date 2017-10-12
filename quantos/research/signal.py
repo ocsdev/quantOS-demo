@@ -1,11 +1,14 @@
 # encoding: utf-8
 
+import os
+
 import numpy as np
 import pandas as pd
 
 from quantos.data.dataview import DataView
 from quantos.data.dataservice import RemoteDataService
 from quantos.research import alphalens
+from quantos import SOURCE_ROOT_DIR
 
 
 def save_dataview():
@@ -14,23 +17,33 @@ def save_dataview():
     ds = RemoteDataService()
     dv = DataView()
     
-    props = {'start_date': 20140108, 'end_date': 20170108, 'universe': '000300.SH',
+    props = {'start_date': 20141114, 'end_date': 20170327, 'universe': '000300.SH',
+             # 'symbol': 'rb1710.SHF,rb1801.SHF',
              'fields': ('open,high,low,close,vwap,volume,turnover,'
                         # + 'pb,net_assets,'
-                        # + 'total_oper_rev,oper_exp,tot_profit,int_income'
+                        + 'total_oper_rev,oper_exp,tot_profit,int_income'
                         ),
              'freq': 1}
     
     dv.init_from_config(props, ds)
     dv.prepare_data()
-    dv.save_dataview(folder_path='../../output/prepared')
+    
+    factor_formula = '-1 * Rank(Ts_Max(Delta(vwap, 7), 11))'  # GTJA
+    factor_name = 'gtja'
+    dv.add_formula(factor_name, factor_formula)
+    
+    dv.add_formula('look_ahead', 'Delay(Return(close_adj, 5), -5)')
+    dv.add_formula('ret1', 'Return(close_adj, 1)')
+    dv.add_formula('ret20', 'Delay(Return(close_adj, 20), -20)')
+    
+    dv.save_dataview(folder_path=os.path.join(SOURCE_ROOT_DIR, '../output/prepared'))
 
 
 def main():
     dv = DataView()
     
     import os
-    fullpath = os.path.abspath('../../output/prepared/20140108_20170108_freq=1D')
+    fullpath = os.path.abspath(os.path.join(SOURCE_ROOT_DIR, '../output/prepared/20141114_20170327_freq=1D'))
     dv.load_dataview(folder=fullpath)
     print dv.fields
 
@@ -38,10 +51,18 @@ def main():
     # factor_formula = '-Delta((((close - low) - (high - close)) / (high - low)), 1)'
     # factor_formula = '-Delta(close, 5) / close'#  / pb'  # revert
     # factor_formula = 'Delta(tot_profit, 1) / Delay(tot_profit, 1)' # pct change
+    # factor_formula = '- Delta(close, 3) / Delay(close, 3)'
+    # factor_formula = 'Delay(total_oper_rev, 1)'
     factor_name = 'factor1'
-    dv.add_formula(factor_name, factor_formula)
+    # dv.add_formula(factor_name, factor_formula)
+
+    # dv.add_formula('factor2', 'GroupApply(Standardize, GroupApply(Cutoff, gtja, 3.0))')
+    # dv.add_formula('factor_bool', 'If(factor1 > total_oper_rev, 1.5, 0.5)')
+    # dv.save_dataview(folder_path=os.path.join(SOURCE_ROOT_DIR, '../output/prepared'))
+    # dv.add_formula('factor2', 'Standardize(factor1)')
     
-    factor = dv.get_ts(factor_name).shift(1, axis=0)  # avoid look-ahead bias
+    factor = dv.get_ts('ret20').shift(1, axis=0)  # avoid look-ahead bias
+    # factor = dv.get_ts('gtja').shift(1, axis=0)  # avoid look-ahead bias
     
     price = dv.get_ts('vwap')
     price_bench = dv._data_benchmark
@@ -49,9 +70,14 @@ def main():
     trade_status = dv.get_ts('trade_status')
     mask_sus = trade_status != u'交易'.encode('utf-8')
 
+    df_group = dv.data_group.copy()
+    from quantos.backtest.calendar import Calendar
+    df_group.index = Calendar.convert_int_to_datetime(df_group.index)
     factor_data = alphalens.utils.get_clean_factor_and_forward_returns(factor, price,
-                                                                       mask_sus=mask_sus, benchmark_price=price_bench,
-                                                                       quantiles=2, periods=[8])
+                                                                       mask_sus=mask_sus, benchmark_price=None,
+                                                                       quantiles=5, periods=[20],
+                                                                       # groupby=df_group.stack(), by_group=False
+                                                                       )
     """
     For check validity of data (avoid look ahead bias).
     import pandas as pd
@@ -62,8 +88,10 @@ def main():
     """
     # alphalens.tears.create_returns_tear_sheet(factor_data, False, False, set_context=False, output_format='pdf')
     res = alphalens.tears.create_full_tear_sheet(factor_data, long_short=True,
-                                                 output_format='pdf', verbose=True)
-    print res
+                                                 output_format='pdf', verbose=True,
+                                                 # by_group=True
+                                                 )
+    # print res
 
 
 def _test_append_custom_data():
