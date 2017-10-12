@@ -111,26 +111,9 @@ def test_remote_data_service_industry():
     # df_ann = df_ann.set_index(['symbol', 'in_date'])
     # df_ann = df_ann.unstack(level='symbol')
     
-    """
-    s_raw = df.loc[:, 'symbol']
-    s = set(s_raw)
-    print len(s_raw) - len(s)
-    
-    df_map = df.loc[:, ['industry1_code', 'industry1_name']].copy()
-    df_map = df_map.drop_duplicates(subset='industry1_code')
-    ind_map = dict(zip(df_map.loc[:, 'industry1_code'].values,
-                       df_map.loc[:, 'industry1_name'].values))
-    ind_map = {k: v.decode('utf-8') for k, v in ind_map.viewitems()}
-    for k, v in ind_map.viewitems():
-        print k, v
-    
-    df2 = df.set_index('symbol')
-    df2 = df2.loc[:, 'industry1_code']
-    
-    """
     from quantos.data.dataview import DataView
     dic_sec = DataView._group_df_to_dict(df, by='symbol')
-    dic_sec = {sec: df.drop_duplicates().reset_index() for sec, df in dic_sec.viewitems()}
+    dic_sec = {sec: df.reset_index() for sec, df in dic_sec.viewitems()}
     
     df_ann = pd.concat([df.loc[:, 'in_date'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
     df_value = pd.concat([df.loc[:, 'industry1_code'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
@@ -163,7 +146,6 @@ def test_remote_data_service_industry_df():
     sec = '000008.SZ'
     type_ = 'ZZ'
     df_raw = ds.get_industry_raw(symbol=sec, type_=type_)
-    df_raw = df_raw.drop_duplicates(subset='in_date')
     df = ds.get_industry_daily(symbol=symbol_arr, start_date=df_raw.index[0], end_date=20170505, type_=type_)
     
     for idx, row in df_raw.iterrows():
@@ -194,8 +176,8 @@ def test_remote_data_service_adj_factor():
     symbol_arr = ','.join(arr)
     
     res = ds.get_adj_factor_daily(symbol_arr, start_date=20130101, end_date=20170101, div=False)
-    assert abs(res.loc[20160408, '300024.SZ'] - 10.648) < 1e-3
-    assert abs(res.loc[20160412, '300024.SZ'] - 23.425) < 1e-3
+    assert abs(res.loc[20160408, '300024.SZ'] - 10.735) < 1e-3
+    assert abs(res.loc[20160412, '300024.SZ'] - 23.658) < 1e-3
     assert res.isnull().sum().sum() == 0
     
 if __name__ == "__main__":
