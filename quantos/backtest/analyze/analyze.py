@@ -27,7 +27,8 @@ class MyFormatter(Formatter):
         if ind >= len(self.dates) or ind < 0:
             return ''
 
-        return self.dates[ind].strftime(self.fmt)
+        # return self.dates[ind].strftime(self.fmt)
+        return pd.to_datetime(self.dates[ind], format="%Y%m%d").strftime(self.fmt)
 
 
 class BaseAnalyzer(object):
@@ -106,16 +107,12 @@ class BaseAnalyzer(object):
     
     def _init_symbol_price(self):
         """Get close price of securities in the universe from data server."""
-        close_dic = dict()
-        for sec in self.universe:
-            df, err_msg = self.data_api.daily(sec, self.configs['start_date'], self.configs['end_date'],
-                                              fields="close", adjust_mode=self.adjust_mode)
-            
-            df.index = pd.to_datetime(df.loc[:, 'trade_date'], format="%Y%m%d")
-            df.drop(['trade_date', 'symbol'], axis=1, inplace=True)
-            close_dic[sec] = df
+        df, err_msg = self.data_api.daily(','.join(self.universe), self.configs['start_date'], self.configs['end_date'],
+                                          fields="close", adjust_mode=self.adjust_mode)
+        dic_sec = self.data_api._group_df_to_dict(df, by='symbol')
+        dic_sec = {sec: df.set_index('trade_date').loc[:, ['close']] for sec, df in dic_sec.viewitems()}
         
-        self._closes = close_dic
+        self._closes = dic_sec
     
     def _init_universe(self, securities):
         """Return a set of securities."""
@@ -165,7 +162,8 @@ class AlphaAnalyzer(BaseAnalyzer):
     @staticmethod
     def _process_trades(df):
         """Add various statistics to trades DataFrame."""
-        df.index = pd.to_datetime(df.loc[:, 'fill_date'], format="%Y%m%d")
+        # df.index = pd.to_datetime(df.loc[:, 'fill_date'], format="%Y%m%d")
+        df.index = df.loc[:, 'fill_date']
         df.index.name = 'index'
         
         cols_to_drop = ['task_id', 'entrust_no', 'fill_no']
@@ -265,9 +263,11 @@ class AlphaAnalyzer(BaseAnalyzer):
         df_bench_value, err_msg = self.data_api.daily(benchmark_name,
                                                       self.configs['start_date'], self.configs['end_date'],
                                                       fields='close', adjust_mode=self.adjust_mode)
-        df_bench_value.index = pd.to_datetime(df_bench_value.loc[:, 'trade_date'], format="%Y%m%d")
-        df_bench_value.index.name = 'index'
-        df_bench_value.drop(['trade_date', 'symbol'], axis=1, inplace=True)
+        # df_bench_value.index = pd.to_datetime(df_bench_value.loc[:, 'trade_date'], format="%Y%m%d")
+        # df_bench_value.index = df_bench_value.loc[:, 'trade_date']
+        # df_bench_value.index.name = 'index'
+        df_bench_value = df_bench_value.set_index('trade_date')
+        df_bench_value.drop(['symbol'], axis=1, inplace=True)
         
         # pnl_return_cum = pd.DataFrame(index=strategy_value.index, data=self._to_pct_return(strategy_value.values))
         # bench_return_cum = pd.DataFrame(index=df_bench_value.index, data=self._to_pct_return(df_bench_value.values))
@@ -310,7 +310,7 @@ class AlphaAnalyzer(BaseAnalyzer):
         ax2.set_xlabel("Date")
         ax2.set_ylabel("Percent")
         ax1.set_ylabel("Percent")
-        ax2.xaxis.set_major_formatter(MyFormatter(idx0, '%Y%m'))
+        ax2.xaxis.set_major_formatter(MyFormatter(idx0, '%Y-%m'))
         
         plt.tight_layout()
         fig.savefig(save_folder + '/' + 'pnl_img.png')
@@ -357,7 +357,8 @@ def calc_uat_metrics(t1, symbol):
 
 
 def plot_trades(df, symbol="", save_folder="."):
-    idx = range(len(df.index))
+    idx0 = df.index
+    idx = range(len(idx0))
     price = df.loc[:, 'close']
     bv, sv = df.loc[:, 'BuyVolume'].values, df.loc[:, 'SellVolume'].values
     profit = df.loc[:, 'VirtualProfit'].values
@@ -388,6 +389,8 @@ def plot_trades(df, symbol="", save_folder="."):
     ax3.axhline(0, color='k', lw=1)
     
     ax1.set_title(symbol)
+    
+    ax1.xaxis.set_major_formatter(MyFormatter(idx0, '%Y-%m'))
     
     fig.savefig(save_folder + '/' + "{}.png".format(symbol))
     plt.tight_layout()
