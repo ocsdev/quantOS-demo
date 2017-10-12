@@ -584,7 +584,7 @@ class RemoteDataService(DataService):
         res = {key: value for key, value in gp}
         return res
     
-    def get_industry_df(self, symbol, start_date, end_date, type_='SW'):
+    def get_industry_daily(self, symbol, start_date, end_date, type_='SW'):
         """
         Get index components on each day during start_date and end_date.
         
@@ -653,5 +653,80 @@ class RemoteDataService(DataService):
             print msg
         return df_raw.astype(dtype={'in_date': int,
                                     # 'out_date': int
+                                    })
+
+    def get_adj_factor_daily(self, symbol, start_date, end_date, div=False):
+        """
+        Get index components on each day during start_date and end_date.
+        
+        Parameters
+        ----------
+        symbol : str
+            separated by ','
+        start_date : int
+        end_date : int
+        div : bool
+            False for normal adjust factor, True for diff.
+
+        Returns
+        -------
+        res : pd.DataFrame
+            index dates, columns symbols
+            values are industry code
+
+        """
+        df_raw = self.get_adj_factor_raw(symbol)
+    
+        dic_sec = self._group_df_to_dict(df_raw, by='symbol')
+        dic_sec = {sec: df.loc[:, ['trade_date', 'adjust_factor']].drop_duplicates().set_index('trade_date').iloc[:, 0]
+                   for sec, df in dic_sec.viewitems()}
+    
+        res = pd.concat(dic_sec, axis=1)
+        
+        # align to every trade date
+        dates_arr = self.get_trade_date(start_date, end_date)
+        res = res.reindex(dates_arr)
+        
+        res = res.fillna(method='ffill').fillna(method='bfill')
+
+        if div:
+            res = res.div(res.shift(1, axis=0)).fillna(1.0)
+            
+        res = res.loc[start_date: end_date, :]
+
+        return res
+
+    def get_adj_factor_raw(self, symbol, start_date=None, end_date=None):
+        """
+        Query adjust factor for symbols.
+        
+        Parameters
+        ----------
+        symbol : str
+            separated by ','
+        start_date : int
+        end_date : int
+
+        Returns
+        -------
+        df : pd.DataFrame
+
+        """
+        if start_date is None:
+            start_date = ""
+        if end_date is None:
+            end_date = ""
+        
+        filter_argument = self._dic2url({'symbol': symbol,
+                                         'start_date': start_date, 'end_date': end_date})
+        fields_list = ['symbol', 'trade_date', 'adjust_factor']
+
+        df_raw, msg = self.query("lb.secAdjFactor", fields=','.join(fields_list),
+                                 filter=filter_argument, orderby="symbol")
+        if msg != '0,':
+            print msg
+        return df_raw.astype(dtype={'symbol': str,
+                                    'trade_date': int,
+                                    'adjust_factor': float
                                     })
 

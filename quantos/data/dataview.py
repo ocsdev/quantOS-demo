@@ -339,14 +339,16 @@ class DataView(object):
             fields_market_daily = self._get_fields('market_daily', fields, append=True)  # TODO: not each time we want append = True
             if fields_market_daily:
                 print "NOTE: adjust mode of price is [{:s} adjust]".format(self.adjust_mode)
+                # no adjust prices and other market daily fields
                 df_daily, msg1 = self.data_api.daily(symbol_str, start_date=self.start_date, end_date=self.end_date,
-                                                            adjust_mode=None, fields=sep.join(fields_market_daily))
+                                                     adjust_mode=None, fields=sep.join(fields_market_daily))
                 adj_cols = ['open', 'high', 'low', 'close']
+                # adjusted prices
                 df_daily_adjust, msg11 = self.data_api.daily(symbol_str, start_date=self.start_date, end_date=self.end_date,
                                                              adjust_mode=self.adjust_mode, fields=','.join(adj_cols))
                 df_daily_adjust = df_daily_adjust.loc[:, adj_cols]
-                df_daily_adjust.columns = [col + '_adj' for col in adj_cols]
-                df_daily = pd.concat([df_daily, df_daily_adjust], axis=1)
+                # concat axis = 1
+                df_daily = df_daily.join(df_daily_adjust, rsuffix='_adj')
                 if msg1 != '0,':
                     print msg1
                 dic_market_daily = self._group_df_to_dict(df_daily, 'symbol')
@@ -676,6 +678,12 @@ class DataView(object):
         
         return merge_d, merge_q
     
+    def _prepare_adj_factor(self):
+        symbol_str = ','.join(self.symbol)
+        df_adj = self.data_api.get_adj_factor_daily(symbol_str,
+                                                    start_date=self.start_date, end_date=self.end_date, div=False)
+        self.append_df(df_adj, 'adj_factor', is_quarterly=False)
+        
     def prepare_data(self):
         """Prepare data for the FIRST time."""
         # prepare benchmark and group
@@ -685,8 +693,12 @@ class DataView(object):
             print "Query benchmark..."
             self._data_benchmark = self._prepare_benchmark()
         
+        print "Query all data fields..."
         self.data_d, self.data_q = self._prepare_data(self.fields)
-        
+
+        print "Query adj_factor..."
+        self._prepare_adj_factor()
+
         print "Data has been successfully prepared."
 
     def init_from_config(self, props, data_api):
@@ -739,8 +751,8 @@ class DataView(object):
         return df_bench
     
     def _prepare_group(self):
-        df = self.data_api.get_industry_df(symbol=','.join(self.symbol),
-                                           start_date=self.extended_start_date, end_date=self.end_date)
+        df = self.data_api.get_industry_daily(symbol=','.join(self.symbol),
+                                              start_date=self.extended_start_date, end_date=self.end_date)
         return df
     
     def _add_field(self, field_name, is_quarterly=None):

@@ -20,11 +20,13 @@ def test_add_formula_directly():
     
     secs = '600030.SH,000063.SZ,000001.SZ'
     props = {'start_date': 20160601, 'end_date': 20170601, 'symbol': secs,
+             'fields': 'open,close',
              'freq': 1}
     dv.init_from_config(props, data_api=ds)
+    dv.prepare_data()
     
     dv.add_formula("myfactor", 'close / open')
-    assert dv.data_d.shape == (242, 12)
+    assert dv.data_d.shape == (242, 33)
     
 
 def test_write():
@@ -40,7 +42,7 @@ def test_write():
 
     dv.init_from_config(props, data_api=ds)
     dv.prepare_data()
-    assert dv.data_d.shape == (242, 27)
+    assert dv.data_d.shape == (242, 42)
     assert dv.dates.shape == (242, )
     # TODO
     """

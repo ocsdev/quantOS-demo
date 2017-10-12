@@ -158,13 +158,13 @@ def test_remote_data_service_industry_df():
     
     ds = RemoteDataService()
     arr = ds.get_index_comp(index='000300.SH', start_date=20130101, end_date=20170505)
-    
     symbol_arr = ','.join(arr)
+    
     sec = '000008.SZ'
     type_ = 'ZZ'
     df_raw = ds.get_industry_raw(symbol=sec, type_=type_)
     df_raw = df_raw.drop_duplicates(subset='in_date')
-    df = ds.get_industry_df(symbol=symbol_arr, start_date=df_raw.index[0], end_date=20170505, type_=type_)
+    df = ds.get_industry_daily(symbol=symbol_arr, start_date=df_raw.index[0], end_date=20170505, type_=type_)
     
     for idx, row in df_raw.iterrows():
         in_date = row['in_date']
@@ -186,6 +186,16 @@ def test_remote_data_service_fin_indicator():
                            filter=filter_argument, orderby="symbol")
     print
 
+
+def test_remote_data_service_adj_factor():
+    ds = RemoteDataService()
+
+    arr = ds.get_index_comp(index='000300.SH', start_date=20130101, end_date=20170505)
+    symbol_arr = ','.join(arr)
+    
+    res = ds.get_adj_factor_daily(symbol_arr, start_date=20130101, end_date=20170101, div=False)
+    assert abs(res.loc[20160408, '300024.SZ'] - 10.648) < 1e-3
+    assert abs(res.loc[20160412, '300024.SZ'] - 23.425) < 1e-3
     
 if __name__ == "__main__":
     test_remote_data_service_industry_df()
