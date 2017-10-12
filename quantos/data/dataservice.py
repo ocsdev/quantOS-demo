@@ -228,7 +228,7 @@ class DataService(Publisher):
 
 class RemoteDataService(DataService):
     """
-    JzDataServer uses data from jz's local database.
+    RemoteDataService is a concrete class using data from remote server's database.
 
     """
     # TODO no validity check for input parameters
@@ -684,7 +684,8 @@ class RemoteDataService(DataService):
         res = pd.concat(dic_sec, axis=1)
         
         # align to every trade date
-        dates_arr = self.get_trade_date(start_date, end_date)
+        s, e = df_raw.loc[:, 'trade_date'].min(), df_raw.loc[:, 'trade_date'].max()
+        dates_arr = self.get_trade_date(s, e)
         res = res.reindex(dates_arr)
         
         res = res.fillna(method='ffill').fillna(method='bfill')

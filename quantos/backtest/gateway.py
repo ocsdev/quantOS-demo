@@ -193,6 +193,15 @@ class PortfolioManager(TradeCallback):
             else:
                 raise ValueError("order {} does not exist".format(entrust_no))
     
+    def set_position(self, symbol, date, ratio=1):
+        """Modify latest (thus date might not be necessary) position by a ratio."""
+        pos_key = self._make_position_key(symbol, date)
+        pos = self.positions.get(pos_key)
+
+        pos.curr_size *= ratio
+        pos.init_size *= ratio
+        self.positions[pos_key] = pos
+        
     def on_trade_ind(self, ind):
         entrust_no = ind.entrust_no
         

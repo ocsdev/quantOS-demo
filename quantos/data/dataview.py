@@ -25,7 +25,7 @@ class DataView(object):
     
     Attributes
     ----------
-    data_api : JzDataServer
+    data_api : RemoteDataService
     symbol : list
     start_date : int
     end_date : int
@@ -682,7 +682,7 @@ class DataView(object):
         symbol_str = ','.join(self.symbol)
         df_adj = self.data_api.get_adj_factor_daily(symbol_str,
                                                     start_date=self.start_date, end_date=self.end_date, div=False)
-        self.append_df(df_adj, 'adj_factor', is_quarterly=False)
+        self.append_df(df_adj, 'adjust_factor', is_quarterly=False)
         
     def prepare_data(self):
         """Prepare data for the FIRST time."""
@@ -965,11 +965,8 @@ class DataView(object):
             for field_name, df in df_ref_quarterly.groupby(level=1, axis=1):  # by column multiindex fields
                 df_expanded = align(df, df_ref_ann, self.dates)
                 dic_expanded[field_name] = df_expanded
-            # df_ref_expanded = self._dic_of_df_to_multi_index_df(dic_expanded, levels=['field', 'symbol'])
             df_ref_expanded = pd.concat(dic_expanded.values(), axis=1)
-            # df_ref_expanded.index = JzCalendar.convert_int_to_datetime(df_ref_expanded.index)
             df_ref_expanded.index.name = self.TRADE_DATE_FIELD_NAME
-            # df_ref_expanded = df_ref_expanded.swaplevel(axis=1)
             df_ref_expanded = df_ref_expanded.loc[start_date: end_date, :]
         
         if fields_daily:

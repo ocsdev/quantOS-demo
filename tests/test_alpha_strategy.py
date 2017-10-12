@@ -66,7 +66,7 @@ def pb_factor_dataview(context=None, user_options=None):
 def gtja_factor_dataview(context=None, user_options=None):
     dv = context.dataview
     res = dv.get_snapshot(context.trade_date, fields='ret20')
-    res.loc[:, :] = np.random.rand
+    # res.loc[:, :] = np.random.rand
     res[res < 1e-2] = 0.0
     return res
 

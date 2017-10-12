@@ -1,6 +1,7 @@
 # encoding: utf-8
 
 import numpy as np
+import pandas as pd
 
 import quantos.util.fileio
 from quantos.backtest.event.eventType import EVENT
@@ -72,6 +73,8 @@ class AlphaBacktestInstance(BacktestInstance):
     def __init__(self):
         BacktestInstance.__init__(self)
         
+        self.last_rebalance_date = 0
+        self.current_rebalance_date = 0
         self.trade_days = None
     
     def _is_trade_date(self, start, end, date, data_server):
@@ -80,11 +83,16 @@ class AlphaBacktestInstance(BacktestInstance):
             self.trade_days = df.loc[:, 'trade_date'].values
         return date in self.trade_days
     
-    def go_next_trade_date(self):
+    def go_next_date(self):
         """update self.current_date and last_date."""
         if self.ctx.gateway.match_finished:
             self.current_date = self.calendar.get_next_period_day(self.current_date,
                                                                   self.strategy.period, self.strategy.days_delay)
+            if self.current_rebalance_date > 0:
+                self.last_rebalance_date = self.current_rebalance_date
+            else:
+                self.last_rebalance_date = self.start_date
+            self.current_rebalance_date = self.current_date
             self.last_date = self.calendar.get_last_trade_date(self.current_date)
         else:
             # TODO here we must make sure the matching will not last to next period
@@ -93,7 +101,9 @@ class AlphaBacktestInstance(BacktestInstance):
         while (self.current_date < self.end_date
                and not self._is_trade_date(self.start_date, self.end_date, self.current_date,
                                            self.ctx.data_api)):
+            print "WARNING: not trade date, go next day."
             self.current_date = self.calendar.get_next_trade_date(self.current_date)
+            self.current_rebalance_date = self.current_date
             self.last_date = self.calendar.get_last_trade_date(self.current_date)
     
     def run_alpha(self):
@@ -101,7 +111,7 @@ class AlphaBacktestInstance(BacktestInstance):
         
         self.current_date = self.start_date
         while True:
-            self.go_next_trade_date()
+            self.go_next_date()
             if self.current_date > self.end_date:
                 break
             
@@ -158,16 +168,39 @@ class AlphaBacktestInstance(BacktestInstance):
 
 
 class AlphaBacktestInstance_dv(AlphaBacktestInstance):
+    def position_adjust(self):
+        """
+        adjust happens after market close
+        Before each re-balance day, adjust for all dividend and cash paid actions during the last period.
+        We assume all cash will be re-invested.
+        Since we adjust our position at next re-balance day, PnL before that may be incorrect.
+        """
+        adj_curr = self.ctx.dataview.get_snapshot(self.current_rebalance_date, fields='adjust_factor')
+        adj_last = self.ctx.dataview.get_snapshot(self.last_rebalance_date, fields='adjust_factor')
+        cols = adj_curr.index
+        v = adj_curr.values.flatten()/adj_last.values.flatten()
+        adj_ratio = dict(zip(list(cols), list(v)))
+
+        pm = self.strategy.pm
+        for sec in pm.holding_securities:
+            r = adj_ratio[sec]
+            pm.set_position(sec, self.current_rebalance_date, r)
+    
+    def delist_adjust(self):
+        pass
+    
     def run_alpha(self):
         gateway = self.ctx.gateway
         
         self.current_date = self.start_date
         while True:
-            self.go_next_trade_date()
+            # switch trade date
+            self.go_next_date()
             
             if self.current_date > self.end_date:
                 break
             
+            # match orders or re-balance
             if gateway.match_finished:
                 # plan re-balance before new day
                 self.on_new_day(self.last_date)
@@ -176,6 +209,12 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
                 
                 # do re-balance on new day
                 self.on_new_day(self.current_date)
+
+                # position adjust according to dividend, cash paid, de-list actions during the last period
+                # two adjust must in order
+                self.position_adjust()
+                self.delist_adjust()
+                
                 univ_price_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
                 suspensions = self.get_suspensions()
                 self.strategy.re_balance_plan_after_open(univ_price_dic, suspensions)
@@ -184,6 +223,7 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
                 self.on_new_day(self.current_date)
                 univ_price_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
             
+            # return trade indications
             trade_indications = gateway.match(univ_price_dic, self.current_date)
             for trade_ind in trade_indications:
                 self.strategy.on_trade_ind(trade_ind)

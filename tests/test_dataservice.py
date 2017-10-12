@@ -196,6 +196,7 @@ def test_remote_data_service_adj_factor():
     res = ds.get_adj_factor_daily(symbol_arr, start_date=20130101, end_date=20170101, div=False)
     assert abs(res.loc[20160408, '300024.SZ'] - 10.648) < 1e-3
     assert abs(res.loc[20160412, '300024.SZ'] - 23.425) < 1e-3
+    assert res.isnull().sum().sum() == 0
     
 if __name__ == "__main__":
     test_remote_data_service_industry_df()

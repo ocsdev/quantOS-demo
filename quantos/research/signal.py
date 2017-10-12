@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     timer.tick('import alphalens')
     save_dataview()
-    main()
+    # main()
     # test_append_custom_data()
     
     timer.tick('end')

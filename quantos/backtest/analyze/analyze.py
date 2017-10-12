@@ -302,10 +302,10 @@ class AlphaAnalyzer(BaseAnalyzer):
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), dpi=300, sharex=True)
         idx0 = self.returns.index
         idx = range(len(idx0))
-        ax1.plot(idx, self.returns.loc[:, 'bench'], label='Benchmark')
-        ax1.plot(idx, self.returns.loc[:, 'strat'], label='Strategy')
+        ax1.plot(idx, self.returns.loc[:, 'bench_cum'], label='Benchmark')
+        ax1.plot(idx, self.returns.loc[:, 'strat_cum'], label='Strategy')
         ax1.legend(loc='upper left')
-        ax2.plot(idx, self.returns.loc[:, 'active'], label='Extra Return')
+        ax2.plot(idx, self.returns.loc[:, 'active_cum'], label='Extra Return')
         ax2.legend(loc='upper left')
         ax2.set_xlabel("Date")
         ax2.set_ylabel("Percent")

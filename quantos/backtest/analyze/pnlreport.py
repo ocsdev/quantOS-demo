@@ -66,7 +66,6 @@ class PnlManager(object):
     def __init__(self):
         self.calendar = Calendar()
         self.instmgr = InstManager()
-        self.jzquant_api = None
         self.strategy = None
         self.pnls = []
         self.start_date = 0
