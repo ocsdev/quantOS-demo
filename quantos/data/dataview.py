@@ -70,7 +70,8 @@ class DataView(object):
                             'bidvolume1', 'bidvolume2', 'bidvolume3', 'bidvolume4', 'bidvolume5'}
         # fields map
         self.market_daily_fields = \
-            {'open', 'high', 'low', 'close', 'volume', 'turnover', 'vwap', 'oi', 'trade_status'}
+            {'open', 'high', 'low', 'close', 'volume', 'turnover', 'vwap', 'oi', 'trade_status',
+             'open_adj', 'high_adj', 'low_adj', 'close_adj'}
         self.reference_daily_fields = \
             {'currency', 'total_market_value', 'float_market_value',
              'high_52w', 'low_52w', 'high_52w_adj', 'low_52w_adj', 'close_price',
@@ -277,6 +278,11 @@ class DataView(object):
         
         if complement:
             s = set(fields) - s
+            
+        if field_type == 'market_daily':
+            # turnover will not be adjusted
+            s.update({'open', 'high', 'close', 'low'})
+            
         if append:
             if field_type == 'market_daily':
                 s.add(self.TRADE_STATUS_FIELD_NAME)
@@ -334,7 +340,13 @@ class DataView(object):
             if fields_market_daily:
                 print "NOTE: adjust mode of price is [{:s} adjust]".format(self.adjust_mode)
                 df_daily, msg1 = self.data_api.daily(symbol_str, start_date=self.start_date, end_date=self.end_date,
-                                                     adjust_mode=self.adjust_mode, fields=sep.join(fields_market_daily))
+                                                            adjust_mode=None, fields=sep.join(fields_market_daily))
+                adj_cols = ['open', 'high', 'low', 'close']
+                df_daily_adjust, msg11 = self.data_api.daily(symbol_str, start_date=self.start_date, end_date=self.end_date,
+                                                             adjust_mode=self.adjust_mode, fields=','.join(adj_cols))
+                df_daily_adjust = df_daily_adjust.loc[:, adj_cols]
+                df_daily_adjust.columns = [col + '_adj' for col in adj_cols]
+                df_daily = pd.concat([df_daily, df_daily_adjust], axis=1)
                 if msg1 != '0,':
                     print msg1
                 dic_market_daily = self._group_df_to_dict(df_daily, 'symbol')
@@ -698,14 +710,16 @@ class DataView(object):
         self.extended_start_date = Calendar.shift(self.start_date, n_weeks=-52)
         self.end_date = props['end_date']
         
-        self.fields = props.get('fields', [])
-        if self.fields:
+        fields = props.get('fields', [])
+        if fields:
             fields = props['fields'].split(sep)
             self.fields = [field for field in fields if self._is_predefined_field(field)]
             if len(self.fields) < len(fields):
                 print "Field name {} not valid, ignore.".format(set.difference(set(fields),
-                                                                           set(self.fields)))
-    
+                                                                               set(self.fields)))
+        # TODO: hard-coded
+        self.fields.extend(['open_adj', 'high_adj', 'low_adj', 'close_adj'])
+        
         self.freq = props['freq']
         self.universe = props.get('universe', "")
         if self.universe:
