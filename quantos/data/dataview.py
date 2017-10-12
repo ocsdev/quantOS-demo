@@ -71,7 +71,7 @@ class DataView(object):
         # fields map
         self.market_daily_fields = \
             {'open', 'high', 'low', 'close', 'volume', 'turnover', 'vwap', 'oi', 'trade_status',
-             'open_adj', 'high_adj', 'low_adj', 'close_adj'}
+             'open_adj', 'high_adj', 'low_adj', 'close_adj', 'index_member'}
         self.reference_daily_fields = \
             {'currency', 'total_market_value', 'float_market_value',
              'high_52w', 'low_52w', 'high_52w_adj', 'low_52w_adj', 'close_price',
@@ -652,12 +652,12 @@ class DataView(object):
             return None, None
         
         # query data
-        print "\nQuery data..."
+        print "\nQuery data - query data_api..."
         dic_market_daily, dic_ref_daily, dic_income, dic_balance_sheet, dic_cash_flow, dic_fin_ind = \
             self._query_data(self.symbol, fields)
         
         # pre-process data
-        print "\nPreprocess data..."
+        print "\nQuery data - preprocess..."
         multi_market_daily = self._preprocess_market_daily(dic_market_daily)
         multi_ref_daily = self._preprocess_ref_daily(dic_ref_daily, fields)
         multi_income = self._preprocess_ref_quarterly('income', dic_income, fields)
@@ -665,7 +665,7 @@ class DataView(object):
         multi_cash_flow = self._preprocess_ref_quarterly('cash_flow', dic_cash_flow, fields)
         multi_fin_ind = self._preprocess_ref_quarterly('fin_indicator', dic_fin_ind, fields)
     
-        print "\nMerge data..."
+        print "\nQuery data - merge..."
         merge_d = self._merge_data([multi_market_daily, multi_ref_daily],
                                    index_name=self.TRADE_DATE_FIELD_NAME)
         merge_q = self._merge_data([multi_income, multi_balance_sheet, multi_cash_flow, multi_fin_ind],
@@ -683,21 +683,27 @@ class DataView(object):
         df_adj = self.data_api.get_adj_factor_daily(symbol_str,
                                                     start_date=self.start_date, end_date=self.end_date, div=False)
         self.append_df(df_adj, 'adjust_factor', is_quarterly=False)
-        
+
+    def _prepare_comp_info(self):
+        df = self.data_api.get_index_comp_df(self.universe, self.start_date, self.end_date)
+        self.append_df(df, 'index_member', is_quarterly=False)
+
     def prepare_data(self):
         """Prepare data for the FIRST time."""
         # prepare benchmark and group
+        print "Query data..."
+        self.data_d, self.data_q = self._prepare_data(self.fields)
+
+        print "Query adj_factor..."
+        self._prepare_adj_factor()
+
         if self.universe:
             print "Query industry..."
             self._data_group = self._prepare_group()
             print "Query benchmark..."
             self._data_benchmark = self._prepare_benchmark()
-        
-        print "Query all data fields..."
-        self.data_d, self.data_q = self._prepare_data(self.fields)
-
-        print "Query adj_factor..."
-        self._prepare_adj_factor()
+            print "Query benchmar member info..."
+            self._prepare_comp_info()
 
         print "Data has been successfully prepared."
 
@@ -736,6 +742,7 @@ class DataView(object):
         self.universe = props.get('universe', "")
         if self.universe:
             self.symbol = data_api.get_index_comp(self.universe, self.start_date, self.end_date)
+            self.fields.append('index_member')
         else:
             self.symbol = props['symbol'].split(sep)
     

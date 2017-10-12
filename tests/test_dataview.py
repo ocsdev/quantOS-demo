@@ -167,6 +167,24 @@ def test_add_formula():
     assert dv.data_d.shape == (nrows, ncols + 2 * n_securities)
 
 
+def test_dataview_universe():
+    from quantos.data.dataservice import RemoteDataService
+
+    ds = RemoteDataService()
+    dv = DataView()
+    
+    props = {'start_date': 20170227, 'end_date': 20170327, 'universe': '000016.SH',
+             # 'symbol': 'rb1710.SHF,rb1801.SHF',
+             'fields': ('open,high,low,close,vwap,volume,turnover,'
+                        + 'roe,net_assets,'
+                        + 'total_oper_rev,oper_exp,tot_profit,int_income'
+                        ),
+             'freq': 1}
+    
+    dv.init_from_config(props, ds)
+    dv.prepare_data()
+    
+
 if __name__ == "__main__":
     # test_write()
     # test_read()
