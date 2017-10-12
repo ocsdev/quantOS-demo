@@ -258,6 +258,8 @@ class RemoteDataService(DataService):
         df, err_msg = self.api.daily(symbol=symbol, start_date=start_date, end_date=end_date,
                                      fields=fields, adjust_mode=adjust_mode, data_format="")
         # trade_status performance warning
+        # TODO there will be duplicate entries when on stocks' IPO day
+        df = df.drop_duplicates()
         return df, err_msg
 
     def bar(self, symbol,
@@ -605,7 +607,7 @@ class RemoteDataService(DataService):
         df_raw = self.get_industry_raw(symbol, type_=type_)
         
         dic_sec = self._group_df_to_dict(df_raw, by='symbol')
-        dic_sec = {sec: df.drop_duplicates().sort_values(by='in_date', axis=0).reset_index()
+        dic_sec = {sec: df.sort_values(by='in_date', axis=0).reset_index()
                    for sec, df in dic_sec.viewitems()}
 
         df_ann = pd.concat([df.loc[:, 'in_date'].rename(sec) for sec, df in dic_sec.viewitems()], axis=1)
@@ -650,9 +652,11 @@ class RemoteDataService(DataService):
                                  filter=filter_argument, orderby="symbol")
         if msg != '0,':
             print msg
-        return df_raw.astype(dtype={'in_date': int,
-                                    # 'out_date': int
-                                    })
+        
+        df_raw = df_raw.astype(dtype={'in_date': int,
+                                      # 'out_date': int
+                                     })
+        return df_raw.drop_duplicates()
 
     def get_adj_factor_daily(self, symbol, start_date, end_date, div=False):
         """
@@ -677,7 +681,7 @@ class RemoteDataService(DataService):
         df_raw = self.get_adj_factor_raw(symbol)
     
         dic_sec = self._group_df_to_dict(df_raw, by='symbol')
-        dic_sec = {sec: df.loc[:, ['trade_date', 'adjust_factor']].drop_duplicates().set_index('trade_date').iloc[:, 0]
+        dic_sec = {sec: df.loc[:, ['trade_date', 'adjust_factor']].set_index('trade_date').iloc[:, 0]
                    for sec, df in dic_sec.viewitems()}
     
         res = pd.concat(dic_sec, axis=1)
@@ -725,8 +729,9 @@ class RemoteDataService(DataService):
                                  filter=filter_argument, orderby="symbol")
         if msg != '0,':
             print msg
-        return df_raw.astype(dtype={'symbol': str,
+        df_raw = df_raw.astype(dtype={'symbol': str,
                                     'trade_date': int,
                                     'adjust_factor': float
                                     })
+        return df_raw.drop_duplicates()
 
