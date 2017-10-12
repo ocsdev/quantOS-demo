@@ -29,4 +29,4 @@ def save_json(serializable, file_name):
 
 
 def join_relative_path(*paths):
-    return os.path.join(SOURCE_ROOT_DIR, *paths)
+    return os.path.abspath(os.path.join(SOURCE_ROOT_DIR, *paths))
