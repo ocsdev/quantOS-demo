@@ -49,3 +49,6 @@
 
 # Data
 - self defined index; commidity index
+
+# Backtest
+-[] do not trade symbols that are not index members
