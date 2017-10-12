@@ -545,7 +545,6 @@ class RemoteDataService(DataService):
         res : pd.DataFrame
             index dates, columns all securities that have ever been components,
             values are 0 (not in) or 1 (in)
-        msg : str
 
         """
         df_io, msg = self._get_index_comp(index, start_date, end_date)
