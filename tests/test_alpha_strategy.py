@@ -65,7 +65,10 @@ def pb_factor_dataview(context=None, user_options=None):
 
 def gtja_factor_dataview(context=None, user_options=None):
     dv = context.dataview
-    return dv.get_snapshot(context.trade_date, fields="high")
+    res = dv.get_snapshot(context.trade_date, fields='ret20')
+    res.loc[:, :] = np.random.rand
+    res[res < 1e-2] = 0.0
+    return res
 
 
 def my_commission(symbol, turnover, context=None, user_options=None):
@@ -83,8 +86,8 @@ def test_alpha_strategy():
         "benchmark": "000300.SH",
         "universe": "600026.SH,600027.SH,600028.SH,600029.SH,600030.SH,600031.SH",
     
-        "period": "month",
-        "days_delay": 1,
+        "period": "week",
+        "days_delay": 2,
     
         "init_balance": 1e7,
         "position_ratio": 0.7,
@@ -188,17 +191,16 @@ def test_alpha_strategy_dataview():
     cost_model.activate_func({'my_commission': {'myrate': 1e-2}})
     
     strategy = DemoAlphaStrategy(risk_model, signal_model, cost_model)
-    # strategy.register_context(context)
     # strategy.active_pc_method = 'equal_weight'
     # strategy.active_pc_method = 'mc'
-    strategy.active_pc_method = 'factor'
+    strategy.active_pc_method = 'factor_value_weight'
     
-    backtest = AlphaBacktestInstance_dv()
-    backtest.init_from_config(props, strategy, context=context)
+    bt = AlphaBacktestInstance_dv()
+    bt.init_from_config(props, strategy, context=context)
     
-    backtest.run_alpha()
+    bt.run_alpha()
     
-    backtest.save_results('../output/')
+    bt.save_results('../output/')
 
 if __name__ == "__main__":
     t_start = time.time()

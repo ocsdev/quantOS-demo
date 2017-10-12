@@ -333,6 +333,8 @@ class AlphaStrategy(Strategy):
         
         self.pc_methods = dict()
         self.active_pc_method = ""
+        
+        self.market_value_list = []
 
     def init_from_config(self, props):
         Strategy.init_from_config(self, props)
@@ -345,7 +347,7 @@ class AlphaStrategy(Strategy):
         self.register_pc_method('equal_weight', self.equal_weight)
         self.register_pc_method('mc', self.optimize_mc, options={'util_func': self.util_net_revenue,
                                                                  'constraints': None, 'initial_value': None})
-        self.register_pc_method('factor', self.factor_value_weight)
+        self.register_pc_method('factor_value_weight', self.factor_value_weight)
 
     def on_trade_ind(self, ind):
         """
@@ -359,7 +361,7 @@ class AlphaStrategy(Strategy):
 
         """
         self.pm.on_trade_ind(ind)
-        print str(ind)
+        # print str(ind)
         
     def register_pc_method(self, name, func, options=None):
         if options is None:
@@ -410,6 +412,16 @@ class AlphaStrategy(Strategy):
         weights, msg = func(**options)
         if msg:
             print msg
+
+        w_min = np.min(weights.values())
+        delta = 2 * abs(w_min)
+
+        weights = {k: 0.0 if np.isnan(v) else v + delta for k, v in weights.items()}
+        
+        w_sum = np.sum(np.abs(weights.values()))
+        if w_sum > 1e-8:
+            weights = {k: v / w_sum for k, v in weights.items()}
+
         self.weights = weights
 
     def equal_weight(self, util_func=None, constrains=None, initial_value=None):
@@ -421,9 +433,8 @@ class AlphaStrategy(Strategy):
     def factor_value_weight(self, util_func=None, constrains=None, initial_value=None):
         self.revenue_model.make_forecast()
         weights_raw = self.revenue_model.forecast_dic
-        w_sum = np.sum(weights_raw.values())
-        weights = {k: v / w_sum for k, v in weights_raw.items()}
-        return weights, ""
+        
+        return weights_raw, ""
         
     def optimize_mc(self, util_func, constraints=None, initial_value=None):
         """
@@ -481,14 +492,13 @@ class AlphaStrategy(Strategy):
         if not suspensions:
             return
         
-        univ = self.context.universe
-        
-        if len(suspensions) == len(univ):
+        if len(suspensions) == len(self.context.universe):
             raise ValueError("All suspended")  # TODO custom error
         
-        weights = {sec: 0 if sec in suspensions else w for sec, w in self.weights.viewitems()}
-        weights_sum = sum(weights.viewvalues())
-        weights = {sec: w / weights_sum for sec, w in weights.viewitems()}
+        weights = {sec: w if w not in suspensions else 0.0 for sec, w in self.weights.viewitems()}
+        weights_sum = np.sum(np.abs(weights.values()))
+        if weights_sum > 0.0:
+            weights = {sec: w / weights_sum for sec, w in weights.viewitems()}
         
         self.weights = weights
     
@@ -504,55 +514,89 @@ class AlphaStrategy(Strategy):
             df_dic[sec] = df
         return df_dic
     
-    # TODO
-    def get_suspensions(self):
-        return []
-    
-    def re_balance_plan(self, univ_price_dic, suspensions=None):
+    def re_balance_plan_before_open(self):
         """
-        Do portfolio re-balance.
+        Do portfolio re-balance before market open (not knowing suspensions) only calculate weights.
         For now, we stick to the same close price when calculate market value and do re-balance.
         
         Parameters
         ----------
-        univ_price_dic : dict
-            {sec: price}
-        suspensions : list of str
+        univ_price_dic : dict of {str: float}
+            {sec: close_price}
 
         """
         self.portfolio_construction()
         
-        # suspensions = self.get_suspensions()
+        # DEBUG
+        print "weights sum = {:.2f}".format(np.sum(self.weights.values()))
+        import pandas as pd
+        dfw = pd.Series(self.weights)
+        dfw.sort_values(inplace=True)
+        print dfw.tail()
+        # DEBUG
+
+    def re_balance_plan_after_open(self, univ_price_dic, suspensions=None):
+        """
+        Do portfolio re-balance after market open.
+        With suspensions known, we re-calculate weights and generate orders.
+        
+        Parameters
+        ----------
+        univ_price_dic : dict of {str: float}
+            {sec: close_price}
+        suspensions: list of str
+        
+        Notes
+        -----
+        price here must not be adjusted.
+
+        """
+        prices = {k: v.loc[:, 'close'].values[0] for k, v in univ_price_dic.viewitems()}
+    
+        # TODO why this two do not equal? (suspended stocks still have prices)
+        nan_symbols = [k for k, v in prices.viewitems() if np.isnan(v)]
+        set_diff = set.difference(set(nan_symbols), set(suspensions))
+        if len(set_diff) > 0:
+            print Warning("there are NaN values but not suspended.")
+            # print "Symbols with NaN price but not suspended: {}".format(set_diff)
+    
+        # weights of those suspended will be remove, and weights of others will be re-normalized
         self.re_weight_suspension(suspensions)
         
-        # univ_price_dic = self.get_univ_prices()
-        prices = {k: v.loc[:, 'close'].values[0] for k, v in univ_price_dic.viewitems()}
-        # prices = univ_price_dic
-        # TODO why this two do not equal? (suspended stocks still have prices)
-        nan_sec = [k for k, v in prices.viewitems() if np.isnan(v)]
-        # print "set of suspension - set of symbol with NaN price = {}".format(set.difference(set(suspensions), set(nan_sec)))
-        set_diff = set.difference(set(nan_sec), set(suspensions))
-        if not set_diff:
-            print Warning("there are NaN values but not suspended.")
-        # print "set of symbol with NaN price - set of suspension = {}".format(set_diff)
-        
-        market_value = self.pm.market_value(self.trade_date, prices, suspensions)  # TODO need close price
+        # market value does not include those suspended
+        market_value = self.pm.market_value(self.trade_date, prices, suspensions)
+        self.market_value_list.append((self.trade_date, market_value))
         cash_available = self.cash + market_value
-        
+    
         cash_use = cash_available * self.position_ratio
         cash_unuse = cash_available - cash_use
-        
-        goals, cash_remain = self.generate_weights_order(self.weights,
-                                                         cash_use,
-                                                         prices,
-                                                         algo='close')
+    
+        # position of those suspended will remain the same (will not be traded)
+        goals, cash_remain = self.generate_weights_order(self.weights, cash_use, prices,
+                                                         algo='close', suspensions=suspensions)
         self.goal_positions = goals
         self.cash = cash_remain + cash_unuse
         # self.liquidate_all()
         # self.place_batch_order(orders)
+        # ----------------------------------------
+        #  DEBUG validation
+        import pandas as pd
+        ret1 = self.context.dataview.data_d.loc[:, pd.IndexSlice[:, 'ret20']]
+        ret1.columns = ret1.columns.droplevel(level=1)
+        td = self.trade_date
+        ret1 = ret1.loc[td, :]
+        ret1 = ret1.sort_values().dropna()
         
-        self.on_after_rebalance(cash_available)
+        ser_weights = pd.Series(self.weights).sort_values()
+        rank_ret = set(ret1.index.values[-50:])
+        rank_weights = set(ser_weights.index.values[-50:])
+        print len(set(rank_ret) - set(rank_weights)) / 50.
+        # assert rank_dv == rank_weights
+        #  DEBUG validation
+        # ----------------------------------------
     
+        self.on_after_rebalance(cash_available)
+        
     @abstractmethod
     def on_after_rebalance(self, total):
         pass
@@ -560,7 +604,7 @@ class AlphaStrategy(Strategy):
     def send_bullets(self):
         self.goal_portfolio(self.goal_positions)
     
-    def generate_weights_order(self, weights_dic, turnover, prices, algo="close"):
+    def generate_weights_order(self, weights_dic, turnover, prices, algo="close", suspensions=None):
         """
         Send order according subject to total turnover and weights of different securities.
 
@@ -569,11 +613,12 @@ class AlphaStrategy(Strategy):
         weights_dic : dict of {symbol: weight}
             Weight of each symbol.
         turnover : float
-            Total turnover goal of all securities.
+            Total turnover goal of all securities. (cash quota)
         prices : dict of {str: float}
             {symbol: price}
         algo : str
             {'close', 'open', 'vwap', etc.}
+        suspensions : list of str
 
         Returns
         -------
@@ -585,6 +630,7 @@ class AlphaStrategy(Strategy):
             raise NotImplementedError("Currently we only suport order at close price.")
         
         cash_left = 0.0
+        cash_used = 0.0
         goals = []
         if algo == 'close' or 'vwap':  # order a certain amount of shares according to current close price
             for sec, w in weights_dic.items():
@@ -596,16 +642,21 @@ class AlphaStrategy(Strategy):
                 # else:
                 # order = VwapOrder()
                 # order.symbol = sec
-                
-                if w == 0.0:
+    
+                if sec in suspensions:
+                    current_pos = self.pm.get_position(sec, self.trade_date)
+                    goal_pos.size = current_pos.curr_size if current_pos is not None else 0
+                elif abs(w) < 1e-8:
                     # order.entrust_size = 0
                     goal_pos.size = 0
                 else:
                     price = prices[sec]
                     shares_raw = w * turnover / price
+                    # shares unit 100
                     shares = int(round(shares_raw / 100., 0))  # TODO cash may be not enough
                     shares_left = shares_raw - shares * 100  # may be negative
-                    cash_left += shares_left * price
+                    # cash_left += shares_left * price
+                    cash_used += shares * price * 100
                     
                     # order.entrust_size = shares
                     # order.entrust_action = common.ORDER_ACTION.BUY
@@ -617,6 +668,7 @@ class AlphaStrategy(Strategy):
                 # orders.append(order)
                 goals.append(goal_pos)
         
+        cash_left = turnover - cash_used
         return goals, cash_left
     
     def liquidate_all(self):

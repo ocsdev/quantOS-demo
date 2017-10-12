@@ -260,6 +260,7 @@ class FactorRevenueModel_dv(FactorRevenueModel):
     
     def make_forecast(self):
         forecasts = self.get_forecasts()
+        # TODO NaN
         forecasts = {key: value.fillna(0) for key, value in forecasts.items()}
         forecast = self.combine_sum(forecasts)
         self.forecast_dic = forecast

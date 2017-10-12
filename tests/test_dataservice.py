@@ -99,7 +99,7 @@ def test_remote_data_service_components():
 
 
 def test_remote_data_service_industry():
-    from data.align import align
+    from quantos.data.align import align
     import pandas as pd
     
     ds = RemoteDataService()

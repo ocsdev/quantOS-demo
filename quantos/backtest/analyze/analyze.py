@@ -1,5 +1,6 @@
 # encoding: utf-8
 
+import os
 import json
 from collections import OrderedDict
 
@@ -48,6 +49,8 @@ class BaseAnalyzer(object):
         self._universe = []
         self._closes = None
         
+        self.adjust_mode = None
+        
     @property
     def trades(self):
         """Read-only attribute"""
@@ -81,7 +84,10 @@ class BaseAnalyzer(object):
                     'fill_date': int,
                     'fill_time': int,
                     'fill_no': str}
-        trades = pd.read_csv(file_folder + 'trades.csv', ',', dtype=type_map)
+        trades = pd.read_csv(os.path.join(file_folder, 'trades.csv'), ',', dtype=type_map)
+        
+        if (trades.loc[:, 'fill_price'] < 0.5).sum() > 0:
+            print "zero fill price found! \n\n\n"
         
         self._init_universe(trades.loc[:, 'symbol'].values)
         self._init_configs(file_folder)
@@ -102,7 +108,8 @@ class BaseAnalyzer(object):
         """Get close price of securities in the universe from data server."""
         close_dic = dict()
         for sec in self.universe:
-            df, err_msg = self.data_api.daily(sec, self.configs['start_date'], self.configs['end_date'], fields="close")
+            df, err_msg = self.data_api.daily(sec, self.configs['start_date'], self.configs['end_date'],
+                                              fields="close", adjust_mode=self.adjust_mode)
             
             df.index = pd.to_datetime(df.loc[:, 'trade_date'], format="%Y%m%d")
             df.drop(['trade_date', 'symbol'], axis=1, inplace=True)
@@ -115,7 +122,7 @@ class BaseAnalyzer(object):
         self._universe = set(securities)
     
     def _init_configs(self, file_folder):
-        configs = json.load(open(file_folder + 'configs.json', 'r'))
+        configs = json.load(open(os.path.join(file_folder, 'configs.json'), 'r'))
         self._configs = configs
 
 
@@ -217,11 +224,14 @@ class AlphaAnalyzer(BaseAnalyzer):
         self.daily = daily_dic
     
     @staticmethod
-    def _to_return(arr):
+    def _to_pct_return(arr, cumulative=False):
         """Convert portfolio value to portfolio (linear) return."""
         r = np.empty_like(arr)
         r[0] = 0.0
-        r[1:] = arr[1:] / arr[0] - 1
+        if cumulative:
+            r[1:] = arr[1:] / arr[0] - 1
+        else:
+            r[1:] = arr[1:] / arr[:-1] - 1
         return r
     
     def get_pos_change_info(self):
@@ -254,38 +264,48 @@ class AlphaAnalyzer(BaseAnalyzer):
         benchmark_name = self.configs['benchmark']
         df_bench_value, err_msg = self.data_api.daily(benchmark_name,
                                                       self.configs['start_date'], self.configs['end_date'],
-                                                      fields='close')
+                                                      fields='close', adjust_mode=self.adjust_mode)
         df_bench_value.index = pd.to_datetime(df_bench_value.loc[:, 'trade_date'], format="%Y%m%d")
         df_bench_value.index.name = 'index'
         df_bench_value.drop(['trade_date', 'symbol'], axis=1, inplace=True)
-
-        pnl_return = pd.DataFrame(index=strategy_value.index, data=self._to_return(strategy_value.values))
-        bench_return = pd.DataFrame(index=df_bench_value.index, data=self._to_return(df_bench_value.values))
         
-        returns = pd.concat([bench_return, pnl_return], axis=1).fillna(method='ffill')
-        returns.columns = ['Benchmark', 'Strategy']
-        returns.loc[:, 'extra'] = returns.loc[:, 'Strategy'] - returns.loc[:, 'Benchmark']
+        # pnl_return_cum = pd.DataFrame(index=strategy_value.index, data=self._to_pct_return(strategy_value.values))
+        # bench_return_cum = pd.DataFrame(index=df_bench_value.index, data=self._to_pct_return(df_bench_value.values))
+        
+        market_values = pd.concat([strategy_value, df_bench_value],
+                                  axis=1).fillna(method='ffill')
+        market_values.columns = ['strat', 'bench']
+        
+        cols = ['strat', 'bench', 'active', 'strat_cum', 'bench_cum', 'active_cum']
+        df_returns = market_values.pct_change(periods=1).fillna(0.0)
+        # df_returns = np.log(market_values).diff(1).fillna(0.0)  # log return
+        df_returns.loc[:, 'active'] = df_returns['strat'] - df_returns['bench']
+        df_returns = df_returns.join((df_returns.loc[:, ['strat', 'bench', 'active']] + 1.0).cumprod(), rsuffix='_cum')
+        df_returns.columns = cols
+        # returns = pd.concat([bench_return_cum, pnl_return_cum], axis=1).fillna(method='ffill')
+        # returns.columns = ['Benchmark', 'Strategy']
+        # returns.loc[:, 'extra'] = returns.loc[:, 'Strategy'] - returns.loc[:, 'Benchmark']
         # returns.loc[:, 'DD']
         
         start = pd.to_datetime(self.configs['start_date'], format="%Y%m%d")
         end = pd.to_datetime(self.configs['end_date'], format="%Y%m%d")
         years = (end - start).days / 225.
         
-        self.metrics['yearly_return'] = returns.loc[:, 'extra'].values[-1] / years
-        self.metrics['yearly_vol'] = returns.loc[:, 'extra'].std() * np.sqrt(225.)
-        self.metrics['beta'] = np.corrcoef(returns.loc[:, 'Benchmark'], returns.loc[:, 'Strategy'])[0, 1]
+        self.metrics['yearly_return'] = df_returns.loc[:, 'active_cum'].values[-1] / years
+        self.metrics['yearly_vol'] = df_returns.loc[:, 'active'].std() * np.sqrt(225.)
+        self.metrics['beta'] = np.corrcoef(df_returns.loc[:, 'bench'], df_returns.loc[:, 'strat'])[0, 1]
         self.metrics['sharpe'] = self.metrics['yearly_return'] / self.metrics['yearly_vol']
         
-        self.returns = returns
+        self.returns = df_returns
 
     def plot_pnl(self, save_folder="."):
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), dpi=300, sharex=True)
         idx0 = self.returns.index
         idx = range(len(idx0))
-        ax1.plot(idx, self.returns.loc[:, 'Benchmark'], label='Benchmark')
-        ax1.plot(idx, self.returns.loc[:, 'Strategy'], label='Strategy')
+        ax1.plot(idx, self.returns.loc[:, 'bench'], label='Benchmark')
+        ax1.plot(idx, self.returns.loc[:, 'strat'], label='Strategy')
         ax1.legend(loc='upper left')
-        ax2.plot(idx, self.returns.loc[:, 'extra'], label='Extra Return')
+        ax2.plot(idx, self.returns.loc[:, 'active'], label='Extra Return')
         ax2.legend(loc='upper left')
         ax2.set_xlabel("Date")
         ax2.set_ylabel("Percent")

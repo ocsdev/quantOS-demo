@@ -21,17 +21,17 @@ def test_backtest_analyze():
     ta.get_daily()
     print "calc strategy return..."
     ta.get_returns()
-    print "get position change..."
+    # print "get position change..."
     # ta.get_pos_change_info()
     
     print "plot..."
-    selected_sec = []  # list(ta.universe)[::3]
+    selected_sec = list(ta.universe)[:3]
     for sec, df in ta.daily.items():
         if sec in selected_sec:
             ana.plot_trades(df, sec, out_folder)
     ta.plot_pnl(out_folder)
-    print "generate report..."
     
+    print "generate report..."
     ta.gen_report(static_folder=static_folder, out_folder=out_folder, selected=selected_sec)
 
 

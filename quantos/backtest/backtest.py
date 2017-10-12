@@ -1,5 +1,7 @@
 # encoding: utf-8
 
+import numpy as np
+
 import quantos.util.fileio
 from quantos.backtest.event.eventType import EVENT
 from quantos.data.basic.marketdata import Bar
@@ -79,6 +81,7 @@ class AlphaBacktestInstance(BacktestInstance):
         return date in self.trade_days
     
     def go_next_trade_date(self):
+        """update self.current_date and last_date."""
         if self.ctx.gateway.match_finished:
             self.current_date = self.calendar.get_next_period_day(self.current_date,
                                                                   self.strategy.period, self.strategy.days_delay)
@@ -92,7 +95,6 @@ class AlphaBacktestInstance(BacktestInstance):
                                            self.ctx.data_api)):
             self.current_date = self.calendar.get_next_trade_date(self.current_date)
             self.last_date = self.calendar.get_last_trade_date(self.current_date)
-            self.ctx.trade_date = self.current_date
     
     def run_alpha(self):
         gateway = self.ctx.gateway
@@ -106,7 +108,7 @@ class AlphaBacktestInstance(BacktestInstance):
             if gateway.match_finished:
                 self.on_new_day(self.last_date)
                 df_dic = self.strategy.get_univ_prices()  # access data
-                self.strategy.re_balance_plan(df_dic, suspensions=[])
+                self.strategy.re_balance_plan_before_open(df_dic, suspensions=[])
                 
                 self.on_new_day(self.current_date)
                 self.strategy.send_bullets()
@@ -122,6 +124,7 @@ class AlphaBacktestInstance(BacktestInstance):
                                                                          len(self.strategy.pm.trades))
     
     def on_new_day(self, date):
+        self.ctx.trade_date = date
         self.strategy.on_new_day(date)
         self.ctx.gateway.on_new_day(date)
     
@@ -162,21 +165,26 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
         while True:
             self.go_next_trade_date()
             
-            df_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
-            
             if self.current_date > self.end_date:
                 break
             
             if gateway.match_finished:
+                # plan re-balance before new day
                 self.on_new_day(self.last_date)
-                self.strategy.re_balance_plan(df_dic, self.get_suspensions())
+                # univ_price_dic = self.get_univ_prices(field_name="close_adj,open_adj,high_adj,low_adj")  # access data
+                self.strategy.re_balance_plan_before_open()
                 
+                # do re-balance on new day
                 self.on_new_day(self.current_date)
+                univ_price_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
+                suspensions = self.get_suspensions()
+                self.strategy.re_balance_plan_after_open(univ_price_dic, suspensions)
                 self.strategy.send_bullets()
             else:
                 self.on_new_day(self.current_date)
+                univ_price_dic = self.get_univ_prices(field_name="close,vwap,open,high,low")  # access data
             
-            trade_indications = gateway.match(df_dic, self.current_date)
+            trade_indications = gateway.match(univ_price_dic, self.current_date)
             for trade_ind in trade_indications:
                 self.strategy.on_trade_ind(trade_ind)
         
