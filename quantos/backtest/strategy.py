@@ -19,6 +19,7 @@ class EventDrivenStrategy(Strategy, Subscriber):
         self.pm = PortfolioManager()
         self.pm.strategy = self
         
+        # TODO remove
         self.eventEngine = EventEngine()
         self.eventEngine.register(eventType.EVENT_TIMER, self.on_cycle)
         self.eventEngine.register(eventType.EVENT_MD_QUOTE, self.on_quote)
