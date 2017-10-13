@@ -397,6 +397,7 @@ class Parser(object):
     
     def notEqual(self, a, b):
         (a, b) = self._align_bivariate(a, b)
+        arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
         res = arr != brr
         res = res.astype(float)
@@ -887,7 +888,8 @@ class Parser(object):
                 pass
             else:
                 if self.errormsg == '':
-                    self.error_parsing(self.pos, "You have an unknown character in your formula; near '%s'",(self.expression[self.pos:]))
+                    self.error_parsing(self.pos, "You have an unknown character in your formula;"
+                                                 "at '{:s}'".format(self.expression[self.pos: 10]))
                 else:
                     self.error_parsing(self.pos, self.errormsg)
         if self.tmpprio < 0 or self.tmpprio >= 10:

@@ -364,7 +364,11 @@ class RemoteDataService(DataService):
                         'end_date': end_date,
                         'update_flag': '0'}
         if view_name != 'lb.finIndicator':
-            dic_argument.update({'report_type': '408002000'})  # joint sheet
+            dic_argument.update({'report_type': '408001000'})  # we do not use single quarter single there are zeros
+            """
+            408001000: joint
+            408002000: joint (single quarter)
+            """
         
         filter_argument = self._dic2url(dic_argument)  # 0 means first time, not update
         

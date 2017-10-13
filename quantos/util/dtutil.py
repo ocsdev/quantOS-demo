@@ -1,5 +1,6 @@
 # encoding: utf-8
 import datetime
+import numpy as np
 import pandas as pd
 import pandas.tseries as pdts
 

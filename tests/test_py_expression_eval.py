@@ -7,6 +7,12 @@ from quantos.data.dataservice import RemoteDataService
 from quantos.data.py_expression_eval import Parser
 
 
+def test_op2():
+    parser.parse('open + 3 && 1.2')
+    res = parser.evaluate({'open': dfx})
+    print
+    
+    
 def test_skew():
     parser.set_capital('lower')
     expression = parser.parse('ts_skewness(open,4)')

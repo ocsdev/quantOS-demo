@@ -844,7 +844,8 @@ class DataView(object):
         else:
             for var in var_list:
                 if var not in self.fields:
-                    print "variable [{:s}] is not recognized (it may be wrong), try to fetch from the server..."
+                    print "variable [{:s}] is not recognized (it may be wrong)," \
+                          "try to fetch from the server...".format(var)
                     self.add_field(var)
         
         df_ann = self.get_ann_df()
