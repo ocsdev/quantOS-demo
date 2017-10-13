@@ -47,7 +47,8 @@ class DataView(object):
         self.universe = ""
         self.symbol = []
         self.start_date = 0
-        self.extended_start_date = 0
+        self.extended_start_date_d = 0
+        self.extended_start_date_q = 0
         self.end_date = 0
         self.fields = []
         self.freq = 1
@@ -340,11 +341,11 @@ class DataView(object):
             if fields_market_daily:
                 print "NOTE: adjust mode of price is [{:s} adjust]".format(self.adjust_mode)
                 # no adjust prices and other market daily fields
-                df_daily, msg1 = self.data_api.daily(symbol_str, start_date=self.start_date, end_date=self.end_date,
+                df_daily, msg1 = self.data_api.daily(symbol_str, start_date=self.extended_start_date_d, end_date=self.end_date,
                                                      adjust_mode=None, fields=sep.join(fields_market_daily))
                 adj_cols = ['open', 'high', 'low', 'close']
                 # adjusted prices
-                df_daily_adjust, msg11 = self.data_api.daily(symbol_str, start_date=self.start_date, end_date=self.end_date,
+                df_daily_adjust, msg11 = self.data_api.daily(symbol_str, start_date=self.extended_start_date_d, end_date=self.end_date,
                                                              adjust_mode=self.adjust_mode, fields=','.join(adj_cols))
                 df_daily_adjust = df_daily_adjust.loc[:, adj_cols]
                 # concat axis = 1
@@ -355,7 +356,7 @@ class DataView(object):
 
             fields_ref_daily = self._get_fields('ref_daily', fields)
             if fields_ref_daily:
-                df_ref_daily, msg2 = self.data_api.query_lb_dailyindicator(symbol_str, self.start_date, self.end_date,
+                df_ref_daily, msg2 = self.data_api.query_lb_dailyindicator(symbol_str, self.extended_start_date_d, self.end_date,
                                                                            sep.join(fields_ref_daily))
                 if msg2 != '0,':
                     print msg2
@@ -363,7 +364,7 @@ class DataView(object):
 
             fields_income = self._get_fields('income', fields, append=True)
             if fields_income:
-                df_income, msg3 = self.data_api.query_lb_fin_stat('income', symbol_str, self.extended_start_date, self.end_date,
+                df_income, msg3 = self.data_api.query_lb_fin_stat('income', symbol_str, self.extended_start_date_q, self.end_date,
                                                                   sep.join(fields_income))
                 if msg3 != '0,':
                     print msg3
@@ -371,7 +372,7 @@ class DataView(object):
 
             fields_balance = self._get_fields('balance_sheet', fields, append=True)
             if fields_balance:
-                df_balance, msg3 = self.data_api.query_lb_fin_stat('balance_sheet', symbol_str, self.extended_start_date, self.end_date,
+                df_balance, msg3 = self.data_api.query_lb_fin_stat('balance_sheet', symbol_str, self.extended_start_date_q, self.end_date,
                                                                    sep.join(fields_balance))
                 if msg3 != '0,':
                     print msg3
@@ -379,7 +380,7 @@ class DataView(object):
 
             fields_cf = self._get_fields('cash_flow', fields, append=True)
             if fields_cf:
-                df_cf, msg3 = self.data_api.query_lb_fin_stat('cash_flow', symbol_str, self.extended_start_date, self.end_date,
+                df_cf, msg3 = self.data_api.query_lb_fin_stat('cash_flow', symbol_str, self.extended_start_date_q, self.end_date,
                                                               sep.join(fields_cf))
                 if msg3 != '0,':
                     print msg3
@@ -388,7 +389,7 @@ class DataView(object):
             fields_fin_ind = self._get_fields('fin_indicator', fields, append=True)
             if fields_fin_ind:
                 df_fin_ind, msg4 = self.data_api.query_lb_fin_stat('fin_indicator', symbol_str,
-                                                                   self.extended_start_date, self.end_date,
+                                                                   self.extended_start_date_q, self.end_date,
                                                                    sep.join(fields_cf))
                 if msg4 != '0,':
                     print msg4
@@ -673,7 +674,7 @@ class DataView(object):
     
         # drop dates that are not trade date
         if merge_d is not None:
-            trade_dates = self.data_api.get_trade_date(self.start_date, self.end_date, is_datetime=False)
+            trade_dates = self.dates
             merge_d = merge_d.loc[trade_dates, pd.IndexSlice[:, :]].copy()
         
         return merge_d, merge_q
@@ -681,11 +682,11 @@ class DataView(object):
     def _prepare_adj_factor(self):
         symbol_str = ','.join(self.symbol)
         df_adj = self.data_api.get_adj_factor_daily(symbol_str,
-                                                    start_date=self.start_date, end_date=self.end_date, div=False)
+                                                    start_date=self.extended_start_date_d, end_date=self.end_date, div=False)
         self.append_df(df_adj, 'adjust_factor', is_quarterly=False)
 
     def _prepare_comp_info(self):
-        df = self.data_api.get_index_comp_df(self.universe, self.start_date, self.end_date)
+        df = self.data_api.get_index_comp_df(self.universe, self.extended_start_date_d, self.end_date)
         self.append_df(df, 'index_member', is_quarterly=False)
 
     def prepare_data(self):
@@ -725,7 +726,8 @@ class DataView(object):
     
         # initialize parameters
         self.start_date = props['start_date']
-        self.extended_start_date = dtutil.shift(self.start_date, n_weeks=-52)
+        self.extended_start_date_d = dtutil.shift(self.start_date, n_weeks=-8)  # query more data
+        self.extended_start_date_q = dtutil.shift(self.start_date, n_weeks=-80)
         self.end_date = props['end_date']
         
         fields = props.get('fields', [])
@@ -741,7 +743,7 @@ class DataView(object):
         self.freq = props['freq']
         self.universe = props.get('universe', "")
         if self.universe:
-            self.symbol = data_api.get_index_comp(self.universe, self.start_date, self.end_date)
+            self.symbol = data_api.get_index_comp(self.universe, self.extended_start_date_d, self.end_date)
             self.fields.append('index_member')
         else:
             self.symbol = props['symbol'].split(sep)
@@ -749,7 +751,8 @@ class DataView(object):
         print "Initialize config success."
         
     def _prepare_benchmark(self):
-        df_bench, msg = self.data_api.daily(self.universe, start_date=self.start_date, end_date=self.end_date,
+        df_bench, msg = self.data_api.daily(self.universe,
+                                            start_date=self.extended_start_date_d, end_date=self.end_date,
                                             adjust_mode=self.adjust_mode, fields='close')
         if msg != '0,':
             raise ValueError("msg = {:s}".format(msg))
@@ -759,7 +762,7 @@ class DataView(object):
     
     def _prepare_group(self):
         df = self.data_api.get_industry_daily(symbol=','.join(self.symbol),
-                                              start_date=self.extended_start_date, end_date=self.end_date)
+                                              start_date=self.extended_start_date_q, end_date=self.end_date)
         return df
     
     def _add_field(self, field_name, is_quarterly=None):
@@ -916,7 +919,7 @@ class DataView(object):
         if self.data_d is not None:
             res = self.data_d.index.values
         elif self.data_api is not None:
-            res = self.data_api.get_trade_date(self.start_date, self.end_date, is_datetime=False)
+            res = self.data_api.get_trade_date(self.extended_start_date_d, self.end_date, is_datetime=False)
         else:
             raise ValueError("Cannot get dates array when neither of data and data_api exists.")
             
@@ -986,6 +989,8 @@ class DataView(object):
             df_others = None
         
         df_merge = self._merge_data([df_others, df_ref_expanded], index_name=self.TRADE_DATE_FIELD_NAME)
+        if df_merge is None:
+            print "WARNING: no data."
         return df_merge
     
     def get_snapshot(self, snapshot_date, symbol="", fields=""):
