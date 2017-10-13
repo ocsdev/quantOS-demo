@@ -14,6 +14,7 @@ import pandas as pd
 
 import quantos.util.fileio
 from quantos.backtest.calendar import Calendar
+from quantos.util import dtutil
 from quantos.data.align import align
 from quantos.data.py_expression_eval import Parser
 

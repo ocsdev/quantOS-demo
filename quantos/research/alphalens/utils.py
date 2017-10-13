@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from IPython.display import display
 
-from quantos.backtest.calendar import Calendar
+from quantos.util import dtutil
 
 
 class NonMatchingTimezoneError(Exception):
@@ -328,9 +328,9 @@ def get_clean_factor_and_forward_returns(factor,
     mask_sus: if 1, the symbol cannot be traded due to suspension or other reasons.
     """
     # convert index to datetime index
-    factor.index = Calendar.convert_int_to_datetime(factor.index)
-    prices.index = Calendar.convert_int_to_datetime(prices.index)
-    mask_sus.index = Calendar.convert_int_to_datetime(mask_sus.index)
+    factor.index = dtutil.convert_int_to_datetime(factor.index)
+    prices.index = dtutil.convert_int_to_datetime(prices.index)
+    mask_sus.index = dtutil.convert_int_to_datetime(mask_sus.index)
 
     # convert benchmark_price to pd.Series
     if benchmark_price is None:
@@ -344,7 +344,7 @@ def get_clean_factor_and_forward_returns(factor,
             pass
         else:
             raise ValueError("Benchmark price should be DataFrame or Series.")
-        benchmark_price.index = Calendar.convert_int_to_datetime(benchmark_price.index)
+        benchmark_price.index = dtutil.convert_int_to_datetime(benchmark_price.index)
 
     # get masks
     mask_return = pd.DataFrame(index=mask_sus.index, columns=mask_sus.columns, data=False)

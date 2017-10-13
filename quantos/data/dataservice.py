@@ -6,11 +6,10 @@ import numpy as np
 import pandas as pd
 
 from quantos.util import fileio
-from quantos import SOURCE_ROOT_DIR
 from quantos.backtest.pubsub import Publisher
 from quantos.data.dataapi import DataApi
 from quantos.data import align
-from quantos.backtest.calendar import Calendar
+from quantos.util import dtutil
 
 
 class DataService(Publisher):
@@ -311,7 +310,7 @@ class RemoteDataService(DataService):
         df, msg = self.daily(symbol, start_date, end_date, fields="close")
         res = df.loc[:, 'trade_date'].values
         if is_datetime:
-            res = Calendar.convert_int_to_datetime(res)
+            res = dtutil.convert_int_to_datetime(res)
         return res
     
     @staticmethod
@@ -407,9 +406,9 @@ class RemoteDataService(DataService):
         """
         # extend 1 year
         if extend:
-            start_dt = Calendar.convert_int_to_datetime(start_date)
+            start_dt = dtutil.convert_int_to_datetime(start_date)
             start_dt = start_dt - pd.Timedelta(weeks=extend)
-            start_date = Calendar.convert_datetime_to_int(start_dt)
+            start_date = dtutil.convert_datetime_to_int(start_dt)
     
         filter_argument = self._dic2url({'symbol': symbol,
                                          'start_date': start_date,
@@ -445,9 +444,9 @@ class RemoteDataService(DataService):
         """
         # extend 1 year
         if extend:
-            start_dt = Calendar.convert_int_to_datetime(start_date)
+            start_dt = dtutil.convert_int_to_datetime(start_date)
             start_dt = start_dt - pd.Timedelta(weeks=extend)
-            start_date = Calendar.convert_datetime_to_int(start_dt)
+            start_date = dtutil.convert_datetime_to_int(start_dt)
     
         filter_argument = self._dic2url({'symbol': symbol,
                                          'start_date': start_date,
