@@ -67,7 +67,8 @@ def gtja_factor_dataview(context=None, user_options=None):
     dv = context.dataview
     res = dv.get_snapshot(context.trade_date, fields='ret20')
     # res.loc[:, :] = np.random.rand
-    res[res < 1e-2] = 0.0
+    # res[res < 1e-2] = 0.0
+    res.iloc[:, 0] = np.random.rand(res.shape[0])
     return res
 
 
@@ -151,7 +152,7 @@ def save_dataview():
 def test_alpha_strategy_dataview():
     dv = DataView()
 
-    fullpath = fileio.join_relative_path('../output/prepared/20141114_20170327_freq=1D')
+    fullpath = fileio.join_relative_path('../output/prepared/20141114_20170827_freq=1D')
     dv.load_dataview(folder=fullpath)
     
     props = {

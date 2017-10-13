@@ -312,7 +312,8 @@ class PortfolioManager(TradeCallback):
     
     @staticmethod
     def _make_position_key(symbol, trade_date=0):
-        return '@'.join(symbol)
+        # return '@'.join(symbol)
+        return symbol
     
     @staticmethod
     def _make_order_key(entrust_id, trade_date):

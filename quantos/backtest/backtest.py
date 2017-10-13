@@ -1,19 +1,15 @@
 # encoding: utf-8
 
-import numpy as np
-import pandas as pd
-
-from quantos.util import fileio
-from quantos.backtest.event.eventType import EVENT
-from quantos.data.basic.marketdata import Bar
+from data.calendar import Calendar
 from quantos.backtest import common
 from quantos.backtest.analyze.pnlreport import PnlManager
-from quantos.backtest.calendar import Calendar
 from quantos.backtest.event.eventEngine import Event
-from quantos.backtest import common
-from quantos.data.basic.trade import Trade
-
+from quantos.backtest.event.eventType import EVENT
 from quantos.backtest.pubsub import Subscriber
+from quantos.data.basic.marketdata import Bar
+from quantos.data.basic.trade import Trade
+from quantos.util import dtutil
+from quantos.util import fileio
 
 
 class BacktestInstance(Subscriber):
@@ -88,7 +84,7 @@ class AlphaBacktestInstance(BacktestInstance):
     def go_next_date(self):
         """update self.current_date and last_date."""
         if self.ctx.gateway.match_finished:
-            self.current_date = self.calendar.get_next_period_day(self.current_date,
+            self.current_date = dtutil.get_next_period_day(self.current_date,
                                                                   self.strategy.period, self.strategy.days_delay)
             if self.current_rebalance_date > 0:
                 self.last_rebalance_date = self.current_rebalance_date
@@ -180,7 +176,8 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
         We assume all cash will be re-invested.
         Since we adjust our position at next re-balance day, PnL before that may be incorrect.
         """
-        start = self.calendar.get_next_trade_date(self.last_rebalance_date)  # start will be one day later
+        # start = self.calendar.get_next_trade_date(self.last_rebalance_date)  # start will be one day later
+        start = self.last_rebalance_date  # start will be one day later
         end = self.current_rebalance_date  # end is the same to ensure position adjusted for dividend on rebalance day
         df_adj = self.ctx.dataview.get_ts('adjust_factor',
                                           start_date=start, end_date=end)
