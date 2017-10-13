@@ -25,7 +25,7 @@ def test_add_formula_directly():
     dv.init_from_config(props, data_api=ds)
     dv.prepare_data()
     
-    dv.add_formula("myfactor", 'close / open')
+    dv.add_formula("myfactor", 'close / open', is_quarterly=False)
     assert dv.data_d.shape == (242, 33)
     
 
@@ -108,12 +108,12 @@ def test_add_formula_quarterly():
     n_securities = len(dv.data_d.columns.levels[0])
     
     formula = 'total_oper_rev / close'
-    dv.add_formula('myvar1', formula)
+    dv.add_formula('myvar1', formula, is_quarterly=False)
     df1 = dv.get_ts('myvar1')
     assert df1.shape[0] == len(dv.dates)
     
     formula2 = 'Delta(oper_exp * myvar1 - open, 3)'
-    dv.add_formula('myvar2', formula2)
+    dv.add_formula('myvar2', formula2, is_quarterly=False)
     df2 = dv.get_ts('myvar2')
     assert df2.shape[0] == len(dv.dates)
 
@@ -159,11 +159,11 @@ def test_add_formula():
     n_securities = len(dv.data_d.columns.levels[0])
     
     formula = 'Delta(high - close, 1)'
-    dv.add_formula('myvar1', formula)
+    dv.add_formula('myvar1', formula, is_quarterly=False)
     assert dv.data_d.shape == (nrows, ncols + 1 * n_securities)
     
     formula2 = 'myvar1 - close'
-    dv.add_formula('myvar2', formula2)
+    dv.add_formula('myvar2', formula2, is_quarterly=False)
     assert dv.data_d.shape == (nrows, ncols + 2 * n_securities)
 
 

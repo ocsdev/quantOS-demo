@@ -3,7 +3,6 @@
 from quantos.util import fileio
 import quantos.backtest.analyze.analyze as ana
 from quantos.data.dataservice import RemoteDataService
-from quantos import SOURCE_ROOT_DIR
 
 
 def test_backtest_analyze():

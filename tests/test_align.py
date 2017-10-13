@@ -51,8 +51,8 @@ def test_align():
     print "20170427  {:.4f}".format(df_res.loc[20170427, sec])
     
     """
-    assert abs(df_res.loc[20161028, sec] - 39981000000) < 1
-    assert abs(df_res.loc[20161031, sec] - 38756000000) < 1
+    assert abs(df_res.loc[20161028, sec] - 82172000000) < 1
+    assert abs(df_res.loc[20161031, sec] - 120928000000) < 1
     assert abs(df_res.loc[20170427, sec] - 42360000000) < 1
 
 

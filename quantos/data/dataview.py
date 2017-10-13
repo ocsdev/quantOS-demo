@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 import quantos.util.fileio
-from data.calendar import Calendar
+from quantos.util import dtutil
 from quantos.data.align import align
 from quantos.data.py_expression_eval import Parser
 
@@ -725,7 +725,7 @@ class DataView(object):
     
         # initialize parameters
         self.start_date = props['start_date']
-        self.extended_start_date = Calendar.shift(self.start_date, n_weeks=-52)
+        self.extended_start_date = dtutil.shift(self.start_date, n_weeks=-52)
         self.end_date = props['end_date']
         
         fields = props.get('fields', [])
@@ -795,6 +795,7 @@ class DataView(object):
 
         merge_d, merge_q = self._prepare_data([field_name])
     
+        # auto decide whether is quarterly
         is_quarterly = merge_q is not None
         if is_quarterly:
             merge = merge_q
@@ -804,7 +805,7 @@ class DataView(object):
         merge = merge.loc[:, pd.IndexSlice[:, field_name]]
         self.append_df(merge, field_name, is_quarterly=is_quarterly)  # whether contain only trade days is decided by existing data.
     
-    def add_formula(self, field_name, formula, freq='D', formula_func_name_style='upper', is_quarterly=False, data_api=None):
+    def add_formula(self, field_name, formula, is_quarterly, formula_func_name_style='upper', data_api=None):
         """
         Add a new field, which is calculated using existing fields.
         
@@ -814,10 +815,10 @@ class DataView(object):
             A formula contains operations and function calls.
         field_name : str
             A custom name for the new field.
-        freq : {'D', 'Q'}
-            Frequency of evaluation result of the formula.
-        formula_func_name_style : {'upper', 'lower'}
-        data_api : BaseDataServer
+        is_quarterly : bool
+            Whether df is quarterly data (like quarterly financial statement) or daily data.
+        formula_func_name_style : {'upper', 'lower'}, optional
+        data_api : RemoteDataService, optional
         
         """
         if data_api is not None:
@@ -843,6 +844,8 @@ class DataView(object):
         else:
             for var in var_list:
                 if var not in self.fields:
+                    print "variable [{:s}] is not recognized (it may be wrong)," \
+                          "try to fetch from the server...".format(var)
                     self.add_field(var)
         
         df_ann = self.get_ann_df()
@@ -1130,6 +1133,8 @@ class DataView(object):
         ----------
         df : pd.DataFrame or pd.Series
         field_name : str
+        is_quarterly : bool
+            Whether df is quarterly data (like quarterly financial statement) or daily data.
 
         """
         if isinstance(df, pd.DataFrame):

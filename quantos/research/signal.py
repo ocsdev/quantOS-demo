@@ -8,7 +8,7 @@ import pandas as pd
 from quantos.data.dataview import DataView
 from quantos.data.dataservice import RemoteDataService
 from quantos.research import alphalens
-from quantos import SOURCE_ROOT_DIR
+from quantos.util import fileio
 
 
 def save_dataview():
@@ -31,19 +31,23 @@ def save_dataview():
     factor_formula = '-1 * Rank(Ts_Max(Delta(vwap, 7), 11))'  # GTJA
     factor_name = 'gtja'
     dv.add_formula(factor_name, factor_formula)
+    dv.add_formula('eps_ret_wrong', 'Return(eps, 3)', is_quarterly=False)
+    tmp = dv.get_ts('eps_ret_wrong')
+    dv.add_formula('eps_ret', 'Return(eps, 3)', is_quarterly=True)
+    tmp = dv.get_ts('eps_ret')
+    
     
     dv.add_formula('look_ahead', 'Delay(Return(close_adj, 5), -5)')
     dv.add_formula('ret1', 'Return(close_adj, 1)')
     dv.add_formula('ret20', 'Delay(Return(close_adj, 20), -20)')
     
-    dv.save_dataview(folder_path=os.path.join(SOURCE_ROOT_DIR, '../output/prepared'))
+    dv.save_dataview(folder_path=fileio.join_relative_path('../output/prepared'))
 
 
 def main():
     dv = DataView()
     
-    import os
-    fullpath = os.path.abspath(os.path.join(SOURCE_ROOT_DIR, '../output/prepared/20141114_20170327_freq=1D'))
+    fullpath = fileio.join_relative_path('../output/prepared/20141114_20170327_freq=1D')
     dv.load_dataview(folder=fullpath)
     print dv.fields
 
@@ -58,7 +62,6 @@ def main():
 
     # dv.add_formula('factor2', 'GroupApply(Standardize, GroupApply(Cutoff, gtja, 3.0))')
     # dv.add_formula('factor_bool', 'If(factor1 > total_oper_rev, 1.5, 0.5)')
-    # dv.save_dataview(folder_path=os.path.join(SOURCE_ROOT_DIR, '../output/prepared'))
     # dv.add_formula('factor2', 'Standardize(factor1)')
     
     factor = dv.get_ts('ret20').shift(1, axis=0)  # avoid look-ahead bias
@@ -71,22 +74,13 @@ def main():
     mask_sus = trade_status != u'交易'.encode('utf-8')
 
     df_group = dv.data_group.copy()
-    from quantos.backtest.calendar import Calendar
-    df_group.index = Calendar.convert_int_to_datetime(df_group.index)
+    from quantos.util import dtutil
+    df_group.index = dtutil.convert_int_to_datetime(df_group.index)
     factor_data = alphalens.utils.get_clean_factor_and_forward_returns(factor, price,
                                                                        mask_sus=mask_sus, benchmark_price=None,
                                                                        quantiles=5, periods=[20],
                                                                        # groupby=df_group.stack(), by_group=False
                                                                        )
-    """
-    For check validity of data (avoid look ahead bias).
-    import pandas as pd
-    import datetime
-    start = np.datetime64(datetime.date(2016, 7, 05))
-    end = np.datetime64(datetime.date(2016, 7, 30))
-    df_tmp = factor_data.loc[pd.IndexSlice[start: end, '600000.SH'], :]
-    """
-    # alphalens.tears.create_returns_tear_sheet(factor_data, False, False, set_context=False, output_format='pdf')
     res = alphalens.tears.create_full_tear_sheet(factor_data, long_short=True,
                                                  output_format='pdf', verbose=True,
                                                  # by_group=True

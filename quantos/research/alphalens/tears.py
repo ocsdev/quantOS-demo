@@ -253,9 +253,8 @@ def create_returns_tear_sheet(factor_data, long_short=True, by_group=False,
         plt.show()
         # gf.fig.show()
     elif output_format == 'pdf':
-        from quantos import SOURCE_ROOT_DIR
-        from os.path import join
-        gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'returns_tear_sheet.pdf'))
+        from quantos.util import fileio
+        gf.fig.savefig(fileio.join_relative_path('..', 'output', 'returns_tear_sheet.pdf'))
     elif output_format == '':
         pass
         
@@ -330,9 +329,8 @@ def create_information_tear_sheet(factor_data, group_adjust=False, by_group=Fals
         plt.show()
         # gf.fig.show()
     elif output_format == 'pdf':
-        from quantos import SOURCE_ROOT_DIR
-        from os.path import join
-        gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'infomation_tear_sheet.pdf'))
+        from quantos.util import fileio
+        gf.fig.savefig(fileio.join_relative_path('..', 'output', 'infomation_tear_sheet.pdf'))
     elif output_format == '':
         pass
     
@@ -390,9 +388,8 @@ def create_turnover_tear_sheet(factor_data, output_format='plot'):
         plt.show()
         # gf.fig.show()
     elif output_format == 'pdf':
-        from quantos import SOURCE_ROOT_DIR
-        from os.path import join
-        gf.fig.savefig(join(SOURCE_ROOT_DIR, '..', 'output', 'turnover_tear_sheet.pdf'))
+        from quantos.util import fileio
+        gf.fig.savefig(fileio.join_relative_path('..', 'output', 'turnover_tear_sheet.pdf'))
     elif output_format == '':
         pass
 

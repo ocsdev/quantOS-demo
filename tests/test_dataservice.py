@@ -67,12 +67,12 @@ def test_remote_data_service_lb():
     
     # test lb.income
     for res4, msg4 in [ds.query("lb.income", fields="",
-                                filter="symbol=600000.SH&start_date=20150101&end_date=20170101&report_type=408002000",
+                                filter="symbol=600000.SH&start_date=20150101&end_date=20170101&report_type=408001000",
                                 order_by="report_date"),
                        ds.query_lb_fin_stat('income', '600000.SH', 20150101, 20170101, fields="")]:
         assert msg4 == '0,'
         assert res4.shape == (8, 12)
-        assert res4.loc[4, 'oper_rev'] == 37918000000
+        assert abs(res4.loc[4, 'oper_rev'] - 120928000000) < 1
 
 
 def test_remote_data_service_daily_ind_performance():
