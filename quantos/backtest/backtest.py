@@ -1,6 +1,6 @@
 # encoding: utf-8
 
-from data.calendar import Calendar
+from quantos.data.calendar import Calendar
 from quantos.backtest import common
 from quantos.backtest.analyze.pnlreport import PnlManager
 from quantos.backtest.event.eventEngine import Event
