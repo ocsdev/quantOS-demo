@@ -21,7 +21,7 @@ import time
 
 class DataApi:
     
-    def __init__(self, addr, use_jrpc=False):
+    def __init__(self, addr="tcp://140.207.224.19:8910", use_jrpc=False):
         """Create DataApi client.
         
         If use_jrpc, try to load the C version of JsonRpc. If failed, use pure
