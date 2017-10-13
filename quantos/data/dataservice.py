@@ -737,4 +737,22 @@ class RemoteDataService(DataService):
                                     'adjust_factor': float
                                     })
         return df_raw.drop_duplicates()
-
+    
+    def query_inst_info(self, symbol, inst_type="", fields=""):
+        if inst_type == "":
+            inst_type = "1,2,3,4,5,101,102,103,104"
+        
+        filter_argument = self._dic2url({'symbol': symbol,
+                                         'inst_type': inst_type})
+    
+        df_raw, msg = self.query("jz.instrumentInfo", fields=fields,
+                                 filter=filter_argument, orderby="symbol")
+        if msg != '0,':
+            print msg
+        
+        dtype_map = {'symbol': str, 'list_date': int, 'delist_date': int}
+        cols = set(df_raw.columns)
+        dtype_map = {k: v for k, v in dtype_map.items() if k in cols}
+        
+        df_raw = df_raw.astype(dtype=dtype_map)
+        return df_raw, msg
