@@ -4,10 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from data.calendar import Calendar
 from quantos.backtest.backtest import common
-from quantos.backtest.calendar import Calendar
-from quantos.util import dtutil
-from quantos.backtest.instrument import InstManager, Instrument
+from quantos.backtest.instrument import InstManager
 from quantos.data.basic.trade import Trade
 
 

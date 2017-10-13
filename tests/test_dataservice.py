@@ -136,7 +136,7 @@ def test_remote_data_service_industry():
     
     
 def test_remote_data_service_industry_df():
-    from quantos.backtest.calendar import Calendar
+    from data.calendar import Calendar
     cal = Calendar()
     
     ds = RemoteDataService()
