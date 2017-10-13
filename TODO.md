@@ -35,6 +35,8 @@
 
 # DataView
 -[] when fetching data, cache fetched data. So if fail, we do not need to fetch all data again.
+-[] if data of some symbols is missing, dv.data_d or dv.data_q will be wrong
+-[] '&&' operator can not be True in isOps2()
 
 # Code Improvement of DataView
 -[] improve get, get_quarter_ts methods.
