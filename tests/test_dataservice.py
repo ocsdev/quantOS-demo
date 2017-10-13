@@ -146,7 +146,7 @@ def test_remote_data_service_industry_df():
     sec = '000008.SZ'
     type_ = 'ZZ'
     df_raw = ds.get_industry_raw(symbol=sec, type_=type_)
-    df = ds.get_industry_daily(symbol=symbol_arr, start_date=df_raw.index[0], end_date=20170505, type_=type_)
+    df = ds.get_industry_daily(symbol=symbol_arr, start_date=df_raw['in_date'].min(), end_date=20170505, type_=type_)
     
     for idx, row in df_raw.iterrows():
         in_date = row['in_date']
