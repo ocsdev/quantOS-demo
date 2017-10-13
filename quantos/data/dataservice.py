@@ -303,7 +303,8 @@ class RemoteDataService(DataService):
     
     def get_suspensions(self):
         return None
-    
+
+    # TODO use Calendar instead
     def get_trade_date(self, start_date, end_date, symbol=None, is_datetime=False):
         if symbol is None:
             symbol = '000300.SH'
