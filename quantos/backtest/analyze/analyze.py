@@ -217,7 +217,8 @@ class AlphaAnalyzer(BaseAnalyzer):
         for sec, df_trade in self.trades.viewitems():
             df_close = self.closes[sec]
             
-            daily_dic[sec] = self._get_daily(df_close, df_trade)
+            res = self._get_daily(df_close, df_trade)
+            daily_dic[sec] = res
             
         self.daily = daily_dic
     
@@ -255,8 +256,12 @@ class AlphaAnalyzer(BaseAnalyzer):
         self.account = account
             
     def get_returns(self):
-        vp_list = [df_profit.loc[:, 'VirtualProfit'].copy().rename({'VirtualProfit': sec}) for sec, df_profit in self.daily.items()]
-        df_profit = pd.concat(vp_list, axis=1)
+        # vp_list = [df_profit.loc[:, 'VirtualProfit'].copy().rename({'VirtualProfit': sec}) for sec, df_profit in self.daily.items()]
+        vp_list = {sec: df_profit.loc[:, 'VirtualProfit'] for sec, df_profit in self.daily.items()}
+        # after concat, there will be NaN due to list / delist of different stocks
+        df_profit = pd.concat(vp_list, axis=1)  # this is cumulative profit
+        # TODO temperary solution
+        df_profit = df_profit.fillna(method='ffill').fillna(0.0)
         strategy_value = df_profit.sum(axis=1) * 100 + self.configs['init_balance']
         
         benchmark_name = self.configs['benchmark']
@@ -291,7 +296,7 @@ class AlphaAnalyzer(BaseAnalyzer):
         end = pd.to_datetime(self.configs['end_date'], format="%Y%m%d")
         years = (end - start).days / 225.
         
-        self.metrics['yearly_return'] = df_returns.loc[:, 'active_cum'].values[-1] / years
+        self.metrics['yearly_return'] = np.power(df_returns.loc[:, 'active_cum'].values[-1], 1. / years) - 1
         self.metrics['yearly_vol'] = df_returns.loc[:, 'active'].std() * np.sqrt(225.)
         self.metrics['beta'] = np.corrcoef(df_returns.loc[:, 'bench'], df_returns.loc[:, 'strat'])[0, 1]
         self.metrics['sharpe'] = self.metrics['yearly_return'] / self.metrics['yearly_vol']
