@@ -179,6 +179,15 @@ def test_remote_data_service_adj_factor():
     assert abs(res.loc[20160408, '300024.SZ'] - 10.735) < 1e-3
     assert abs(res.loc[20160412, '300024.SZ'] - 23.658) < 1e-3
     assert res.isnull().sum().sum() == 0
+
+
+def test_remote_data_service_inst_info():
+    ds = RemoteDataService()
+    
+    res, msg = ds.query_inst_info('000001.SZ', fields='status,selllot,buylot,pricetick,multiplier,product')
+    assert res.loc[0, 'multiplier'] == 1
+    assert abs(res.loc[0, 'pricetick'] - 0.01) < 1e-2
+    assert res.loc[0, 'buylot'] == 100
     
 if __name__ == "__main__":
     test_remote_data_service_industry_df()
