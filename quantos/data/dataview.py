@@ -516,13 +516,16 @@ class DataView(object):
         cols_multi = cols_multi.sort_values()
         merge_final = pd.DataFrame(index=idx, columns=cols_multi, data=np.nan)
 
+        merge = pd.concat(dic, axis=1)
+        '''
         merge = pd.concat(values, axis=1, join='outer')
+        merge = merge.sort_index(axis=1)
         multi_idx = pd.MultiIndex.from_product([keys, fields], names=level_names)
         merge.columns = multi_idx
+        '''
+        merge_final.loc[merge.index, merge.columns] = merge  # index and column of merge, df must be the same
 
-        merge_final.loc[merge.index, pd.IndexSlice[keys, fields]] = merge  # index and column of merge, df must be the same
-
-        if merge.isnull().sum().sum() > 0:
+        if merge_final.isnull().sum().sum() > 0:
             print "WARNING: there are NaN values in your data, NO fill."
             # merge.fillna(method='ffill')
 
@@ -1091,8 +1094,7 @@ class DataView(object):
         """
         if self.data_q is None:
             return None
-        df_ann = self.data_q.loc[:,
-                                     pd.IndexSlice[:, self.ANN_DATE_FIELD_NAME]]
+        df_ann = self.data_q.loc[:, pd.IndexSlice[:, self.ANN_DATE_FIELD_NAME]]
         
         df_ann = df_ann.copy()
         df_ann.columns = df_ann.columns.droplevel(level='field')
