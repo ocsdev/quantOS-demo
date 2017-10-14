@@ -54,3 +54,6 @@
 
 # Backtest
 -[] do not trade symbols that are not index members
+
+# Analyze
+-[] jinja2 search path does not work on Windows
