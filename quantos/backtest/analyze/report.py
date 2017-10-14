@@ -1,26 +1,40 @@
 # encoding: utf-8
 
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
 import os
+import jinja2
+# from weasyprint import HTML
 
 
 class Report(object):
-    def __init__(self, d, template_fp, css_fp, out_folder='output'):
-        """Please use absolute paths."""
-        self.dic = d
-        self.fp_temp = template_fp
-        self.fp_css = css_fp
-        self.out_folder = out_folder
+    def __init__(self, dic, source_dir, template_fn, css_fn, out_folder='.'):
+        """
+
+        Parameters
+        ----------
+        dic : dict
+        source_dir : str
+            path of directory where HTML template and css files are stored.
+        template_fn : str
+            File name of HTML template.
+        css_fn : str
+            File name of css file.
+        out_folder : str
+            Output folder of report.
+
+        """
+        self.dic = dic
+        self.template_fn = template_fn
+        self.css_fn = css_fn
+        self.out_folder = os.path.abspath(out_folder)
+
+        self.env = jinja2.Environment(loader=jinja2.FileSystemLoader(searchpath=[source_dir]))
+        self._update_env()
+
+        self.template = self.env.get_template(self.template_fn)
         self.html = ""
-        
-        template_dir = os.path.dirname(os.path.abspath(self.fp_temp))
-        
-        self.env = Environment(loader=FileSystemLoader([template_dir, '/']))
-        self.update_env()
-        self.template = self.env.get_template(self.fp_temp)
-    
-    def update_env(self):
+
+    def _update_env(self):
+        """Define custom functions we use in HTML template."""
         def round_if_float(x, n):
             if isinstance(x, float):
                 return round(x, n)
@@ -34,10 +48,12 @@ class Report(object):
     def output_html(self, fn='test_out.html'):
         path = os.path.join(self.out_folder, fn)
         path = os.path.abspath(path)
-        print path
         with open(path, 'w') as f:
             f.write(self.html)
+
+        print "HTML report: {:s}".format(path)
     
     def output_pdf(self, fn='test_out.html'):
-        h = HTML(string=self.html)
-        h.write_pdf(os.path.join(self.out_folder, fn))#, stylesheets=[self.fp_css])
+        pass
+        # h = HTML(string=self.html)
+        # h.write_pdf(os.path.join(self.out_folder, fn))#, stylesheets=[self.fp_css])
