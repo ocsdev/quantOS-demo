@@ -6,16 +6,26 @@ from quantos.data.calendar import Calendar
 from quantos.util import dtutil
 
 
-def _test_calendar_new():
+def test_calendar():
     calendar = Calendar()
+
     res1 = calendar.get_trade_date_range(20121224, 20130201)
+    assert len(res1) == 27
+
     res2 = calendar.get_next_trade_date(20170102)
+    assert res2 == 20170103
+
     res3 = calendar.get_next_trade_date(20170104)
-    print
+    assert res3 == 20170105
+
     res11 = calendar.get_trade_date_range(20161224, 20170201)
+    assert len(res11) == 23
+
+    assert not calendar.is_trade_date(20150101)
+    assert not calendar.is_trade_date(20130501)
 
 
-def _test_calendar():
+def test_dtutil():
     date = 20170808
     assert dtutil.get_next_period_day(20170831, 'day', 1) == 20170904
     assert dtutil.get_next_period_day(20170831, 'week', 1) == 20170905
@@ -28,4 +38,5 @@ def _test_calendar():
 
 
 if __name__ == "__main__":
-    _test_calendar_new()
+    test_calendar()
+    test_dtutil()
