@@ -53,7 +53,9 @@ class DataView(object):
         self.fields = []
         self.freq = 1
 
-        self.meta_data_list = ['start_date', 'end_date', 'freq', 'fields', 'symbol', 'universe',
+        self.meta_data_list = ['start_date', 'end_date',
+                               'extended_start_date_d', 'extended_start_date_q',
+                               'freq', 'fields', 'symbol', 'universe',
                                'custom_daily_fields', 'custom_quarterly_fields']
         self.adjust_mode = 'post'
         
@@ -916,9 +918,10 @@ class DataView(object):
         df_ann = self.get_ann_df()
         for var in var_list:
             if self._is_quarter_field(var):
-                df_var = self.get_ts_quarter(var)
+                df_var = self.get_ts_quarter(var, start_date=self.extended_start_date_q)
             else:
-                df_var = self.get_ts(var)
+                # must use extended date. Default is start_date
+                df_var = self.get_ts(var, start_date=self.extended_start_date_d, end_date=self.end_date)
             
             var_df_dic[var] = df_var
         
