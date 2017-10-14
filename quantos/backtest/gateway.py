@@ -4,6 +4,8 @@ from abc import abstractmethod
 import abc
 from six import with_metaclass
 
+import numpy as np
+
 from quantos.data.basic.order import *
 from quantos.data.basic.position import Position
 from quantos.data.basic.trade import Trade
@@ -672,7 +674,7 @@ class StockSimulatorDaily(object):
         self.__orders.clear()
     
     def _next_fill_no(self):
-        return str(self.date * 10000 + self.seq_gen.get_next('fill_no'))
+        return str(np.int64(self.date) * 10000 + self.seq_gen.get_next('fill_no'))
     
     @property
     def match_finished(self):

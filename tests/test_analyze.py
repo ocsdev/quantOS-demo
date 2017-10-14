@@ -10,9 +10,8 @@ def test_backtest_analyze():
     data_service = RemoteDataService()
 
     out_folder = fileio.join_relative_path("../output")
-    static_folder = fileio.join_relative_path("backtest/analyze/static")
 
-    ta.initialize(data_service, '../output/')
+    ta.initialize(data_service, out_folder)
     
     print "process trades..."
     ta.process_trades()
@@ -23,15 +22,22 @@ def test_backtest_analyze():
     # print "get position change..."
     # ta.get_pos_change_info()
     
-    print "plot..."
-    selected_sec = list(ta.universe)[:3]
-    for sec, df in ta.daily.items():
-        if sec in selected_sec:
-            ana.plot_trades(df, sec, out_folder)
+    selected_sec = []  # list(ta.universe)[:3]
+    if len(selected_sec) > 0:
+        print "Plot single securities PnL"
+        for symbol in selected_sec:
+            df_daily = ta.daily.get(symbol, None)
+            if df_daily is not None:
+                ana.plot_trades(df_daily, symbol=symbol, save_folder=out_folder)
+
+    print "Plot strategy PnL..."
     ta.plot_pnl(out_folder)
     
     print "generate report..."
-    ta.gen_report(static_folder=static_folder, out_folder=out_folder, selected=selected_sec)
+    static_folder = fileio.join_relative_path("backtest/analyze/static")
+    ta.gen_report(source_dir=static_folder, template_fn='report_template.html',
+                  css_fn='blueprint.css', out_folder=out_folder,
+                  selected=selected_sec)
 
 
 if __name__ == "__main__":

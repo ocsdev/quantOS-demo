@@ -29,6 +29,7 @@ class Calendar(object):
     def get_trade_date_range(self, begin, end):
         """
         Get array of trade dates within given range.
+        Return zero size array if no trade dates within range.
         
         Parameters
         ----------
@@ -47,6 +48,9 @@ class Calendar(object):
 
         df_raw, msg = self.data_api.query("jz.secTradeCal", fields="trade_date",
                                           filter=filter_argument, orderby="")
+        if df_raw.empty:
+            return np.array([], dtype=int)
+
         trade_dates_arr = df_raw['trade_date'].values.astype(int)
         return trade_dates_arr
 
@@ -72,6 +76,22 @@ class Calendar(object):
         res = dates[mask][-1]
         
         return res
+
+    def is_trade_date(self, date):
+        """
+        Check whether date is a trade date.
+
+        Parameters
+        ----------
+        date : int
+
+        Returns
+        -------
+        bool
+
+        """
+        dates = self.get_trade_date_range(date, date)
+        return len(dates) > 0
 
     def get_next_trade_date(self, date):
         """

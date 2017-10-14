@@ -255,8 +255,7 @@ class Parser(object):
             '*': self.mul,
             '/': self.div,
             '%': self.mod,
-            # '^': np.power,
-            '**': np.power,
+            '^': np.power,
             ',': self.append,
             # '||': self.concat,
             "==": self.equal,
@@ -444,7 +443,7 @@ class Parser(object):
         (a, b) = self._align_bivariate(a, b)
         arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
-        res = arr & brr
+        res = np.logical_and(arr, brr)
         res = res.astype(float)
         res[mask] = np.nan
         return pd.DataFrame(index=a.index, columns=a.columns, data=res)
@@ -453,7 +452,7 @@ class Parser(object):
         (a, b) = self._align_bivariate(a, b)
         arr, brr = self._to_array(a), self._to_array(b)
         mask = np.logical_or(np.isnan(arr), np.isnan(brr))
-        res = arr | brr
+        res = np.logical_or(arr, brr)
         res = res.astype(float)
         res[mask] = np.nan
         return pd.DataFrame(index=a.index, columns=a.columns, data=res)
@@ -1101,6 +1100,7 @@ class Parser(object):
             ('/', 4, '/'),
             ('%', 4, '%'),
             ('^', 6, '^'),
+            ('&&', 1, '&&'),
             ('||', 1, '||'),
             ('==', 1, '=='),
             ('!=', 1, '!='),

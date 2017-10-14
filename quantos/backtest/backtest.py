@@ -21,28 +21,19 @@ class BacktestInstance(Subscriber):
         self.end_date = 0
         self.current_date = 0
         self.last_date = 0
-        self.folder = ''
-        
-        self.calendar = Calendar()
-        
+
         self.props = None
         
         self.ctx = None
     
-    def init_from_config(self, props, strategy, data_api=None, dataview=None, gateway=None, context=None):
+    def init_from_config(self, props, strategy, context):
         """
         
         Parameters
         ----------
-        props
-        strategy
-        data_api
-        dataview
-        gateway
+        props : dict
+        strategy : Strategy
         context : Context
-
-        Returns
-        -------
 
         """
         self.props = props
@@ -55,10 +46,7 @@ class BacktestInstance(Subscriber):
         self.ctx.add_universe(props['universe'])
         
         strategy.context = self.ctx
-        # strategy.context.data_api = data_api
-        # strategy.context.gateway = gateway
-        # strategy.context.calendar = self.calendar
-        
+
         strategy.init_from_config(props)
         strategy.initialize(common.RUN_MODE.BACKTEST)
         
@@ -84,26 +72,27 @@ class AlphaBacktestInstance(BacktestInstance):
     def go_next_date(self):
         """update self.current_date and last_date."""
         if self.ctx.gateway.match_finished:
-            self.current_date = dtutil.get_next_period_day(self.current_date,
-                                                                  self.strategy.period, self.strategy.days_delay)
+            next_period_day = dtutil.get_next_period_day(self.current_date,
+                                                         self.strategy.period, self.strategy.days_delay)
+            # update current_date: next_period_day is a workday, but not necessarily a trade date
+            if self.ctx.calendar.is_trade_date(next_period_day):
+                self.current_date = next_period_day
+            else:
+                self.current_date = self.ctx.calendar.get_next_trade_date(next_period_day)
+            self.current_date = self.ctx.calendar.get_next_trade_date(next_period_day)
+
+            # update re-balance date
             if self.current_rebalance_date > 0:
                 self.last_rebalance_date = self.current_rebalance_date
             else:
                 self.last_rebalance_date = self.start_date
             self.current_rebalance_date = self.current_date
-            self.last_date = self.calendar.get_last_trade_date(self.current_date)
         else:
             # TODO here we must make sure the matching will not last to next period
-            self.current_date = self.calendar.get_next_trade_date(self.current_date)
-        
-        while (self.current_date < self.end_date
-               and not self._is_trade_date(self.start_date, self.end_date, self.current_date,
-                                           self.ctx.data_api)):
-            print "WARNING: not trade date, go next day."
-            self.current_date = self.calendar.get_next_trade_date(self.current_date)
-            self.current_rebalance_date = self.current_date
-            self.last_date = self.calendar.get_last_trade_date(self.current_date)
-    
+            self.current_date = self.ctx.calendar.get_next_trade_date(self.current_date)
+
+        self.last_date = self.ctx.calendar.get_last_trade_date(self.current_date)
+
     def run_alpha(self):
         gateway = self.ctx.gateway
         
@@ -169,14 +158,18 @@ class AlphaBacktestInstance(BacktestInstance):
 
 
 class AlphaBacktestInstance_dv(AlphaBacktestInstance):
+    """
+    Backtest alpha strategy using DataView.
+
+    """
     def position_adjust(self):
         """
         adjust happens after market close
         Before each re-balance day, adjust for all dividend and cash paid actions during the last period.
         We assume all cash will be re-invested.
         Since we adjust our position at next re-balance day, PnL before that may be incorrect.
+
         """
-        # start = self.calendar.get_next_trade_date(self.last_rebalance_date)  # start will be one day later
         start = self.last_rebalance_date  # start will be one day later
         end = self.current_rebalance_date  # end is the same to ensure position adjusted for dividend on rebalance day
         df_adj = self.ctx.dataview.get_ts('adjust_factor',
@@ -206,19 +199,7 @@ class AlphaBacktestInstance_dv(AlphaBacktestInstance):
                 trade_ind.send_fill_info(price=0.0, size=pos_diff, date=date, time=0, no=101010)
                 
                 self.strategy.on_trade_ind(trade_ind)
-        '''
-        adj_curr = self.ctx.dataview.get_snapshot(self.current_rebalance_date, fields='adjust_factor')
-        adj_last = self.ctx.dataview.get_snapshot(self.last_rebalance_date, fields='adjust_factor')
-        cols = adj_curr.index
-        v = adj_curr.values.flatten()/adj_last.values.flatten()
-        adj_ratio = dict(zip(list(cols), list(v)))
 
-        pm = self.strategy.pm
-        for sec in pm.holding_securities:
-            r = adj_ratio[sec]
-            pm.set_position(sec, self.current_rebalance_date, r)
-        '''
-    
     def delist_adjust(self):
         pass
     
@@ -287,13 +268,14 @@ class EventBacktestInstance(BacktestInstance):
         self.pnlmgr = None
         self.bar_type = 1
 
-    def init_from_config(self, props, strategy, data_api=None, dataview=None, gateway=None, context=None):
+    def init_from_config(self, props, strategy, context=None):
         self.props = props
+        self.ctx = context
 
-        data_api.init_from_config(props)
-        data_api.initialize()
+        self.ctx.data_api.init_from_config(props)
+        self.ctx.data_api.initialize()
 
-        gateway.register_callback('portfolio manager', strategy.pm)
+        self.ctx.gateway.register_callback('portfolio manager', strategy.pm)
 
         self.start_date = self.props.get("start_date")
         self.end_date = self.props.get("end_date")
@@ -309,10 +291,10 @@ class EventBacktestInstance(BacktestInstance):
 
         self.pnlmgr = PnlManager()
         self.pnlmgr.setStrategy(strategy)
-        self.pnlmgr.initFromConfig(props, data_api)
+        self.pnlmgr.initFromConfig(props, self.ctx.data_api)
     
     def go_next_trade_date(self):
-        next_dt = self.calendar.get_next_trade_date(self.current_date)
+        next_dt = self.ctx.calendar.get_next_trade_date(self.current_date)
         
         self.last_date = self.current_date
         self.current_date = next_dt

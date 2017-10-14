@@ -70,8 +70,8 @@ class Strategy(with_metaclass(abc.ABCMeta)):
     
     def _get_next_num(self, key):
         """used to generate id for orders and trades."""
-        return str(self.trade_date * 10000 + self.seq_gen.get_next(key))
-    
+        return str(np.int64(self.trade_date) * 10000 + self.seq_gen.get_next(key))
+
     def place_order(self, symbol, action, price, size, algo="", algo_param=None):
         """
         Send a request with an order to the system. Execution algorithm will be automatically chosen.

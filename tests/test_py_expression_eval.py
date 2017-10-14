@@ -7,11 +7,17 @@ from quantos.data.dataservice import RemoteDataService
 from quantos.data.py_expression_eval import Parser
 
 
-def test_op2():
-    parser.parse('open + 3 && 1.2')
+def test_logical_and_or():
+    parser.parse('open + 3 && 1')
     res = parser.evaluate({'open': dfx})
-    print
-    
+    import numpy as np
+    assert np.all(res.values.flatten())
+
+    parser.parse('open + 3 && 0.0')
+    res = parser.evaluate({'open': dfx})
+    import numpy as np
+    assert not np.all(res.values.flatten())
+
     
 def test_skew():
     parser.set_capital('lower')

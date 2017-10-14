@@ -72,8 +72,17 @@ class BaseAnalyzer(object):
         """Read-only attribute, close prices of securities in the universe"""
         return self._closes
     
-    def initialize(self, data_server_, file_folder='../output/', ):
-        """Read trades from csv file to DataFrame of given data type."""
+    def initialize(self, data_server_, file_folder='.'):
+        """
+        Read trades from csv file to DataFrame of given data type.
+
+        Parameters
+        ----------
+        data_server_ : RemoteDataService
+        file_folder : str
+            Directory path where trades and configs are stored.
+
+        """
         self.data_api = data_server_
         
         type_map = {'task_id': str,
@@ -85,10 +94,8 @@ class BaseAnalyzer(object):
                     'fill_date': int,
                     'fill_time': int,
                     'fill_no': str}
-        trades = pd.read_csv(os.path.join(file_folder, 'trades.csv'), ',', dtype=type_map)
-        
-        if (trades.loc[:, 'fill_price'] < 0.5).sum() > 0:
-            print "zero fill price found! \n\n\n"
+        abs_path = os.path.abspath(file_folder)
+        trades = pd.read_csv(os.path.join(abs_path, 'trades.csv'), ',', dtype=type_map)
         
         self._init_universe(trades.loc[:, 'symbol'].values)
         self._init_configs(file_folder)
@@ -320,7 +327,26 @@ class AlphaAnalyzer(BaseAnalyzer):
         plt.tight_layout()
         fig.savefig(save_folder + '/' + 'pnl_img.png')
 
-    def gen_report(self, static_folder='.', out_folder='output', selected=[]):
+    def gen_report(self, source_dir, template_fn, css_fn, out_folder='.', selected=None):
+        """
+        Generate HTML (and PDF) report of the backtest analysis.
+
+        Parameters
+        ----------
+        source_dir : str
+            path of directory where HTML template and css files are stored.
+        template_fn : str
+            File name of HTML template.
+        css_fn : str
+            File name of css file.
+        out_folder : str
+            Output folder of report.
+        selected : list of str or None
+            List of symbols whose detailed PnL curve and position will be plotted.
+            # TODO: this parameter should not belong to function
+
+
+        """
         dic = dict()
         dic['html_title'] = "Alpha Strategy Backtest Result"
         dic['selected_securities'] = selected
@@ -329,14 +355,11 @@ class AlphaAnalyzer(BaseAnalyzer):
         dic['position_change'] = self.position_change
         dic['account'] = self.account
         
-        import os
-        html_template_fp = os.path.join(static_folder, 'report_template.html')
-        css_fp = os.path.join(static_folder, 'blueprint.css')
-        r = Report(dic, html_template_fp, css_fp, out_folder=out_folder)
-        
+        r = Report(dic, source_dir=source_dir, template_fn=template_fn, css_fn=css_fn, out_folder=out_folder)
+
         r.generate_html()
         r.output_html('report.html')
-        r.output_pdf('report.pdf')
+        # r.output_pdf('report.pdf')
 
 
 def calc_uat_metrics(t1, symbol):

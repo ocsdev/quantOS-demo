@@ -303,7 +303,8 @@ class RemoteDataService(DataService):
     
     def get_suspensions(self):
         return None
-    
+
+    # TODO use Calendar instead
     def get_trade_date(self, start_date, end_date, symbol=None, is_datetime=False):
         if symbol is None:
             symbol = '000300.SH'
@@ -384,82 +385,6 @@ class RemoteDataService(DataService):
         
         return res, msg
 
-    def OLD_query_lb_balance_sheet(self, symbol, start_date, end_date, fields="", extend=0):
-        """
-        Helper function to call data_api.query with 'lb.income' more conveniently.
-        
-        Parameters
-        ----------
-        symbol : str
-            separated by ','
-        start_date : int
-            Annoucement date in results will be no earlier than start_date
-        end_date : int
-            Annoucement date in results will be no later than start_date
-        fields : str, optional
-            separated by ',', default ""
-        extend : int, optional
-            If not zero, extend for weeks.
-
-        Returns
-        -------
-        df : pd.DataFrame
-            index date, columns fields
-        msg : str
-
-        """
-        # extend 1 year
-        if extend:
-            start_dt = dtutil.convert_int_to_datetime(start_date)
-            start_dt = start_dt - pd.Timedelta(weeks=extend)
-            start_date = dtutil.convert_datetime_to_int(start_dt)
-    
-        filter_argument = self._dic2url({'symbol': symbol,
-                                         'start_date': start_date,
-                                         'end_date': end_date,
-                                         'report_type': '408002000'})
-    
-        return self.query("lb.balanceSheet", fields=fields, filter=filter_argument,
-                          order_by=self.REPORT_DATE_FIELD_NAME)
-
-    def OLD_query_lb_cash_flow(self, symbol, start_date, end_date, fields="", extend=0):
-        """
-        Helper function to call data_api.query with 'lb.income' more conveniently.
-        
-        Parameters
-        ----------
-        symbol : str
-            separated by ','
-        start_date : int
-            Annoucement date in results will be no earlier than start_date
-        end_date : int
-            Annoucement date in results will be no later than start_date
-        fields : str, optional
-            separated by ',', default ""
-        extend : int, optional
-            If not zero, extend for weeks.
-
-        Returns
-        -------
-        df : pd.DataFrame
-            index date, columns fields
-        msg : str
-
-        """
-        # extend 1 year
-        if extend:
-            start_dt = dtutil.convert_int_to_datetime(start_date)
-            start_dt = start_dt - pd.Timedelta(weeks=extend)
-            start_date = dtutil.convert_datetime_to_int(start_dt)
-    
-        filter_argument = self._dic2url({'symbol': symbol,
-                                         'start_date': start_date,
-                                         'end_date': end_date,
-                                         'report_type': '408002000'})
-    
-        return self.query("lb.cashFlow", fields=fields, filter=filter_argument,
-                          order_by=self.REPORT_DATE_FIELD_NAME)
-    
     def query_lb_dailyindicator(self, symbol, start_date, end_date, fields=""):
         """
         Helper function to call data_api.query with 'lb.secDailyIndicator' more conveniently.
@@ -515,7 +440,7 @@ class RemoteDataService(DataService):
     
     def get_index_comp(self, index, start_date, end_date):
         """
-        Return all securities that have been in index during start_date and end_date.
+        Return list of symbols that have been in index during start_date and end_date.
         
         Parameters
         ----------
