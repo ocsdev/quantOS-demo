@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from quantos.data.calendar import Calendar
 
 
 class RegisteredFunction(object):
@@ -35,7 +36,8 @@ class Context(object):
 
     """
     def __init__(self):
-        self.calendar = None
+        # TODO: hard-code
+        self.calendar = Calendar()
         
         self.pm = None
         
@@ -49,7 +51,10 @@ class Context(object):
         self.universe = []
         
         self.trade_date = 0
-        
+
+    def register_calendar(self, calendar):
+        self.calendar = calendar
+
     def register_portfolio_manager(self, portfolio_manager):
         self.pm = portfolio_manager
         
