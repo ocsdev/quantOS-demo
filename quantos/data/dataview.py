@@ -336,10 +336,9 @@ class DataView(object):
         
         if self.freq == 1:
             # TODO : use fields = {field: kwargs} to enable params
-            
-            fields_market_daily = self._get_fields('market_daily', fields, append=True)  # TODO: not each time we want append = True
+            fields_market_daily = self._get_fields('market_daily', fields, append=True)
             if fields_market_daily:
-                print "NOTE: adjust mode of price is [{:s} adjust]".format(self.adjust_mode)
+                print "NOTE: price adjust method is [{:s} adjust]".format(self.adjust_mode)
                 # no adjust prices and other market daily fields
                 df_daily, msg1 = self.data_api.daily(symbol_str, start_date=self.extended_start_date_d, end_date=self.end_date,
                                                      adjust_mode=None, fields=sep.join(fields_market_daily))
@@ -422,7 +421,9 @@ class DataView(object):
 
         """
         # df.drop_duplicates(subset=index_name, inplace=True)  # TODO not a good solution
-        df = df.astype(dtype={index_name: int})  # fast data type conversion
+        dtype_idx = df.dtypes[index_name].type
+        if not issubclass(dtype_idx, (int, np.integer)):
+            df = df.astype(dtype={index_name: int})  # fast data type conversion
         
         dup = df.duplicated(subset=index_name)
         if np.sum(dup.values) > 0:
@@ -438,9 +439,10 @@ class DataView(object):
             df = df.drop(['symbol'], axis=1)
         
         return df
-    
+
+    '''
     @staticmethod
-    def _dic_of_df_to_multi_index_df(dic, levels=None):
+    def _dic_of_df_to_multi_index_df_OLD(dic, levels=None):
         """
         Convert dict of DataFrame to MultiIndex DataFrame.
         Columns of result will be MultiIndex constructed using keys of dict and columns of DataFrame.
@@ -475,7 +477,63 @@ class DataView(object):
             # merge.fillna(method='ffill')
             
         return merge
-        
+
+    '''
+    def _dic_of_df_to_multi_index_df(self, dic, level_names=None):
+        """
+        Convert dict of DataFrame to MultiIndex DataFrame.
+        Columns of result will be MultiIndex constructed using keys of dict and columns of DataFrame.
+        Index of result will be the same with DataFrame.
+        Different DataFrame will be aligned (outer join) using index.
+
+        Parameters
+        ----------
+        dic : dict
+            {symbol: DataFrame with index be datetime and columns be fields}.
+        fields : list or np.ndarray
+            Column labels for MultiIndex level 0.
+        level_names : list of str
+            Name of columns.
+
+        Returns
+        -------
+        merge : pd.DataFrame
+            with MultiIndex columns.
+
+        """
+        if level_names is None:
+            level_names = ['symbol', 'field']
+        '''
+        if fields is None:
+            fields = dic.values()[0].columns
+        '''
+        keys = dic.keys()
+        values = dic.values()
+        idx = np.unique(np.concatenate([df.index.values for df in values]))
+        fields = np.unique(np.concatenate([df.columns.values for df in values]))
+
+        cols_multi = pd.MultiIndex.from_product([self.symbol, fields], names=level_names)
+        cols_multi = cols_multi.sort_values()
+        merge_final = pd.DataFrame(index=idx, columns=cols_multi, data=np.nan)
+
+        merge = pd.concat(values, axis=1, join='outer')
+        multi_idx = pd.MultiIndex.from_product([keys, fields], names=level_names)
+        merge.columns = multi_idx
+
+        merge_final.loc[merge.index, pd.IndexSlice[keys, fields]] = merge  # index and column of merge, df must be the same
+
+        if merge.isnull().sum().sum() > 0:
+            print "WARNING: there are NaN values in your data, NO fill."
+            # merge.fillna(method='ffill')
+
+        if merge_final.shape != merge.shape:
+            idx_diff = sorted(set(merge_final.index) - set(merge.index))
+            col_diff = sorted(set(merge_final.columns.levels[0].values) - set(merge.columns.levels[0].values))
+            print ("WARNING: some data is unavailable: "
+                   + "\n    At index " + ', '.join(idx_diff)
+                   + "\n    At fields " + ', '.join(col_diff))
+        return merge_final
+
     def _preprocess_market_daily(self, dic):
         """
         Process data and construct MultiIndex.
@@ -495,7 +553,7 @@ class DataView(object):
             # df = df.astype({'trade_status': str})
             dic[sec] = self._process_index(df, self.TRADE_DATE_FIELD_NAME)
             
-        res = self._dic_of_df_to_multi_index_df(dic, levels=['symbol', 'field'])
+        res = self._dic_of_df_to_multi_index_df(dic, level_names=['symbol', 'field'])
         return res
         
     def _preprocess_ref_daily(self, dic, fields):
@@ -518,7 +576,7 @@ class DataView(object):
             df_mod = df_mod.loc[:, self._get_fields('ref_daily', fields)]
             dic[sec] = df_mod
         
-        res = self._dic_of_df_to_multi_index_df(dic, levels=['symbol', 'field'])
+        res = self._dic_of_df_to_multi_index_df(dic, level_names=['symbol', 'field'])
         return res
 
     def _preprocess_ref_quarterly(self, type_, dic, fields):
@@ -543,7 +601,7 @@ class DataView(object):
             
             new_dic[sec] = df_mod
     
-        res = self._dic_of_df_to_multi_index_df(new_dic, levels=['symbol', 'field'])
+        res = self._dic_of_df_to_multi_index_df(new_dic, level_names=['symbol', 'field'])
         return res
     
     @staticmethod
@@ -653,12 +711,12 @@ class DataView(object):
             return None, None
         
         # query data
-        print "\nQuery data - query data_api..."
+        print "Query data - query..."
         dic_market_daily, dic_ref_daily, dic_income, dic_balance_sheet, dic_cash_flow, dic_fin_ind = \
             self._query_data(self.symbol, fields)
         
         # pre-process data
-        print "\nQuery data - preprocess..."
+        print "Query data - preprocess..."
         multi_market_daily = self._preprocess_market_daily(dic_market_daily)
         multi_ref_daily = self._preprocess_ref_daily(dic_ref_daily, fields)
         multi_income = self._preprocess_ref_quarterly('income', dic_income, fields)
@@ -666,7 +724,7 @@ class DataView(object):
         multi_cash_flow = self._preprocess_ref_quarterly('cash_flow', dic_cash_flow, fields)
         multi_fin_ind = self._preprocess_ref_quarterly('fin_indicator', dic_fin_ind, fields)
     
-        print "\nQuery data - merge..."
+        print "Query data - merge..."
         merge_d = self._merge_data([multi_market_daily, multi_ref_daily],
                                    index_name=self.TRADE_DATE_FIELD_NAME)
         merge_q = self._merge_data([multi_income, multi_balance_sheet, multi_cash_flow, multi_fin_ind],
@@ -746,7 +804,8 @@ class DataView(object):
             self.symbol = data_api.get_index_comp(self.universe, self.extended_start_date_d, self.end_date)
             self.fields.append('index_member')
         else:
-            self.symbol = props['symbol'].split(sep)
+            self.symbol = props['symbol'].split(sep)  # list
+        self.symbol = sorted(self.symbol)
     
         print "Initialize config success."
         
