@@ -5,7 +5,6 @@ import pandas as pd
 
 from quantos.data.dataview import DataView
 from quantos.data.dataservice import RemoteDataService
-from quantos.research import alphalens
 from quantos.util import fileio
 
 
